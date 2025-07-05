@@ -328,6 +328,7 @@ if "chat_mode" in st.session_state:
                                 st.markdown('<p style="font-size: 10px; color: grey;">Source: Google News RSS</p>', unsafe_allow_html=True)
 
                                 for news in sentiment["headlines"]:
+                                    st.write(news['link'])  # Debug: Show actual URL in app
                                     st.markdown(f"- [{news['title']}]({news['link']})")
 
                                 if "news" in news_risk:
