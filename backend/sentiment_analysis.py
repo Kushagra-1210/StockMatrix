@@ -1,13 +1,4 @@
-import requests 
 import requests
-
-def expand_url(google_news_url):
-    try:
-        resp = requests.get(google_news_url, allow_redirects=True, timeout=5)
-        return resp.url
-    except Exception:
-        return google_news_url
-
 from bs4 import BeautifulSoup
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from textblob import TextBlob
@@ -40,10 +31,9 @@ def fetch_news(query: str, max_articles=5):
         if link.startswith("/"):
             link = "https://news.google.com" + link  # Convert to full URL
 
-        # Expand Google News redirect URL to original URL
+        # Expand Google News redirect URL to actual article URL
         link = expand_url(link)
 
-        # Parse pubDate
         pub_date_str = item.pubDate.text if item.pubDate else None
         if pub_date_str:
             try:
@@ -69,11 +59,9 @@ def analyze_sentiment(ticker: str, basis: str = "annual"):
         if not headlines:
             return {"score": 5, "label": "Neutral", "headlines": []}
 
-        # Time filter
         cutoff_days = 90 if basis == "quarterly" else 365
         cutoff_date = datetime.utcnow() - timedelta(days=cutoff_days)
 
-        # Filter headlines which have valid date and date >= cutoff_date
         filtered = [n for n in headlines if n.get("date") and n["date"] >= cutoff_date]
 
         if not filtered:
