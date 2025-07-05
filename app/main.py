@@ -275,15 +275,20 @@ if "chat_mode" in st.session_state:
                             except Exception as e:
                                 st.error(f"FA failed: {str(e)}")
 
-
                         elif analysis_type == "Both":
                             ta = get_technical_analysis(selected_ticker, basis=basis)
                             fa = get_fundamental_analysis(selected_ticker, basis=basis)
                             sentiment = get_sentiment_analysis(selected_ticker, basis=basis)
                             news_risk = get_news_risk_analysis(selected_ticker, basis=basis)
 
-                            if any("error" in mod for mod in [ta, fa, sentiment, news_risk]):
-                                st.error("One or more modules failed.")
+                            st.write("✅ DEBUG — Technical:", ta)
+                            st.write("✅ DEBUG — Fundamental:", fa)
+                            st.write("✅ DEBUG — Sentiment:", sentiment)
+                            st.write("✅ DEBUG — News Risk:", news_risk)
+
+                            if any(mod is None or (isinstance(mod, dict) and "error" in mod) for mod in [ta, fa, sentiment, news_risk]):
+                                st.error("❌ One or more modules failed.")
+
                             else:
                                 st.subheader("🧪 Technical Analysis")
                                 st.markdown(f"""
