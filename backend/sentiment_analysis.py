@@ -12,17 +12,19 @@ def fetch_news(query: str, max_articles=5):
     response = requests.get(url)
 
     try:
-        soup = BeautifulSoup(response.content, 'lxml-xml')  # Force lxml XML parser
+        soup = BeautifulSoup(response.content, 'lxml-xml')
     except Exception:
-        soup = BeautifulSoup(response.content, 'html.parser')  # Fallback
+        soup = BeautifulSoup(response.content, 'html.parser')
 
     items = soup.findAll('item')[:max_articles]
     news = []
     for item in items:
         title = clean_text(item.title.text)
         link = item.link.text
+        if link.startswith("/"):
+            link = "https://news.google.com" + link  # Convert to full URL
 
-        # Extract and parse pubDate to datetime object; fallback to None
+        # Parse pubDate
         pub_date_str = item.pubDate.text if item.pubDate else None
         if pub_date_str:
             try:
