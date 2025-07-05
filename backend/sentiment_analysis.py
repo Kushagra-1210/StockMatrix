@@ -1,4 +1,4 @@
-import requests
+import requests 
 from bs4 import BeautifulSoup
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from textblob import TextBlob
@@ -6,6 +6,13 @@ from datetime import datetime, timedelta
 
 def clean_text(html_text):
     return BeautifulSoup(html_text, "html.parser").get_text()
+
+def expand_url(google_news_url):
+    try:
+        resp = requests.get(google_news_url, allow_redirects=True, timeout=5)
+        return resp.url
+    except Exception:
+        return google_news_url  # fallback to original link if error
 
 def fetch_news(query: str, max_articles=5):
     url = f"https://news.google.com/rss/search?q={query}+stock&hl=en-IN&gl=IN&ceid=IN:en"
@@ -23,6 +30,9 @@ def fetch_news(query: str, max_articles=5):
         link = item.link.text
         if link.startswith("/"):
             link = "https://news.google.com" + link  # Convert to full URL
+
+        # Expand Google News redirect URL to original URL
+        link = expand_url(link)
 
         # Parse pubDate
         pub_date_str = item.pubDate.text if item.pubDate else None
