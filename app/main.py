@@ -281,11 +281,6 @@ if "chat_mode" in st.session_state:
                             sentiment = get_sentiment_analysis(selected_ticker, basis=basis)
                             news_risk = get_news_risk_analysis(selected_ticker, basis=basis)
 
-                            st.write("✅ DEBUG — Technical:", ta)
-                            st.write("✅ DEBUG — Fundamental:", fa)
-                            st.write("✅ DEBUG — Sentiment:", sentiment)
-                            st.write("✅ DEBUG — News Risk:", news_risk)
-
                             if any(mod is None or (isinstance(mod, dict) and "error" in mod) for mod in [ta, fa, sentiment, news_risk]):
                                 st.error("❌ One or more modules failed.")
 
