@@ -88,21 +88,21 @@ The app is entirely **chatbot-driven**, making stock analysis interactive, intui
 
 ---
 ## 📁 Folder Structure
-## STOCK_ANALYSER/
-# ├── app/
-# │   └── main.py                   ← Chatbot UI
-# ├── backend/
-# │   ├── technical_analysis.py
-# │   ├── fundamental_analysis.py
-# │   ├── sentiment_analysis.py
-# │   ├── news_risk_analyzer.py
-# │   ├── screener_engine.py
-# │   ├── report_generator.py
-# │   └── market_selector.py
-# ├── nlp/
-# │   └── chat_router.py
-# ├── README.md
-# └── .gitignore
+STOCK_ANALYSER/
+├── app/
+│   └── main.py                   ← Chatbot UI
+├── backend/
+│   ├── technical_analysis.py
+│   ├── fundamental_analysis.py
+│   ├── sentiment_analysis.py
+│   ├── news_risk_analyzer.py
+│   ├── screener_engine.py
+│   ├── report_generator.py
+│   └── market_selector.py
+├── nlp/
+│   └── chat_router.py
+├── README.md
+└── .gitignore
 
 
 ## 👤 Author
