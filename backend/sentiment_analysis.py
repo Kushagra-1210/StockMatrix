@@ -10,7 +10,7 @@ def clean_text(html_text):
 def fetch_news(query: str, max_articles=10):
     url = f"https://news.google.com/rss/search?q={query}+stock&hl=en-IN&gl=IN&ceid=IN:en"
     response = requests.get(url)
-    soup = BeautifulSoup(response.content, 'xml')
+    soup = BeautifulSoup(response.content, features="xml")
     items = soup.findAll('item')[:max_articles]
     news = []
     for item in items:
