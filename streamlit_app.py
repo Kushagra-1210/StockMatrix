@@ -385,10 +385,10 @@ if "chat_mode" in st.session_state:
             if st.button("Generate Report", key="generate_report_btn"):
                 with st.spinner("Fetching and analyzing data..."):
                     basis = st.radio("Select Data Basis", ["Quarterly", "Annual"], horizontal=True, key="report_basis")
-                    ta = importlib.import_module("backend.technical_analysis").analyze_technical_indicators(selected_ticker, basis=basis)
-                    fa = importlib.import_module("backend.fundamental_analysis").analyze_fundamentals(selected_ticker, basis=basis)
-                    sentiment = importlib.import_module("backend.sentiment_analysis").analyze_sentiment(selected_ticker, basis=basis)
-                    news_risk = importlib.import_module("backend.news_risk_analyzer").fetch_news_risk(selected_ticker, basis=basis)
+                    ta = importlib.import_module("backend.technical_analysis").analyze_technical_indicators(selected_ticker)
+                    fa = importlib.import_module("backend.fundamental_analysis").analyze_fundamentals(selected_ticker)
+                    sentiment = importlib.import_module("backend.sentiment_analysis").analyze_sentiment(selected_ticker)
+                    news_risk = importlib.import_module("backend.news_risk_analyzer").fetch_news_risk(selected_ticker)
 
                     if any("error" in mod for mod in [ta, fa, sentiment, news_risk]):
                         st.error("Error in analysis. Cannot generate report.")
