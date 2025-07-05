@@ -10,9 +10,12 @@ def clean_text(html_text):
 def expand_url(google_news_url):
     try:
         resp = requests.get(google_news_url, allow_redirects=True, timeout=5)
-        return resp.url
-    except Exception:
-        return google_news_url  # fallback to original link if error
+        expanded = resp.url
+        print(f"Expanded URL: {expanded}")  # Log to console
+        return expanded
+    except Exception as e:
+        print(f"URL expand error: {e}")
+        return google_news_url
 
 def fetch_news(query: str, max_articles=5):
     url = f"https://news.google.com/rss/search?q={query}+stock&hl=en-IN&gl=IN&ceid=IN:en"
