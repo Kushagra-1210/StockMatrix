@@ -1,4 +1,13 @@
 import requests 
+import requests
+
+def expand_url(google_news_url):
+    try:
+        resp = requests.get(google_news_url, allow_redirects=True, timeout=5)
+        return resp.url
+    except Exception:
+        return google_news_url
+
 from bs4 import BeautifulSoup
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from textblob import TextBlob
