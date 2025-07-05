@@ -7,21 +7,21 @@ from datetime import datetime, timedelta
 def clean_text(html_text):
     return BeautifulSoup(html_text, "html.parser").get_text()
 
-def fetch_news(query: str, max_articles=10):
+def fetch_news(query: str, max_articles=5):
     url = f"https://news.google.com/rss/search?q={query}+stock&hl=en-IN&gl=IN&ceid=IN:en"
     response = requests.get(url)
-    soup = BeautifulSoup(response.content, features="xml")
+
+    try:
+        soup = BeautifulSoup(response.content, 'lxml-xml')  # Force lxml XML parser
+    except Exception:
+        soup = BeautifulSoup(response.content, 'html.parser')  # Fallback
+
     items = soup.findAll('item')[:max_articles]
     news = []
     for item in items:
         title = clean_text(item.title.text)
         link = item.link.text
-        pub_date = item.pubDate.text  # Format: 'Fri, 05 Jul 2024 08:00:00 GMT'
-        try:
-            parsed_date = datetime.strptime(pub_date, "%a, %d %b %Y %H:%M:%S %Z")
-        except:
-            parsed_date = datetime.utcnow()  # fallback to now
-        news.append({'title': title, 'link': link, 'date': parsed_date})
+        news.append({'title': title, 'link': link})
     return news
 
 def get_sentiment_score(text):
