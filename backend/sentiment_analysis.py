@@ -21,7 +21,18 @@ def fetch_news(query: str, max_articles=5):
     for item in items:
         title = clean_text(item.title.text)
         link = item.link.text
-        news.append({'title': title, 'link': link})
+
+        # Extract and parse pubDate to datetime object; fallback to None
+        pub_date_str = item.pubDate.text if item.pubDate else None
+        if pub_date_str:
+            try:
+                pub_date = datetime.strptime(pub_date_str, '%a, %d %b %Y %H:%M:%S %Z')
+            except Exception:
+                pub_date = None
+        else:
+            pub_date = None
+
+        news.append({'title': title, 'link': link, 'date': pub_date})
     return news
 
 def get_sentiment_score(text):
@@ -40,7 +51,9 @@ def analyze_sentiment(ticker: str, basis: str = "annual"):
         # Time filter
         cutoff_days = 90 if basis == "quarterly" else 365
         cutoff_date = datetime.utcnow() - timedelta(days=cutoff_days)
-        filtered = [n for n in headlines if n["date"] >= cutoff_date]
+
+        # Filter headlines which have valid date and date >= cutoff_date
+        filtered = [n for n in headlines if n.get("date") and n["date"] >= cutoff_date]
 
         if not filtered:
             return {"score": 5, "label": "Neutral", "headlines": []}
