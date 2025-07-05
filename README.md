@@ -88,30 +88,27 @@ The app is entirely **chatbot-driven**, making stock analysis interactive, intui
 
 ---
 
-## 🗂️ Project Structure
-
 STOCK_ANALYSER/
 ├── app/
-│ └── main.py ← Chatbot UI
+│   └── main.py                   ← Chatbot UI
 ├── backend/
-│ ├── technical_analysis.py
-│ ├── fundamental_analysis.py
-│ ├── sentiment_analysis.py
-│ ├── news_risk_analyzer.py
-│ ├── screener_engine.py
-│ ├── report_generator.py
-│ └── market_selector.py
+│   ├── technical_analysis.py
+│   ├── fundamental_analysis.py
+│   ├── sentiment_analysis.py
+│   ├── news_risk_analyzer.py
+│   ├── screener_engine.py
+│   ├── report_generator.py
+│   └── market_selector.py
 ├── nlp/
-│ └── chat_router.py
+│   └── chat_router.py
 ├── README.md
 └── .gitignore
 
----
 
 ## 👤 Author
 
 **Kushagra Bansal**  
-GitHub: [@Kushagra-1210](https://github.com/Kushagra-1210)
+GitHub: [@Kushagra-1210](https://github.com/Kushagra-1210)\n
 LinkedIn:(https://www.linkedin.com/in/kushagra-kb1210/)
 
 ## ⚠️ Disclaimer
