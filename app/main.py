@@ -391,20 +391,18 @@ if st.session_state.get("chat_mode") == "run_analysis":
 
                                 
                                 # News Risk Section
-                                if "news" in news_risk:
-                                    st.markdown("### 🛡️ News & Geopolitical Risk")
-                                    st.markdown(f"- **Risk Score**: {news_risk['risk_score']}/100")
-                                    st.markdown(f"- **Verdict**: **{news_risk['verdict']}**")
+                                # 🛡️ News & Geopolitical Risk Section
+                                st.markdown("### 🛡️ News & Geopolitical Risk")
+                                st.markdown(f"""
+                                - **Risk Score**: {news_risk.get('risk_score', 'N/A')} / 100  
+                                - **Verdict**: {news_risk.get('verdict', 'N/A')}
+                                """)
 
-                                    if news_risk.get("news"):
-                                        st.markdown("### 📰 Sample Headlines")
-                                        for item in news_risk["news"]:
-                                            title = item.get("title", "No headline")
-                                            url = item.get("url")
-                                            if url:
-                                                st.markdown(f"- [{title}]({url})")
-                                            else:
-                                                st.markdown(f"- {title}")
+                                # Sample Headlines in smaller font
+                                if news_risk.get("news"):
+                                    st.markdown("**📰 Sample Headlines**", unsafe_allow_html=True)
+                                    for article in news_risk["news"]:
+                                        st.markdown(f"<p style='font-size:0.85rem;'>- {article['title']}</p>", unsafe_allow_html=True)
 
                                 # Final Combined Score
                                 final_score = round(
