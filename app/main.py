@@ -146,6 +146,7 @@ if user_input:
         screener_data = None
         context = None
         st.session_state.show_insight_buttons = True
+        st.rerun()
 
 
     else:
@@ -385,17 +386,20 @@ if st.session_state.get("chat_mode") == "run_analysis":
             col1, col2 = st.columns(2)
 
             with col1:
-                if st.button("📊 Screener Engine", key="screener_btn_ig"):
+                if st.button("📊 Screener Engine", 
+                            key="screener_btn_ig",
+                            help="Filter stocks based on technical and fundamental metrics"):
                     st.session_state.chat_mode = "screener"
-                    st.session_state.show_insight_buttons = False
+                    st.session_state.insight_buttons_ready = False
                     st.rerun()
 
             with col2:
-                if st.button("📈 Stock Leaderboard", key="leaderboard_btn_ig"):
+                if st.button("📈 Stock Leaderboard", 
+                            key="leaderboard_btn_ig",
+                            help="View top performing stocks"):
                     st.session_state.chat_mode = "stock_leaderboard"
-                    st.session_state.show_insight_buttons = False
-                    st.rerun() 
-            st.session_state.show_insight_buttons = False
+                    st.session_state.insight_buttons_ready = False
+                    st.rerun()
                 
 elif st.session_state.get("chat_mode") == "report":
     st.subheader("📄 Report Generator")
