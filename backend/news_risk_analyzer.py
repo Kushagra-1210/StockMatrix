@@ -12,7 +12,7 @@ def fetch_news_risk(ticker: str, basis: str = "annual") -> dict:
                 "risk_score": 50.0,
                 "verdict": "Watch",
                 "news": [],
-                "error": "Marketaux API key is missing. Please set up the API key to enable news risk analysis"
+                "error": "News Risk analysis unavailable due to daily API limit. Please try again tomorrow"
             }
 
         # Select time window based on basis
