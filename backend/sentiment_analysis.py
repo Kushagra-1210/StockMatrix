@@ -54,6 +54,12 @@ def fetch_news(query: str, max_articles=5):
             pub_date = None
 
         news.append({'title': title, 'link': link, 'date': pub_date})  # Ensure 'link' is included
+
+    # Debugging output
+    print("Fetched news articles:")
+    for article in news:
+        print(f"Title: {article['title']}, Link: {article['link']}")
+
     return news
 
 def get_sentiment_score(text):
@@ -67,6 +73,10 @@ def analyze_sentiment(ticker: str, basis: str = "annual"):
     print(f"Sentimental basis = {basis}")
     try:
         headlines = fetch_news(ticker, max_articles=10)
+        print("Headlines fetched for sentiment analysis:")
+        for headline in headlines:
+            print(f"Title: {headline['title']}, Link: {headline['link']}")
+
         if not headlines:
             return {"score": 5, "label": "Neutral", "headlines": []}
 
