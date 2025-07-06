@@ -129,6 +129,35 @@ st.markdown("""
         color: white;
         box-shadow: 0 4px 14px rgba(31, 119, 180, 0.4);
     }
+    
+    /* Main text color (rich slate gray) */
+    body, p, div, span, label {
+        color: #2c3e50 !important;
+    }
+
+    /* Headers */
+    h1, h2, h3, h4, h5 {
+        color: #1a2b3c !important;
+        font-weight: 600;
+    }
+
+    /* Subheaders / secondary text */
+    small, .stMarkdown small, .markdown small {
+        color: #6c757d !important;
+    }
+
+    /* Chat input text */
+    input, textarea {
+        color: #2c3e50 !important;
+        background-color: #ffffff !important;
+        border: 1px solid #d6d6d6 !important;
+        border-radius: 8px;
+    }
+
+    /* Chat message content */
+    .stChatMessage p {
+        color: #2c3e50 !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
