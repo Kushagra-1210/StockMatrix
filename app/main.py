@@ -93,70 +93,110 @@ st.set_page_config(page_title="STOCK ANALYSER", layout="centered")
 # ✅ Custom background color using CSS
 st.markdown("""
     <style>
-    /* Soft gradient background */
+    /* Modern gradient background with subtle texture */
     .stApp {
-        background: linear-gradient(to bottom right, #f2f6fc, #e9eff5);
-        color: #333333;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        color: #212529;
     }
 
-    /* White main content container */
+    /* Elevated content container */
     .block-container {
         background-color: #ffffff;
-        padding: 2rem;
-        border-radius: 16px;
-        box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.08);
+        padding: 2.5rem;
+        border-radius: 18px;
+        box-shadow: 0 6px 30px rgba(0, 0, 0, 0.05);
+        border: 1px solid rgba(0, 0, 0, 0.03);
     }
 
-    /* Refined fonts */
+    /* Typography system */
     html, body, [class*="css"] {
-        font-family: 'Segoe UI', sans-serif;
-        font-size: 16px;
-        color: #2c3e50;
+        font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+        font-size: 15px;
+        color: #212529;
     }
 
-    /* Chat message styling (optional) */
-    .stChatMessage {
-        background-color: #f5f9ff;
-        border-radius: 10px;
-        padding: 1rem;
-        margin-bottom: 1rem;
+    /* Improved headers with gradient text */
+    h1 {
+        background: linear-gradient(90deg, #2b5876 0%, #4e4376 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 700;
     }
 
-    /* Button glow effect (optional) */
-    button[kind="primary"] {
-        background-color: #1f77b4;
-        border: none;
-        color: white;
-        box-shadow: 0 4px 14px rgba(31, 119, 180, 0.4);
-    }
-    
-    /* Main text color (rich slate gray) */
-    body, p, div, span, label {
-        color: #2c3e50 !important;
-    }
-
-    /* Headers */
-    h1, h2, h3, h4, h5 {
-        color: #1a2b3c !important;
+    h2, h3, h4, h5 {
+        color: #343a40 !important;
         font-weight: 600;
     }
 
-    /* Subheaders / secondary text */
-    small, .stMarkdown small, .markdown small {
-        color: #6c757d !important;
+    /* Interactive elements */
+    button[kind="primary"] {
+        background: linear-gradient(90deg, #3a7bd5 0%, #00d2ff 100%);
+        border: none;
+        color: white;
+        font-weight: 500;
+        box-shadow: 0 2px 10px rgba(58, 123, 213, 0.3);
+        transition: all 0.2s ease;
     }
 
-    /* Chat input text */
-    input, textarea {
-        color: #2c3e50 !important;
+    button[kind="primary"]:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 15px rgba(58, 123, 213, 0.4);
+    }
+
+    /* Form controls */
+    .stSelectbox, .stRadio, .stCheckbox {
+        background-color: #f8f9fa;
+        border-radius: 10px;
+        padding: 12px;
+        border: 1px solid #e9ecef;
+    }
+
+    /* Input fields */
+    input, textarea, select {
         background-color: #ffffff !important;
-        border: 1px solid #d6d6d6 !important;
-        border-radius: 8px;
+        border: 1px solid #dee2e6 !important;
+        border-radius: 8px !important;
+        padding: 10px 14px !important;
     }
 
-    /* Chat message content */
-    .stChatMessage p {
-        color: #2c3e50 !important;
+    /* Status indicators */
+    .st-b7 {
+        background-color: #e6f7ff !important;
+    }
+
+    /* Dataframe styling */
+    .stDataFrame {
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: #adb5bd;
+        border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: #6c757d;
+    }
+
+    /* Section dividers */
+    .stHorizontalBlock > div {
+        border-right: 1px solid #e9ecef;
+        padding-right: 20px;
+    }
+
+    .stHorizontalBlock > div:last-child {
+        border-right: none;
     }
     </style>
 """, unsafe_allow_html=True)
