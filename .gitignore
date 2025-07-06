@@ -23,3 +23,7 @@ Thumbs.db
 
 # Streamlit cache
 .streamlit/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
