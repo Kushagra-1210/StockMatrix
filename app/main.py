@@ -139,6 +139,17 @@ if st.session_state.get("chat_mode") == "insight_generation":
                 st.rerun()
 
 user_input = st.chat_input("How can I help you today?", key="main_user_input")
+# 💡 Show quick tips only when waiting for input
+if not user_input:
+    with st.expander("💡 Quick Tips", expanded=False):
+        st.markdown("""
+        **You can type:**
+        - `RA` or `Run Analysis` to analyze a stock
+        - `GR` or `Generate Report` to get a downloadable PDF/CSV
+        - `IG` or `Insight Generation` for screener and leaderboard
+           - `Screener` to find high-potential stocks
+           - `Leaderboard` to view top-ranked stocks
+        """)
 
 if user_input:
 
