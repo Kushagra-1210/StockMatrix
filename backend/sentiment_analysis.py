@@ -33,11 +33,10 @@ def fetch_news(query: str, max_articles=5):
     news = []
     for item in items:
         title = clean_text(item.title.text)
-        link = item.link.text
+        link = item.link.text  # Directly use the link from the RSS feed
 
-        # Check if the link is a Google News link
+        # Attempt to expand the Google News link if it is a Google News link
         if "google.com" in link:
-            # Attempt to expand the Google News link
             expanded_link = expand_url(link)
             if expanded_link:  # If expansion is successful, use it
                 link = expanded_link
