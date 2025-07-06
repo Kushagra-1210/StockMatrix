@@ -319,6 +319,7 @@ if "chat_mode" in st.session_state:
                                 - **FA Score**: {fa['fa_score']} / 100  
                                 - **Verdict**: **{fa['verdict']}**
                                 """)
+
                                 st.markdown('<p style="font-size: 10px; color: grey;">Source: Yahoo Finance (via yfinance)</p>', unsafe_allow_html=True)
                                 if "fa_breakdown" in fa:
                                     st.markdown("##### 🔍 Fundamental Score Breakdown")
@@ -332,9 +333,15 @@ if "chat_mode" in st.session_state:
                                 """)
                                 st.markdown('<p style="font-size: 10px; color: grey;">Source: Google News RSS</p>', unsafe_allow_html=True)
 
-                                for news in sentiment["headlines"]:
-                                    st.write(news['link'])  # Debug: Show actual URL in app
-                                    st.markdown(f"- [{news['title']}]({news['link']})")
+                                # Show top 5 sentiment headlines with color-coded sentiment labels
+                                st.markdown("#### 📰 Top 5 Headlines")
+                                for item in sentiment["headlines"]:
+                                    label_color = item.get("color", "gray")
+                                    label_text = item.get("label", "")
+                                    st.markdown(
+                                        f"<span style='color:{label_color}'><b>{label_text}</b></span>: {item['title']}",
+                                        unsafe_allow_html=True
+                                    )
 
                                 if "news" in news_risk:
                                     st.subheader("🛡️ News & Geopolitical Risk")
