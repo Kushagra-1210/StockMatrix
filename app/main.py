@@ -93,23 +93,41 @@ st.set_page_config(page_title="STOCK ANALYSER", layout="centered")
 # ✅ Custom background color using CSS
 st.markdown("""
     <style>
-    /* Set full-page background color */
+    /* Soft gradient background */
     .stApp {
-        background-color: #f8f9fa;
+        background: linear-gradient(to bottom right, #f2f6fc, #e9eff5);
+        color: #333333;
     }
 
-    /* Optional: Set white background for main content */
+    /* White main content container */
     .block-container {
         background-color: #ffffff;
         padding: 2rem;
-        border-radius: 12px;
-        box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.05);
+        border-radius: 16px;
+        box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.08);
     }
 
-    /* Optional: Font improvements */
+    /* Refined fonts */
     html, body, [class*="css"] {
         font-family: 'Segoe UI', sans-serif;
         font-size: 16px;
+        color: #2c3e50;
+    }
+
+    /* Chat message styling (optional) */
+    .stChatMessage {
+        background-color: #f5f9ff;
+        border-radius: 10px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    /* Button glow effect (optional) */
+    button[kind="primary"] {
+        background-color: #1f77b4;
+        border: none;
+        color: white;
+        box-shadow: 0 4px 14px rgba(31, 119, 180, 0.4);
     }
     </style>
 """, unsafe_allow_html=True)
