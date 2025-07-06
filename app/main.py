@@ -145,6 +145,8 @@ if user_input:
         response = "You selected **Insight Generation**. Please choose one of the options below:"
         screener_data = None
         context = None
+        st.session_state.show_insight_buttons = True
+
 
     else:
         # For inputs other than commands, call chat handler
@@ -375,21 +377,25 @@ if st.session_state.get("chat_mode") == "run_analysis":
                         st.error(f"Analysis failed: {str(e)}")
 
     elif st.session_state.get("chat_mode") == "insight_generation":
-        st.subheader("🔎 Insight Generation")
+        
+        if st.session_state.get("show_insight_buttons", False):
+            st.chat_message("assistant").markdown(response)
 
-        st.chat_message("assistant").markdown(response)
+            st.write("")
+            col1, col2 = st.columns(2)
 
-        col1, col2 = st.columns(2)
+            with col1:
+                if st.button("📊 Screener Engine", key="screener_btn_ig"):
+                    st.session_state.chat_mode = "screener"
+                    st.session_state.show_insight_buttons = False
+                    st.rerun()
 
-        with col1:
-            if st.button("📊 Screener Engine"):
-                st.session_state.chat_mode = "screener"
-                st.rerun()
-
-        with col2:
-            if st.button("📈 Stock Leaderboard"):
-                st.session_state.chat_mode = "stock_leaderboard"
-                st.rerun()
+            with col2:
+                if st.button("📈 Stock Leaderboard", key="leaderboard_btn_ig"):
+                    st.session_state.chat_mode = "stock_leaderboard"
+                    st.session_state.show_insight_buttons = False
+                    st.rerun() 
+            st.session_state.show_insight_buttons = False
                 
 elif st.session_state.get("chat_mode") == "report":
     st.subheader("📄 Report Generator")
