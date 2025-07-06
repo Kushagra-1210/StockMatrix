@@ -1,8 +1,15 @@
 import requests
+import nltk
 from bs4 import BeautifulSoup
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from textblob import TextBlob
 from datetime import datetime, timedelta
+
+try:
+    nltk.data.find('sentiment/vader_lexicon.zip')
+except LookupError:
+    nltk.download('vader_lexicon')
+
 
 def clean_text(html_text):
     return BeautifulSoup(html_text, "html.parser").get_text()
@@ -10,7 +17,11 @@ def clean_text(html_text):
 
 def fetch_news(query: str, max_articles=10):
     url = f"https://news.google.com/rss/search?q={query}+stock&hl=en-IN&gl=IN&ceid=IN:en"
-    response = requests.get(url)
+    try:
+        response = requests.get(url, timeout=5)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        return {"error": f"Google News fetch failed: {str(e)}"}
 
     try:
         soup = BeautifulSoup(response.content, 'lxml-xml')
@@ -22,7 +33,6 @@ def fetch_news(query: str, max_articles=10):
 
     for item in items:
         title = clean_text(item.title.text).strip()
-
         pub_date_str = item.pubDate.text if item.pubDate else None
         pub_date = None
         if pub_date_str:
@@ -30,7 +40,6 @@ def fetch_news(query: str, max_articles=10):
                 pub_date = datetime.strptime(pub_date_str, '%a, %d %b %Y %H:%M:%S %Z')
             except Exception:
                 pass
-
         if title:
             news.append({
                 "title": title,
@@ -48,21 +57,34 @@ def get_sentiment_score(text):
     return avg_score
 
 
-def get_label_and_color(score):
+def get_label(score):
     if score >= 0.3:
-        return "🟢 Positive", "green"
+        return "🟢 Positive"
     elif score > -0.3:
-        return "🟡 Neutral", "orange"
+        return "🟡 Neutral"
     else:
-        return "🔴 Negative", "red"
+        return "🔴 Negative"
 
 
 def analyze_sentiment(ticker: str, basis: str = "annual"):
     try:
-        headlines = fetch_news(ticker, max_articles=10)
+        raw_news = fetch_news(ticker, max_articles=10)
+        if isinstance(raw_news, dict) and raw_news.get("error"):
+            return {
+                "score": 5,
+                "label": "Neutral",
+                "headlines": [],
+                "error": raw_news["error"]
+            }
 
+        headlines = raw_news
         if not headlines:
-            return {"score": 5, "label": "Neutral", "headlines": []}
+            return {
+                "score": 5,
+                "label": "Neutral",
+                "headlines": [],
+                "error": "Google News returned no headlines. Default neutral sentiment applied."
+            }
 
         # Filter based on Quarterly/Annual cutoff
         cutoff_days = 90 if basis.lower() == "quarterly" else 365
@@ -70,7 +92,12 @@ def analyze_sentiment(ticker: str, basis: str = "annual"):
         filtered = [n for n in headlines if n.get("date") and n["date"] >= cutoff_date]
 
         if not filtered:
-            return {"score": 5, "label": "Neutral", "headlines": []}
+            return {
+                "score": 5,
+                "label": "Neutral",
+                "headlines": [],
+                "error": "No recent headlines found. Default neutral sentiment applied."
+            }
 
         scored_headlines = []
         for news in filtered:
@@ -78,25 +105,26 @@ def analyze_sentiment(ticker: str, basis: str = "annual"):
             scored_headlines.append({
                 "title": news["title"],
                 "score": round(score, 3),
+                "label": get_label(score),
                 "date": news["date"]
             })
 
-        # Sort and select top 5 by absolute sentiment
+        # Sort by sentiment strength
         scored_headlines.sort(key=lambda x: abs(x["score"]), reverse=True)
         top_5 = scored_headlines[:5]
 
-        # Add label and color to top 5
-        total_score = 0
-        for h in top_5:
-            label, color = get_label_and_color(h["score"])
-            h["label"] = label
-            h["color"] = color
-            total_score += h["score"]
+        if not top_5:
+            return {
+                "score": 5,
+                "label": "Neutral",
+                "headlines": [],
+                "error": "No strong sentiment found. Default neutral applied."
+            }
 
+        total_score = sum(h["score"] for h in top_5)
         avg_score = total_score / len(top_5)
         sentiment_score = round((avg_score + 1) * 5, 2)
 
-        # Overall sentiment label
         if sentiment_score >= 6.5:
             label = "Positive"
         elif sentiment_score >= 4:
@@ -111,4 +139,9 @@ def analyze_sentiment(ticker: str, basis: str = "annual"):
         }
 
     except Exception as e:
-        return {"error": str(e)}
+        return {
+            "score": 5,
+            "label": "Neutral",
+            "headlines": [],
+            "error": f"Sentiment analysis error: {str(e)}"
+        }
