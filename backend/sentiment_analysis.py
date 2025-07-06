@@ -3,22 +3,25 @@ from bs4 import BeautifulSoup
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from textblob import TextBlob
 from datetime import datetime, timedelta
+import streamlit as st  # Import Streamlit
 
 def clean_text(html_text):
     return BeautifulSoup(html_text, "html.parser").get_text()
 
 def expand_url(google_news_url):
     try:
+        st.write(f"Expanding URL: {google_news_url}")  # Log the URL being expanded
         resp = requests.get(google_news_url, allow_redirects=True, timeout=5)
         expanded = resp.url
-        print(f"Expanded URL: {expanded}")  # Log to console
+        st.write(f"Expanded URL: {expanded}")  # Log the expanded URL
         return expanded
     except Exception as e:
-        print(f"URL expand error: {e}")
+        st.write(f"URL expand error: {e}")
         return google_news_url
 
 def fetch_news(query: str, max_articles=5):
     url = f"https://news.google.com/rss/search?q={query}+stock&hl=en-IN&gl=IN&ceid=IN:en"
+    st.write(f"Fetching news from URL: {url}")  # Log the URL being fetched
     response = requests.get(url)
 
     try:
@@ -56,9 +59,9 @@ def fetch_news(query: str, max_articles=5):
         news.append({'title': title, 'link': link, 'date': pub_date})  # Ensure 'link' is included
 
     # Debugging output
-    print("Fetched news articles:")
+    st.write("Fetched news articles:")
     for article in news:
-        print(f"Title: {article['title']}, Link: {article['link']}")
+        st.write(f"Title: {article['title']}, Link: {article['link']}")
 
     return news
 
@@ -70,12 +73,12 @@ def get_sentiment_score(text):
     return avg_score
 
 def analyze_sentiment(ticker: str, basis: str = "annual"):
-    print(f"Sentimental basis = {basis}")
+    st.write(f"Sentimental basis = {basis}")
     try:
         headlines = fetch_news(ticker, max_articles=10)
-        print("Headlines fetched for sentiment analysis:")
+        st.write("Headlines fetched for sentiment analysis:")
         for headline in headlines:
-            print(f"Title: {headline['title']}, Link: {headline['link']}")
+            st.write(f"Title: {headline['title']}, Link: {headline['link']}")
 
         if not headlines:
             return {"score": 5, "label": "Neutral", "headlines": []}
@@ -111,4 +114,5 @@ def analyze_sentiment(ticker: str, basis: str = "annual"):
         }
 
     except Exception as e:
+        st.write(f"Error in analyze_sentiment: {e}")
         return {"error": str(e)}
