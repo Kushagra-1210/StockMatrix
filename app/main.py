@@ -105,10 +105,10 @@ if not st.session_state.greeted:
         "👋 Hello! I am **StockMatrix - your AI Stock Assistant**.\n\n"
         "I analyze top 50 stocks from 5 major stock exchanges: **NSE, NYSE, LSE, HKEX, and TSE**.\n\n"
         "**What would you like to do today?**\n\n"
-        "- Run Analysis(RA)\n"
-        "- Generate a Report(GR)\n"
-        "- Insight Generation(IG)\n\n"
-        "Please type your choice below (RA / GR / IG)"
+        "- Run Analysis\n"
+        "- Generate a Report\n"
+        "- Insight Generation\n\n"
+        "Please type your choice below:"
     )
     st.session_state.chat_history.append({"role": "assistant", "content": greeting_msg})
     st.session_state.greeted = True
