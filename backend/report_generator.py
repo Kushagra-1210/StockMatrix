@@ -41,7 +41,13 @@ def generate_pdf_report(
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 10, "Summary", 0, 1)
     pdf.set_font("Arial", "", 12)
-    pdf.multi_cell(0, 8, f"Ticker: {stock_info.get('ticker', '')}\nName: {stock_info.get('name', 'N/A')}\nCurrent Price: {stock_info.get('price', 'N/A')}\nDate: {stock_info.get('date', '')}")
+    # In the "Summary" section of the PDF:
+    pdf.multi_cell(0, 8, f"""
+    Ticker: {stock_info.get('ticker', '')}
+    Name: {stock_info.get('name', 'N/A')}
+    Period: {technical.get('period', 'N/A')}  # Add this line
+    Current Price: {stock_info.get('price', 'N/A')}
+    """)
 
     # Technical
     pdf.ln(5)

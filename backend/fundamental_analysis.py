@@ -16,18 +16,37 @@ def analyze_fundamentals(ticker: str, basis: str = "annual") -> dict:
     info = stock.info
 
     try:
-        # Decide which financials to use
+        # Use correct financial statements based on basis
         if basis == "quarterly":
             fin = stock.quarterly_financials
             cf = stock.quarterly_cashflow
             bs = stock.quarterly_balance_sheet
+            period_days = 90
         else:
             fin = stock.financials
             cf = stock.cashflow
             bs = stock.balance_sheet
+            period_days = 365
 
-        eps = info.get("trailingEps")
-        pe_ratio = info.get("trailingPE")
+        # Get most recent period data
+        net_income = fin.loc["Net Income"].iloc[0] if "Net Income" in fin.index else None
+        total_equity = bs.loc["Total Stockholder Equity"].iloc[0] if "Total Stockholder Equity" in bs.index else None
+        total_debt = bs.loc["Total Debt"].iloc[0] if "Total Debt" in bs.index else None
+        revenue = fin.loc["Total Revenue"].iloc[0] if "Total Revenue" in fin.index else None
+        prev_revenue = fin.loc["Total Revenue"].iloc[1] if len(fin.loc["Total Revenue"]) > 1 else None
+        shares = info.get("sharesOutstanding")
+        current_price = info.get("currentPrice")
+
+        # Calculate period-specific metrics
+        eps = safe_div(net_income, shares)
+        pe_ratio = safe_div(current_price, eps)
+        roe = safe_div(net_income, total_equity)
+        if roe is not None: roe *= 100
+        free_cash_flow = cf.loc["Total Cash From Operating Activities"].iloc[0] - cf.loc["Capital Expenditures"].iloc[0] if "Total Cash From Operating Activities" in cf.index and "Capital Expenditures" in cf.index else None
+        revenue_growth = safe_div((revenue - prev_revenue), prev_revenue) if revenue and prev_revenue else None
+        debt_to_equity = safe_div(total_debt, total_equity)
+
+        # Get static metrics
         pb_ratio = info.get("priceToBook")
         market_cap = info.get("marketCap")
         sector = info.get("sector", "N/A")
@@ -36,17 +55,7 @@ def analyze_fundamentals(ticker: str, basis: str = "annual") -> dict:
         esg_score = info.get("esgScores", {}).get("totalEsg", None)
         fiscal_date = info.get("lastFiscalYearEnd", "N/A")
 
-        net_income = fin.loc["Net Income"].iloc[0] if "Net Income" in fin.index else None
-        total_equity = bs.loc["Total Stockholder Equity"].iloc[0] if "Total Stockholder Equity" in bs.index else None
-        total_debt = bs.loc["Total Debt"].iloc[0] if "Total Debt" in bs.index else None
-        roe = safe_div(net_income, total_equity)
-        if roe is not None: roe *= 100
-        free_cash_flow = cf.loc["Total Cash From Operating Activities"].iloc[0] - cf.loc["Capital Expenditures"].iloc[0] if "Total Cash From Operating Activities" in cf.index and "Capital Expenditures" in cf.index else None
-        revenue_growth = info.get("revenueGrowth")
-
-        debt_to_equity = safe_div(total_debt, total_equity)
-
-        # Scoring
+        # Scoring (same weights but now uses period-specific metrics)
         score = 0
         total_weight = 0
 
@@ -134,9 +143,9 @@ def analyze_fundamentals(ticker: str, basis: str = "annual") -> dict:
             fiscal_date = datetime.fromtimestamp(fiscal_date).strftime('%Y-%m-%d')
 
         return {
-            "eps": eps if eps is not None else "N/A",
+            "eps": round(eps, 2) if eps is not None else "N/A",
             "roe": round(roe, 2) if isinstance(roe, (int, float)) else "N/A",
-            "pe_ratio": pe_ratio if pe_ratio is not None else "N/A",
+            "pe_ratio": round(pe_ratio, 2) if pe_ratio is not None else "N/A",
             "pb_ratio": pb_ratio if pb_ratio is not None else "N/A",
             "de_ratio": round(debt_to_equity, 2) if isinstance(debt_to_equity, (int, float)) else "N/A",
             "fcf": free_cash_flow if free_cash_flow is not None else "N/A",
@@ -146,6 +155,7 @@ def analyze_fundamentals(ticker: str, basis: str = "annual") -> dict:
             "size": size,
             "sector": sector,
             "fiscal_date": fiscal_date,
+            "period": basis.title(),
             "fa_breakdown": {
                 "Revenue Growth": "15" if isinstance(revenue_growth, (int, float)) else "N/A",
                 "Profitability": round((prof_score / (prof_subs * 5)) * 15, 2) if prof_subs > 0 else "N/A",
