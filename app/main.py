@@ -143,8 +143,6 @@ if user_input:
     elif cmd in ["ig", "insight", "insightgeneration"]:
         st.session_state.chat_mode = "insight_generation"
         response = "You selected **Insight Generation**. Please choose one of the options below:"
-        "- 📊 Screener Engine"
-        "- 📈 Stock Leaderboard"
         screener_data = None
         context = None
 
@@ -378,6 +376,8 @@ if st.session_state.get("chat_mode") == "run_analysis":
 
     elif st.session_state.get("chat_mode") == "insight_generation":
         st.subheader("🔎 Insight Generation")
+
+        st.chat_message("assistant").markdown(response)
 
         col1, col2 = st.columns(2)
 
