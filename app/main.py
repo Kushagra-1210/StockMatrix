@@ -348,7 +348,7 @@ if "chat_mode" in st.session_state:
                                     st.subheader("🛡️ News & Geopolitical Risk")
                                     st.markdown(f"- **Risk Score**: {news_risk['risk_score']} / 100")
                                     st.markdown(f"- **Verdict**: **{news_risk['verdict']}**")
-                                    st.markdown("Recent Headlines:")
+                                    
                                     st.markdown('<p style="font-size: 10px; color: grey;">Source: Simulated via Google News RSS</p>', unsafe_allow_html=True)
                                     for item in news_risk["news"]:
                                         st.markdown(f"- 📰 {item['title']} — **{item['risk']} Risk**")
