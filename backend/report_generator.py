@@ -66,12 +66,26 @@ def generate_pdf_report(
         pdf.cell(0, 8, f"{key.replace('_', ' ').title()}: {fundamental.get(key, 'N/A')}", 0, 1)
 
     # Sentiment
-    pdf.ln(5)
-    pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 10, "Sentiment Analysis", 0, 1)
-    pdf.set_font("Arial", "", 12)
-    pdf.cell(0, 8, f"Sentiment Score: {sentiment.get('score', 'N/A')}", 0, 1)
-    pdf.cell(0, 8, f"Verdict: {sentiment.get('label', 'N/A')}", 0, 1)
+    # 💬 Sentiment Analysis
+    if sentiment:
+        pdf.ln(5)
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 10, "Sentiment Analysis", 0, 1)
+        pdf.set_font("Arial", "", 12)
+        pdf.cell(0, 8, f"Sentiment Score: {sentiment.get('score', 'N/A')} / 10", 0, 1)
+        pdf.cell(0, 8, f"Label: {sentiment.get('label', 'N/A')}", 0, 1)
+
+        if sentiment.get("headlines"):
+            pdf.set_font("Arial", "I", 11)
+            pdf.cell(0, 10, "Sample Headlines:", 0, 1)
+            pdf.set_font("Arial", "", 10)
+            for item in sentiment["headlines"]:
+                if pdf.get_y() > 260:
+                    pdf.add_page()
+                label = item.get("label", "")
+                title = item.get("title", "")
+                headline = f"{title} ({label})"
+                pdf.multi_cell(0, 6, f"- {headline}")
 
     # News Risk
     if news_risk:
@@ -84,21 +98,14 @@ def generate_pdf_report(
 
         if news_risk.get("news"):
             pdf.set_font("Arial", "I", 11)
-            pdf.cell(0, 10, "Recent Headlines:", 0, 1)
+            pdf.cell(0, 10, "Sample Headlines:", 0, 1)
             pdf.set_font("Arial", "", 10)
             for item in news_risk["news"]:
                 if pdf.get_y() > 260:
                     pdf.add_page()
-                title = item.get("title", "No headline")
-                url = item.get("url", None)
-
-                if url:
-                    headline = f"- {title} ({url})"
-                else:
-                    headline = f"- {title}"
-
+                title = item.get("title", "")
+                headline = f"- {title}"
                 pdf.multi_cell(0, 6, headline)
-
 
     # Final Score
     pdf.ln(10)
