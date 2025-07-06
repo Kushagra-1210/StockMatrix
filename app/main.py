@@ -9,6 +9,7 @@ import pandas as pd
 import plotly.graph_objs as go
 from datetime import datetime
 import importlib
+import kaleido
 
 import logging
 logging.basicConfig(level=logging.DEBUG)
