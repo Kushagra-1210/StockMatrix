@@ -402,7 +402,7 @@ if st.session_state.get("chat_mode") == "run_analysis":
                                 if news_risk.get("news"):
                                     st.markdown("**📰 Sample Headlines**", unsafe_allow_html=True)
                                     for article in news_risk["news"]:
-                                        st.markdown(f"<p style='font-size:0.85rem;'>- {article['title']}</p>", unsafe_allow_html=True)
+                                        st.markdown(f"- {article['title']}", unsafe_allow_html=True)
 
                                 # Final Combined Score
                                 final_score = round(
