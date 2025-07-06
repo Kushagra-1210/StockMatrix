@@ -115,15 +115,34 @@ if not st.session_state.greeted:
     st.session_state.greeted = True
 
 # --- Display Chat History ---
+# --- Display Chat History ---
 for msg in st.session_state.chat_history:
     st.chat_message(msg["role"]).markdown(msg["content"])
 
-# --- User Input ---
-# --- User Input ---
+# --- Insight Buttons Section ---
+if st.session_state.get("chat_mode") == "insight_generation":
+    if st.session_state.get("show_insight_buttons", False):
+        # Display buttons below the chat
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("📊 Screener Engine", 
+                        key="screener_btn_ig",
+                        help="Filter stocks based on metrics"):
+                st.session_state.chat_mode = "screener"
+                st.session_state.show_insight_buttons = False
+                st.rerun()
+        with col2:
+            if st.button("📈 Stock Leaderboard", 
+                        key="leaderboard_btn_ig",
+                        help="View top performing stocks"):
+                st.session_state.chat_mode = "stock_leaderboard"
+                st.session_state.show_insight_buttons = False
+                st.rerun()
+
 user_input = st.chat_input("How can I help you today?", key="main_user_input")
 
 if user_input:
-    
+
     if user_input.lower() == "screener":
         st.session_state.chat_mode = "screener"
         st.rerun()
@@ -150,31 +169,12 @@ if user_input:
 
     elif cmd in ["ig", "insight", "insightgeneration"]:
         st.session_state.chat_mode = "insight_generation"
-        # Create a combined message with buttons
-        response = """
-        You selected **Insight Generation**. Please click one of these buttons:
-        <div style="display: flex; gap: 10px; margin-top: 10px;">
-            <button onclick="window.parent.postMessage('screener', '*')" style="padding: 8px 15px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">📊 Screener Engine</button>
-            <button onclick="window.parent.postMessage('leaderboard', '*')" style="padding: 8px 15px; background-color: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer;">📈 Stock Leaderboard</button>
-        </div>
-        """
+        response = "You selected **Insight Generation**. Please choose an option:"
         screener_data = None
         context = None
-        # Add JavaScript handler
-        st.components.v1.html("""
-        <script>
-        window.addEventListener('message', function(event) {
-            if (event.data === 'screener') {
-                window.parent.document.querySelector('input[aria-label="How can I help you today?"]').value = 'screener';
-                window.parent.document.querySelector('input[aria-label="How can I help you today?"]').dispatchEvent(new Event('input'));
-            } else if (event.data === 'leaderboard') {
-                window.parent.document.querySelector('input[aria-label="How can I help you today?"]').value = 'leaderboard';
-                window.parent.document.querySelector('input[aria-label="How can I help you today?"]').dispatchEvent(new Event('input'));
-            }
-        });
-        </script>
-        """)
-
+        # Set flag to show buttons
+        st.session_state.show_insight_buttons = True
+        st.rerun()  # Force refresh to show buttons
 
     else:
         # For inputs other than commands, call chat handler
@@ -629,7 +629,10 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
         "Top 5 Low Risk": lambda df: df.sort_values("Volatility").head(5),
         "Top 5 High Volatility": lambda df: df.sort_values("Volatility", ascending=False).head(5),
         "Top 5 Negative Sentiment": lambda df: df.sort_values("Sentiment Score").head(5),
-        "Top 5 Midcap Opportunities": lambda df: df[df["Market Cap"] < 10_000_000_000].sort_values("Final Score", ascending=False).head(5)
+        "Top 5 Midcap Opportunities": lambda df: df[
+            (df["Market Cap"] > 2_000_000_000) &  # More inclusive range
+            (df["Market Cap"] < 20_000_000_000)
+        ].sort_values("Final Score", ascending=False).head(5)
     }
 
     def fetch_all_scores():
@@ -691,7 +694,7 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
         st.markdown(f"### 🏆 {leaderboard_type} ({basis})")  # Show period in title
         st.dataframe(top_df)
 
-        st.markdown("⬇️ Explore other leaderboard categories:")
+        st.markdown("Explore other leaderboard categories also(just click on them)")
         st.session_state.leaderboard_type = None
 
 
