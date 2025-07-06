@@ -382,9 +382,11 @@ if "chat_mode" in st.session_state:
         if exchange:
             tickers = get_top_50_tickers(exchange)
             selected_ticker = st.selectbox("Choose a Stock", tickers, key="report_ticker")
-
+            basis = st.radio("Select Data Basis", ["Quarterly", "Annual"], horizontal=True, key="report_basis")
+            
             if st.button("Generate Report", key="generate_report_btn"):
                 with st.spinner("Fetching and analyzing data..."):
+                    
                     ta = importlib.import_module("backend.technical_analysis").analyze_technical_indicators(selected_ticker, basis=basis)
                     fa = importlib.import_module("backend.fundamental_analysis").analyze_fundamentals(selected_ticker, basis=basis)
                     sentiment = importlib.import_module("backend.sentiment_analysis").analyze_sentiment(selected_ticker, basis=basis)
