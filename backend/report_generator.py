@@ -71,7 +71,7 @@ def generate_pdf_report(
     if sentiment:
         pdf.ln(5)
         pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 10, "💬 Sentiment Analysis", 0, 1)
+        pdf.cell(0, 10, "Sentiment Analysis", 0, 1)
         pdf.set_font("Arial", "", 12)
         pdf.cell(0, 8, f"Sentiment Score: {sentiment.get('score', 'N/A')} / 10", 0, 1)
         pdf.cell(0, 8, f"Label: {sentiment.get('label', 'N/A')}", 0, 1)
@@ -79,7 +79,7 @@ def generate_pdf_report(
         headlines = sentiment.get("headlines", [])
         if headlines:
             pdf.set_font("Arial", "I", 11)
-            pdf.cell(0, 10, "📰 Sample Headlines", 0, 1)
+            pdf.cell(0, 10, "Sample Headlines", 0, 1)
             pdf.set_font("Arial", "", 10)
             for item in headlines:
                 if pdf.get_y() > 260:
@@ -92,7 +92,7 @@ def generate_pdf_report(
     if news_risk:
         pdf.ln(5)
         pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 10, "🛡️ News & Geopolitical Risk", 0, 1)
+        pdf.cell(0, 10, "News & Geopolitical Risk", 0, 1)
         pdf.set_font("Arial", "", 12)
         pdf.cell(0, 8, f"Risk Score: {news_risk.get('risk_score', 'N/A')} / 100", 0, 1)
         pdf.cell(0, 8, f"Verdict: {news_risk.get('verdict', 'N/A')}", 0, 1)
@@ -100,7 +100,7 @@ def generate_pdf_report(
         news = news_risk.get("news", [])
         if news:
             pdf.set_font("Arial", "I", 11)
-            pdf.cell(0, 10, "📰 Sample Headlines", 0, 1)
+            pdf.cell(0, 10, "Sample Headlines", 0, 1)
             pdf.set_font("Arial", "", 10)
             for item in news:
                 if pdf.get_y() > 260:
