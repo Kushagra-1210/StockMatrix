@@ -114,9 +114,31 @@ if not st.session_state.greeted:
     st.session_state.greeted = True
 
 # --- Display Chat History ---
-# --- Display Chat History ---
 for msg in st.session_state.chat_history:
     st.chat_message(msg["role"]).markdown(msg["content"])
+    st.markdown("---")
+    st.markdown("### 🔍 Select Analysis Tool")
+
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "📊 Run Analysis", 
+        "📄 Report Generator", 
+        "📈 Screener Engine", 
+        "🏆 Stock Leaderboard"
+    ])
+
+    if tab1:
+        st.session_state.chat_mode = "run_analysis"
+        st.rerun()
+    elif tab2:
+        st.session_state.chat_mode = "report"
+        st.rerun()
+    elif tab3:
+        st.session_state.chat_mode = "screener"
+        st.rerun()
+    elif tab4:
+        st.session_state.chat_mode = "stock_leaderboard"
+        st.rerun()
+
 
 # --- Insight Buttons Section ---
 if st.session_state.get("chat_mode") == "insight_generation":
