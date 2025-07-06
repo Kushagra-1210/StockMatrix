@@ -89,7 +89,6 @@ from backend.screener_engine import calculate_volatility
 
 # --- Streamlit Config ---
 st.set_page_config(page_title="STOCK ANALYSER", layout="centered")
-st.set_page_config(page_title="STOCK ANALYSER", layout="centered")
 
 # ✅ Custom background color using CSS
 st.markdown("""
