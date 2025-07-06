@@ -35,7 +35,7 @@ def fetch_news_risk(ticker: str, basis: str = "annual") -> dict:
                 "risk_score": 50.0,
                 "verdict": "Watch",
                 "news": [],
-                "error": "❌ Daily plan for Marketaux API is exhausted. Try again tomorrow."
+                "error": "News Risk analysis unavailable due to daily API limit. Please try again tomorrow."
             }
 
         articles = data.get("data", [])[:3]
