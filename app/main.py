@@ -1,4 +1,3 @@
-st.write(st.get_option("theme"))
 import streamlit as st
 import time
 import os
@@ -89,6 +88,7 @@ from nlp.chat_router import handle_chat_command
 from backend.screener_engine import calculate_volatility
 
 # --- Streamlit Config ---
+st.write(st.get_option("theme"))
 st.set_page_config(page_title="STOCK ANALYSER", layout="centered")
 st.title("StockMatrix")
 
