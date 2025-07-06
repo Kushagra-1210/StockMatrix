@@ -37,9 +37,10 @@ def generate_pdf_report(
         pdf.set_font("Arial", "I", 10)
         pdf.cell(0, 10, f"(Chart not available: {str(e)})", 0, 1)
 
+
     # Summary
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 10, "Summary", 0, 1)
+    pdf.cell(0, 10, "\n Summary", 0, 1)
     pdf.set_font("Arial", "", 12)
     # In the "Summary" section of the PDF:
     pdf.multi_cell(0, 8, f"""
@@ -66,6 +67,7 @@ def generate_pdf_report(
         pdf.cell(0, 8, f"{key.replace('_', ' ').title()}: {fundamental.get(key, 'N/A')}", 0, 1)
 
     # Sentiment
+        # 💬 Sentiment Analysis
     if sentiment:
         pdf.ln(5)
         pdf.set_font("Arial", "B", 12)
