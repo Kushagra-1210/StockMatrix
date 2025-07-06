@@ -1,4 +1,4 @@
-
+st.write(st.get_option("theme"))
 import streamlit as st
 import time
 import os
