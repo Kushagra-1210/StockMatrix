@@ -31,8 +31,15 @@ def fetch_news(query: str, max_articles=5):
     for item in items:
         title = clean_text(item.title.text)
         link = item.link.text
-        if link.startswith("/"):
-            link = "https://news.google.com" + link  # Convert to full URL
+
+        # Check if the link is a Google News link and modify it to point to the actual article
+        if "google.com" in link:
+            # Extract the actual article link from the description
+            description = clean_text(item.description.text)
+            start_index = description.find('href="') + len('href="')
+            end_index = description.find('"', start_index)
+            if start_index != -1 and end_index != -1:
+                link = description[start_index:end_index]
 
         # Expand Google News redirect URL to actual article URL
         link = expand_url(link)
