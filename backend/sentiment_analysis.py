@@ -57,6 +57,7 @@ def get_sentiment_score(text):
     return avg_score
 
 def analyze_sentiment(ticker: str, basis: str = "annual"):
+    print(f"Sentimental basis = {basis}")
     try:
         headlines = fetch_news(ticker, max_articles=10)
         if not headlines:

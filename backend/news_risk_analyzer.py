@@ -3,6 +3,7 @@
 import random
 
 def fetch_news_risk(ticker: str, basis: str = "annual") -> dict:
+    print(f"News Risk basis = {basis}")
     """
     Simulate geopolitical and financial risk signals based on company/ticker.
     In production, connect this to real APIs like GDELT, NewsAPI, or RavenPack.

@@ -11,6 +11,7 @@ def safe_div(numerator, denominator):
         return None
 
 def analyze_fundamentals(ticker: str, basis: str = "annual") -> dict:
+    print(f"FA basis = {basis}")
     stock = yf.Ticker(ticker)
     info = stock.info
 

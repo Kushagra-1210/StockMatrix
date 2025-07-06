@@ -16,6 +16,7 @@ def calculate_rsi(prices, period: int = 14):
     return round(rsi.iloc[-1], 2) if not np.isnan(rsi.iloc[-1]) else None
 
 def analyze_technical_indicators(ticker: str, basis: str = "annual") -> dict:
+    print(f"TA basis = {basis}")
     try:
         period = "12mo" if basis == "annual" else "3mo"
         stock = yf.Ticker(ticker)
