@@ -16,6 +16,8 @@ def calculate_rsi(prices, period: int = 14):
     return round(rsi.iloc[-1], 2) if not np.isnan(rsi.iloc[-1]) else None
 
 def analyze_technical_indicators(ticker: str, basis: str = "annual") -> dict:
+    if basis.lower() not in ("annual", "quarterly"):
+        return {"error": f"Invalid basis '{basis}'. Must be 'annual' or 'quarterly'"}
     print(f"TA basis = {basis}")
     try:
         # Dynamic periods based on analysis basis

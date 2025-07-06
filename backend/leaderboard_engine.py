@@ -7,16 +7,16 @@ from backend.market_selector import get_top_50_tickers
 from backend.screener_engine import calculate_volatility
 import pandas as pd
 
-def get_leaderboard(exchange, category):
+def get_leaderboard(exchange, category, basis = "annual"):
     tickers = get_top_50_tickers(exchange)
     results = []
 
     for ticker in tickers:
         try:
-            fa = analyze_fundamentals(ticker)
-            ta = analyze_technical_indicators(ticker)
-            sent = analyze_sentiment(ticker)
-            news = fetch_news_risk(ticker)
+            fa = analyze_fundamentals(ticker, basis = basis)
+            ta = analyze_technical_indicators(ticker, basis = basis)
+            sent = analyze_sentiment(ticker, basis = basis)
+            news = fetch_news_risk(ticker, basis = basis)
             vol = calculate_volatility(ticker)
 
             if any("error" in r for r in [fa, ta, sent, news]):
@@ -32,7 +32,8 @@ def get_leaderboard(exchange, category):
                 "Volatility": vol,
                 "Market Cap": fa["market_cap"],
                 "Final Score": round(final_score, 2),
-                "Verdict": fa["verdict"]
+                "Verdict": fa["verdict"],
+                "Period": basis.title()  # Add this line
             }
             results.append(data)
         except:

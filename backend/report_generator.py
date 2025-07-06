@@ -45,7 +45,7 @@ def generate_pdf_report(
     pdf.multi_cell(0, 8, f"""
     Ticker: {stock_info.get('ticker', '')}
     Name: {stock_info.get('name', 'N/A')}
-    Period: {technical.get('period', 'N/A')}  # Add this line
+    Analysis Period: {stock_info.get('basis', 'N/A')}  # Changed from technical.get()
     Current Price: {stock_info.get('price', 'N/A')}
     """)
 

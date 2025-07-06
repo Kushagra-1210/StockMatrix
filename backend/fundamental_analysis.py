@@ -11,6 +11,9 @@ def safe_div(numerator, denominator):
         return None
 
 def analyze_fundamentals(ticker: str, basis: str = "annual") -> dict:
+    if basis.lower() not in ("annual", "quarterly"):
+        return {"error": f"Invalid basis '{basis}'. Must be 'annual' or 'quarterly'"}
+    
     print(f"FA basis = {basis}")
     stock = yf.Ticker(ticker)
     info = stock.info
