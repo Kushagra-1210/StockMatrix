@@ -228,6 +228,18 @@ if st.session_state.get("chat_mode") == "run_analysis":
     # Basis selection at the top (applies to all analyses)
     basis = st.radio("Select Data Basis", ["Quarterly", "Annual"], 
                     horizontal=True, key="run_analysis_basis")
+    st.markdown(f"""
+        <div style='
+            background-color: #f0f2f6;
+            border-left: 5px solid #1f77b4;
+            padding: 10px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        '>
+        📊 Currently viewing: <span style="color: #1f77b4;">{basis}</span> data
+        </div>
+    """, unsafe_allow_html=True)
+
 
     st.subheader("1. Select Stock Exchange")
     exchange = st.selectbox("Choose an exchange:", 
@@ -434,6 +446,17 @@ elif st.session_state.get("chat_mode") == "report":
         basis = st.radio("Select Data Basis", ["Quarterly", "Annual"],
                         horizontal=True, key="report_basis",
                         help="Quarterly: Last 3 months data | Annual: Last 12 months data")
+        st.markdown(f"""
+            <div style='
+                background-color: #f0f2f6;
+                border-left: 5px solid #1f77b4;
+                padding: 10px;
+                margin-bottom: 20px;
+                font-weight: 500;
+            '>
+            📊 Currently viewing: <span style="color: #1f77b4;">{basis}</span> data
+            </div>
+        """, unsafe_allow_html=True)
 
         if st.button("Generate Report", key="generate_report_btn"):
             with st.spinner(f"📊 Generating {basis.lower()} report..."):
@@ -528,6 +551,17 @@ elif st.session_state.get("chat_mode") == "screener":
     # Add basis selection at the top
     basis = st.radio("Select Analysis Period", ["Quarterly", "Annual"],
                     horizontal=True, key="screener_basis")
+    st.markdown(f"""
+        <div style='
+            background-color: #f0f2f6;
+            border-left: 5px solid #1f77b4;
+            padding: 10px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        '>
+        📊 Currently viewing: <span style="color: #1f77b4;">{basis}</span> data
+        </div>
+    """, unsafe_allow_html=True)
     
     ta_mod = importlib.import_module("backend.technical_analysis")
     fa_mod = importlib.import_module("backend.fundamental_analysis")
@@ -623,6 +657,18 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
     # Add basis selection at the top
     basis = st.radio("Select Analysis Period", ["Quarterly", "Annual"], 
                     horizontal=True, key="leaderboard_basis")
+    
+    st.markdown(f"""
+        <div style='
+            background-color: #f0f2f6;
+            border-left: 5px solid #1f77b4;
+            padding: 10px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        '>
+        📊 Currently viewing: <span style="color: #1f77b4;">{basis}</span> data
+        </div>
+    """, unsafe_allow_html=True)
     
     from backend.market_selector import get_top_50_tickers
     from backend.technical_analysis import analyze_technical_indicators
