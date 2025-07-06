@@ -376,12 +376,19 @@ if st.session_state.get("chat_mode") == "run_analysis":
                                 - **Verdict**: **{fa['verdict']}**
                                 """)
 
-                                # Sentiment Analysis Section
+                                # 💬 Sentiment Analysis Section
                                 st.markdown("### 💬 Sentiment Analysis")
                                 st.markdown(f"""
                                 - **Sentiment Score**: {sentiment['score']}/10  
                                 - **Label**: {sentiment['label']}
                                 """)
+
+                                # Display sample headlines if available
+                                if sentiment.get("headlines"):
+                                    st.markdown("**📰 Sample Headlines**")
+                                    for item in sentiment["headlines"][:2]:  # Top 2
+                                        st.markdown(f"- {item['title']} ({item['label']})")
+
                                 
                                 # News Risk Section
                                 if "news" in news_risk:
