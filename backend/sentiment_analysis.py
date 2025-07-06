@@ -46,7 +46,7 @@ def fetch_news(query: str, max_articles=5):
         else:
             pub_date = None
 
-        news.append({'title': title, 'link': link, 'date': pub_date})
+        news.append({'title': title, 'link': link, 'date': pub_date})  # Ensure 'link' is included
     return news
 
 def get_sentiment_score(text):
