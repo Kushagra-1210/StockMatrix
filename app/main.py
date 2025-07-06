@@ -15,7 +15,6 @@ logging.basicConfig(level=logging.DEBUG)
 st.set_option('client.showErrorDetails', True)
 
 # 🔥 TEST: Is Streamlit rendering anything at all?
-st.title("✅ StockMatrix is running")
 
 from backend import technical_analysis as ta_mod
 from backend import fundamental_analysis as fa_mod
