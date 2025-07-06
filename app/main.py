@@ -390,7 +390,7 @@ if "chat_mode" in st.session_state:
     elif st.session_state.chat_mode == "report":
         st.subheader("📄 Report Generator")
         report_mod = importlib.import_module("backend.report_generator")
-        
+
         exchange = st.selectbox("Select Exchange", ["NSE", "HKEX", "NYSE", "LSE", "TSE"], key="report_exchange")
         if exchange:
             tickers = get_top_50_tickers(exchange)
@@ -399,7 +399,7 @@ if "chat_mode" in st.session_state:
 
             if st.button("Generate Report", key="generate_report_btn"):
                 with st.spinner("Fetching and analyzing data..."):
-                    
+
                     ta = importlib.import_module("backend.technical_analysis").analyze_technical_indicators(selected_ticker, basis=basis)
                     fa = importlib.import_module("backend.fundamental_analysis").analyze_fundamentals(selected_ticker, basis=basis)
                     sentiment = importlib.import_module("backend.sentiment_analysis").analyze_sentiment(selected_ticker, basis=basis)
@@ -417,6 +417,7 @@ if "chat_mode" in st.session_state:
                             "date": datetime.now().strftime("%Y-%m-%d"),
                         }
 
+                        # 🧮 Final score and verdict
                         final_score = round(
                             0.35 * fa["fa_score"] +
                             0.35 * ta["ta_score"] +
@@ -429,6 +430,78 @@ if "chat_mode" in st.session_state:
                             "Hold" if final_score >= 50 else "Sell"
                         )
 
+                        # 🖼️ Display report data
+                        st.markdown(f"### 📈 {stock_info['name']} ({stock_info['ticker']}) Report — *{basis}*")
+                        st.markdown(f"- **Current Price**: {stock_info['price']}")
+                        st.markdown(f"- **Date**: {stock_info['date']}")
+
+                        # 💹 Price Chart
+                        hist = get_stock_history(selected_ticker, period="6mo")
+                        fig = go.Figure()
+                        fig.add_trace(go.Scatter(x=hist.index, y=hist["Close"], name="Close Price"))
+                        fig.update_layout(title="📉 Price Trend (6 Months)", xaxis_title="Date", yaxis_title="Price")
+                        st.plotly_chart(fig, use_container_width=True)
+
+                        # 🧪 Technical Analysis
+                        st.subheader("🧪 Technical Analysis")
+                        st.markdown(f"""
+                        - **RSI (14)**: {ta['rsi']}  
+                        - **SMA-20**: {ta['sma_20']}  
+                        - **EMA-20**: {ta['ema_20']}  
+                        - **TA Score**: {ta['ta_score']} / 100  
+                        - **Verdict**: **{ta['verdict']}**
+                        """)
+                        st.markdown('<p style="font-size: 10px; color: grey;">Source: Yahoo Finance (historical data)</p>', unsafe_allow_html=True)
+                        if "ta_breakdown" in ta:
+                            st.markdown("##### 🔍 Technical Score Breakdown")
+                            for factor, value in ta["ta_breakdown"].items():
+                                st.markdown(f"- **{factor}**: {value}")
+
+                        # 📊 Fundamental Analysis
+                        st.subheader("📊 Fundamental Analysis")
+                        fcf = fa.get("fcf", "N/A")
+                        fcf_disp = f"{fcf:,}" if isinstance(fcf, (int, float)) else "N/A"
+                        st.markdown(f"""
+                        - **Market Cap**: {fa['market_cap']:,} ({fa['size']})  
+                        - **EPS**: {fa['eps']}  
+                        - **ROE**: {fa['roe']}%  
+                        - **PE Ratio**: {fa['pe_ratio']}  
+                        - **Debt-to-Equity**: {fa['de_ratio']}  
+                        - **Free Cash Flow**: {fcf_disp}  
+                        - **Data As of**: {fa['fiscal_date']}  
+                        - **FA Score**: {fa['fa_score']} / 100  
+                        - **Verdict**: **{fa['verdict']}**
+                        """)
+                        st.markdown('<p style="font-size: 10px; color: grey;">Source: Yahoo Finance (via yfinance)</p>', unsafe_allow_html=True)
+                        if "fa_breakdown" in fa:
+                            st.markdown("##### 🔍 Fundamental Score Breakdown")
+                            for factor, value in fa["fa_breakdown"].items():
+                                st.markdown(f"- **{factor}**: {value}")
+
+                        # 💬 Sentiment
+                        st.subheader("💬 Sentiment Analysis")
+                        st.markdown(f"""
+                        - **Sentiment Score**: {sentiment['score']} / 10  
+                        - **Label**: {sentiment['label']}
+                        """)
+                        st.markdown('<p style="font-size: 10px; color: grey;">Source: Google News RSS</p>', unsafe_allow_html=True)
+
+                        # 🛡️ News Risk
+                        st.subheader("🛡️ News & Geopolitical Risk")
+                        st.markdown(f"""
+                        - **Risk Score**: {news_risk['risk_score']} / 100  
+                        - **Verdict**: **{news_risk['verdict']}**
+                        """)
+                        st.markdown('<p style="font-size: 10px; color: grey;">Source: Simulated via Google News RSS</p>', unsafe_allow_html=True)
+
+                        # 📌 Final Verdict
+                        st.subheader("📌 Final Investment Decision")
+                        st.markdown(f"""
+                        - **Combined Score**: {final_score} / 100  
+                        - **Verdict**: **{final_verdict}**
+                        """)
+
+                        # 📤 Downloads
                         pdf = report_mod.generate_pdf_report(stock_info, ta, fa, sentiment, final_score, final_verdict, news_risk)
                         csv = report_mod.generate_csv_report([{
                             **ta, **fa,
@@ -440,9 +513,10 @@ if "chat_mode" in st.session_state:
                             "final_verdict": final_verdict
                         }])
 
-                        st.success("Report generated! Download below:")
-                        st.download_button("Download PDF", data=pdf, file_name=f"{selected_ticker}_report.pdf", mime="application/pdf")
-                        st.download_button("Download CSV", data=csv, file_name=f"{selected_ticker}_report.csv", mime="text/csv")
+                        st.success("✅ Report generated! Download below:")
+                        st.download_button("📥 Download PDF", data=pdf, file_name=f"{selected_ticker}_report.pdf", mime="application/pdf")
+                        st.download_button("📥 Download CSV", data=csv, file_name=f"{selected_ticker}_report.csv", mime="text/csv")
+
 
     elif st.session_state.chat_mode == "screener":
         st.subheader("📊 Screener Engine")
