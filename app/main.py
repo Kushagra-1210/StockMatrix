@@ -143,6 +143,8 @@ if user_input:
     elif cmd in ["ig", "insight", "insightgeneration"]:
         st.session_state.chat_mode = "insight_generation"
         response = "You selected **Insight Generation**. Please choose one of the options below:"
+        "- 📊 Screener Engine"
+        "- 📈 Stock Leaderboard"
         screener_data = None
         context = None
 
