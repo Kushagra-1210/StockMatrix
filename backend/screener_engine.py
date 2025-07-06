@@ -13,13 +13,13 @@ def calculate_volatility(ticker: str) -> float:
     except Exception:
         return None
 
-def screen_stocks(tickers: list, min_fa: float = 0, min_ta: float = 0, max_volatility: float = 100) -> list:
+def screen_stocks(tickers: list, min_fa: float = 0, min_ta: float = 0, max_volatility: float = 100, basis: str = "annual") -> list:
     results = []
 
     for ticker in tickers:
         try:
-            fa = analyze_fundamentals(ticker)
-            ta = analyze_technical_indicators(ticker)
+            fa = analyze_fundamentals(ticker, basis = basis)
+            ta = analyze_technical_indicators(ticker, basis = basis)
             vol = calculate_volatility(ticker)
 
             if "error" in fa or "error" in ta or vol is None:
