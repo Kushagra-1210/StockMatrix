@@ -1,4 +1,4 @@
-# app/main.py
+
 import streamlit as st
 import time
 import os
@@ -201,32 +201,39 @@ if "chat_mode" in st.session_state:
 
                 if st.button("Run Analysis", key="run_analysis_btn"):
                     with st.spinner("🔍 Running analysis... Please wait."):
+                        # These checkboxes determine if a fresh calculation is needed,
+                        # or if the cached version should be used.
                         refresh_tech = st.checkbox("🔄 Refresh Technical Analysis", key="refresh_technical")
                         refresh_fund = st.checkbox("🔄 Refresh Fundamental Analysis", key="refresh_fundamental")
                         refresh_sent = st.checkbox("🔄 Refresh Sentiment Analysis", key="refresh_sentiment")
                         refresh_news = st.checkbox("🔄 Refresh News & Risk Analysis", key="refresh_news")
  
+                        # Calculate or retrieve cached data based on refresh checkboxes and basis
                         if refresh_tech:
                             ta = ta_mod.analyze_technical_indicators(selected_ticker, basis=basis)
                         else:
-                            ta = get_technical_analysis(selected_ticker, basis=basis)
+                            ta = get_technical_analysis(selected_ticker, basis=basis) # This will use the cache if available for the given basis
+
                         if refresh_fund:
                             fa = fa_mod.analyze_fundamentals(selected_ticker, basis=basis)
                         else:
-                            fa = get_fundamental_analysis(selected_ticker, basis=basis)
+                            fa = get_fundamental_analysis(selected_ticker, basis=basis) # This will use the cache if available for the given basis
+
                         if refresh_sent:
                             sentiment = sentiment_mod.analyze_sentiment(selected_ticker, basis=basis)
                         else:
-                            sentiment = get_sentiment_analysis(selected_ticker, basis=basis)
+                            sentiment = get_sentiment_analysis(selected_ticker, basis=basis) # This will use the cache if available for the given basis
+
                         if refresh_news:
                             news_risk = news_mod.fetch_news_risk(selected_ticker, basis=basis)
                         else:
-                            news_risk = get_news_risk_analysis(selected_ticker, basis=basis)
+                            news_risk = get_news_risk_analysis(selected_ticker, basis=basis) # This will use the cache if available for the given basis
                             
                         if analysis_type == "Technical":
                             st.subheader("🧪 Technical Analysis Report")
                             try:
-                                result = get_technical_analysis(selected_ticker, basis=basis)
+                                # Use the 'ta' variable already calculated above
+                                result = ta 
                                 if "error" in result:
                                     st.error(result["error"])
                                 else:
@@ -249,7 +256,8 @@ if "chat_mode" in st.session_state:
                         elif analysis_type == "Fundamental":
                             st.subheader("📊 Fundamental Analysis Report")
                             try:
-                                result = get_fundamental_analysis(selected_ticker, basis=basis)
+                                # Use the 'fa' variable already calculated above
+                                result = fa
                                 if "error" in result:
                                     st.error(result["error"])
                                 else:
@@ -276,11 +284,8 @@ if "chat_mode" in st.session_state:
                                 st.error(f"FA failed: {str(e)}")
 
                         elif analysis_type == "Both":
-                            ta = get_technical_analysis(selected_ticker, basis=basis)
-                            fa = get_fundamental_analysis(selected_ticker, basis=basis)
-                            sentiment = get_sentiment_analysis(selected_ticker, basis=basis)
-                            news_risk = get_news_risk_analysis(selected_ticker, basis=basis)
-
+                            # Use the 'ta', 'fa', 'sentiment', and 'news_risk' variables already calculated above
+                            # No need to re-call get_... functions here
                             if any(mod is None or (isinstance(mod, dict) and "error" in mod) for mod in [ta, fa, sentiment, news_risk]):
                                 st.error("❌ One or more modules failed.")
 
