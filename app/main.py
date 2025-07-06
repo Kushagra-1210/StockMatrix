@@ -336,6 +336,7 @@ if "chat_mode" in st.session_state:
                                 # Show top 5 sentiment headlines with color-coded sentiment labels
                                 st.markdown("#### 📰 Top 5 Headlines")
                                 for item in sentiment["headlines"]:
+                                    st.code(sentiment["headlines"]) 
                                     label_color = item.get("color", "gray")
                                     label_text = item.get("label", "")
                                     st.markdown(

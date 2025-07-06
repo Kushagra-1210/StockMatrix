@@ -72,26 +72,28 @@ def analyze_sentiment(ticker: str, basis: str = "annual"):
         if not filtered:
             return {"score": 5, "label": "Neutral", "headlines": []}
 
-        result_headlines = []
-        total_score = 0
-
+        scored_headlines = []
         for news in filtered:
             score = get_sentiment_score(news["title"])
-            label, color = get_label_and_color(score)
-            result_headlines.append({
+            scored_headlines.append({
                 "title": news["title"],
                 "score": round(score, 3),
-                "label": label,
-                "color": color,
                 "date": news["date"]
             })
-            total_score += score
 
-        # Sort and limit to top 5 by absolute sentiment strength
-        result_headlines.sort(key=lambda x: abs(x["score"]), reverse=True)
-        top_5 = result_headlines[:5]
+        # Sort and select top 5 by absolute sentiment
+        scored_headlines.sort(key=lambda x: abs(x["score"]), reverse=True)
+        top_5 = scored_headlines[:5]
 
-        avg_score = total_score / len(result_headlines)
+        # Add label and color to top 5
+        total_score = 0
+        for h in top_5:
+            label, color = get_label_and_color(h["score"])
+            h["label"] = label
+            h["color"] = color
+            total_score += h["score"]
+
+        avg_score = total_score / len(top_5)
         sentiment_score = round((avg_score + 1) * 5, 2)
 
         # Overall sentiment label
