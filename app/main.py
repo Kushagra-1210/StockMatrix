@@ -201,96 +201,91 @@ if "chat_mode" in st.session_state:
 
                 if st.button("Run Analysis", key="run_analysis_btn"):
                     with st.spinner("🔍 Running analysis... Please wait."):
-                        # These checkboxes determine if a fresh calculation is needed,
-                        # or if the cached version should be used.
+                        # These checkboxes determine if a fresh calculation is needed
                         refresh_tech = st.checkbox("🔄 Refresh Technical Analysis", key="refresh_technical")
                         refresh_fund = st.checkbox("🔄 Refresh Fundamental Analysis", key="refresh_fundamental")
                         refresh_sent = st.checkbox("🔄 Refresh Sentiment Analysis", key="refresh_sentiment")
                         refresh_news = st.checkbox("🔄 Refresh News & Risk Analysis", key="refresh_news")
- 
-                        # Calculate or retrieve cached data based on refresh checkboxes and basis
+
+                        # Calculate or retrieve cached data with proper basis
                         if refresh_tech:
-                            ta = ta_mod.analyze_technical_indicators(selected_ticker, basis=basis)
+                            ta = ta_mod.analyze_technical_indicators(selected_ticker, basis=basis.lower())
                         else:
-                            ta = get_technical_analysis(selected_ticker, basis=basis) # This will use the cache if available for the given basis
+                            ta = get_technical_analysis(selected_ticker, basis=basis.lower())
 
                         if refresh_fund:
-                            fa = fa_mod.analyze_fundamentals(selected_ticker, basis=basis)
+                            fa = fa_mod.analyze_fundamentals(selected_ticker, basis=basis.lower())
                         else:
-                            fa = get_fundamental_analysis(selected_ticker, basis=basis) # This will use the cache if available for the given basis
+                            fa = get_fundamental_analysis(selected_ticker, basis=basis.lower())
 
                         if refresh_sent:
-                            sentiment = sentiment_mod.analyze_sentiment(selected_ticker, basis=basis)
+                            sentiment = sentiment_mod.analyze_sentiment(selected_ticker, basis=basis.lower())
                         else:
-                            sentiment = get_sentiment_analysis(selected_ticker, basis=basis) # This will use the cache if available for the given basis
+                            sentiment = get_sentiment_analysis(selected_ticker, basis=basis.lower())
 
                         if refresh_news:
-                            news_risk = news_mod.fetch_news_risk(selected_ticker, basis=basis)
+                            news_risk = news_mod.fetch_news_risk(selected_ticker, basis=basis.lower())
                         else:
-                            news_risk = get_news_risk_analysis(selected_ticker, basis=basis) # This will use the cache if available for the given basis
-                            
+                            news_risk = get_news_risk_analysis(selected_ticker, basis=basis.lower())
+
+                        # Display results based on analysis type
                         if analysis_type == "Technical":
-                            st.subheader("🧪 Technical Analysis Report")
+                            st.subheader(f"🧪 Technical Analysis Report ({basis})")
                             try:
-                                # Use the 'ta' variable already calculated above
-                                result = ta 
-                                if "error" in result:
-                                    st.error(result["error"])
+                                if "error" in ta:
+                                    st.error(ta["error"])
                                 else:
                                     st.markdown(f"""
-                                    - **Current Price**: {result['current_price']}  
-                                    - **RSI (14)**: {result['rsi']}  
-                                    - **SMA-20**: {result['sma_20']}  
-                                    - **EMA-20**: {result['ema_20']}  
-                                    - **TA Score**: {result['ta_score']} / 100  
-                                    - **Verdict**: **{result['verdict']}**
+                                    - **Current Price**: {ta['current_price']}  
+                                    - **RSI (14)**: {ta['rsi']}  
+                                    - **SMA-20**: {ta['sma_20']}  
+                                    - **EMA-20**: {ta['ema_20']}  
+                                    - **TA Score**: {ta['ta_score']} / 100  
+                                    - **Verdict**: **{ta['verdict']}**
                                     """)
                                     st.markdown('<p style="font-size: 10px; color: grey;">Source: Yahoo Finance (historical data)</p>', unsafe_allow_html=True)
-                                    if "ta_breakdown" in result:
+                                    if "ta_breakdown" in ta:
                                         st.markdown("##### 🔍 Technical Score Breakdown")
-                                        for factor, value in result["ta_breakdown"].items():
+                                        for factor, value in ta["ta_breakdown"].items():
                                             st.markdown(f"- **{factor}**: {value}")
                             except Exception as e:
                                 st.error(f"TA failed: {str(e)}")
 
                         elif analysis_type == "Fundamental":
-                            st.subheader("📊 Fundamental Analysis Report")
+                            st.subheader(f"📊 Fundamental Analysis Report ({basis})")
                             try:
-                                # Use the 'fa' variable already calculated above
-                                result = fa
-                                if "error" in result:
-                                    st.error(result["error"])
+                                if "error" in fa:
+                                    st.error(fa["error"])
                                 else:
-                                    fcf = result.get("fcf", "N/A")
+                                    fcf = fa.get("fcf", "N/A")
                                     fcf_disp = f"{fcf:,}" if isinstance(fcf, (int, float)) else "N/A"
                                     st.markdown(f"""
-                                    - **Market Cap**: {result['market_cap']:,} ({result['size']})  
-                                    - **EPS**: {result['eps']}  
-                                    - **ROE**: {result['roe']}%  
-                                    - **PE Ratio**: {result['pe_ratio']}  
-                                    - **Debt-to-Equity**: {result['de_ratio']}  
+                                    - **Market Cap**: {fa['market_cap']:,} ({fa['size']})  
+                                    - **EPS**: {fa['eps']}  
+                                    - **ROE**: {fa['roe']}%  
+                                    - **PE Ratio**: {fa['pe_ratio']}  
+                                    - **Debt-to-Equity**: {fa['de_ratio']}  
                                     - **Free Cash Flow**: {fcf_disp}
-                                    - **Data As of**: {result['fiscal_date']}  
-                                    - **FA Score**: {result['fa_score']} / 100  
-                                    - **Verdict**: **{result['verdict']}**
+                                    - **Data As of**: {fa['fiscal_date']}  
+                                    - **FA Score**: {fa['fa_score']} / 100  
+                                    - **Verdict**: **{fa['verdict']}**
                                     """)
                                     st.markdown('<p style="font-size: 10px; color: grey;">Source: Yahoo Finance (via yfinance)</p>', unsafe_allow_html=True)
-                                    if "fa_breakdown" in result:
+                                    if "fa_breakdown" in fa:
                                         st.markdown("##### 🔍 Fundamental Score Breakdown")
-                                        for factor, value in result["fa_breakdown"].items():
+                                        for factor, value in fa["fa_breakdown"].items():
                                             st.markdown(f"- **{factor}**: {value}")
-                                    
                             except Exception as e:
                                 st.error(f"FA failed: {str(e)}")
 
                         elif analysis_type == "Both":
-                            # Use the 'ta', 'fa', 'sentiment', and 'news_risk' variables already calculated above
-                            # No need to re-call get_... functions here
+                            st.subheader(f"📊 Combined Analysis Report ({basis})")
+                            
                             if any(mod is None or (isinstance(mod, dict) and "error" in mod) for mod in [ta, fa, sentiment, news_risk]):
                                 st.error("❌ One or more modules failed.")
-
                             else:
-                                st.subheader("🧪 Technical Analysis")
+                                # Technical Analysis Section
+                                st.markdown("### 🧪 Technical Analysis")
                                 st.markdown(f"""
                                 - **Current Price**: {ta['current_price']}  
                                 - **RSI (14)**: {ta['rsi']}  
@@ -299,13 +294,9 @@ if "chat_mode" in st.session_state:
                                 - **TA Score**: {ta['ta_score']} / 100  
                                 - **Verdict**: **{ta['verdict']}**
                                 """)
-                                st.markdown('<p style="font-size: 10px; color: grey;">Source: Yahoo Finance (historical data)</p>', unsafe_allow_html=True)
-                                if "ta_breakdown" in ta:
-                                    st.markdown("##### 🔍 Technical Score Breakdown")
-                                    for factor, value in ta["ta_breakdown"].items():
-                                        st.markdown(f"- **{factor}**: {value}")
-
-                                st.subheader("📊 Fundamental Analysis")
+                                
+                                # Fundamental Analysis Section
+                                st.markdown("### 📊 Fundamental Analysis")
                                 fcf = fa.get("fcf", "N/A")
                                 fcf_disp = f"{fcf:,}" if isinstance(fcf, (int, float)) else "N/A"
                                 st.markdown(f"""
@@ -320,39 +311,20 @@ if "chat_mode" in st.session_state:
                                 - **Verdict**: **{fa['verdict']}**
                                 """)
 
-                                st.markdown('<p style="font-size: 10px; color: grey;">Source: Yahoo Finance (via yfinance)</p>', unsafe_allow_html=True)
-                                if "fa_breakdown" in fa:
-                                    st.markdown("##### 🔍 Fundamental Score Breakdown")
-                                    for factor, value in fa["fa_breakdown"].items():
-                                        st.markdown(f"- **{factor}**: {value}")
-
-                                st.subheader("💬 Sentiment Analysis")
+                                # Sentiment Analysis Section
+                                st.markdown("### 💬 Sentiment Analysis")
                                 st.markdown(f"""
                                 - **Sentiment Score**: {sentiment['score']} / 10  
                                 - **Label**: {sentiment['label']}
                                 """)
-                                st.markdown('<p style="font-size: 10px; color: grey;">Source: Google News RSS</p>', unsafe_allow_html=True)
-
-                                # Show top 5 sentiment headlines with color-coded sentiment labels
-                                st.markdown("#### 📰 Top 5 Headlines")
-                                for item in sentiment["headlines"]:
-                                    st.code(sentiment["headlines"]) 
-                                    label_color = item.get("color", "gray")
-                                    label_text = item.get("label", "")
-                                    st.markdown(
-                                        f"<span style='color:{label_color}'><b>{label_text}</b></span>: {item['title']}",
-                                        unsafe_allow_html=True
-                                    )
-
+                                
+                                # News Risk Section
                                 if "news" in news_risk:
-                                    st.subheader("🛡️ News & Geopolitical Risk")
+                                    st.markdown("### 🛡️ News & Geopolitical Risk")
                                     st.markdown(f"- **Risk Score**: {news_risk['risk_score']} / 100")
                                     st.markdown(f"- **Verdict**: **{news_risk['verdict']}**")
-                                    
-                                    st.markdown('<p style="font-size: 10px; color: grey;">Source: Simulated via Google News RSS</p>', unsafe_allow_html=True)
-                                    for item in news_risk["news"]:
-                                        st.markdown(f"- 📰 {item['title']} — **{item['risk']} Risk**")
 
+                                # Final Combined Score
                                 final_score = round(
                                     0.35 * fa["fa_score"] +
                                     0.35 * ta["ta_score"] +
@@ -366,7 +338,7 @@ if "chat_mode" in st.session_state:
                                     else "Sell"
                                 )
 
-                                st.subheader("📌 Final Investment Decision")
+                                st.markdown("### 📌 Final Investment Decision")
                                 st.markdown(f"""
                                 - **Combined Score**: {final_score} / 100  
                                 - **Verdict**: **{final_verdict}**
