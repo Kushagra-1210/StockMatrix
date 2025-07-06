@@ -1,70 +1,65 @@
-import random
+import requests
+import os
+import streamlit as st  # ✅ You forgot this import
 
 def fetch_news_risk(ticker: str, basis: str = "annual") -> dict:
-    print(f"News Risk basis = {basis}")
+    try:
+        # ✅ Use Streamlit secrets or fallback to .env or hardcoded (for local dev)
+        api_key = st.secrets.get("MARKETAUX_API_KEY") or os.getenv("MARKETAUX_API_KEY")
 
-    # Step 1: Define industry-specific headline templates
-    industry_headlines = {
-        "tech": [
-            {"title": f"{ticker} hit by cybersecurity breach", "risk": "High"},
-            {"title": f"{ticker} expands into AI R&D", "risk": "Low"},
-            {"title": f"{ticker} faces antitrust lawsuit in EU", "risk": "High"},
-            {"title": f"{ticker} launches new product line", "risk": "Low"},
-            {"title": f"{ticker} loses cloud contract to rival", "risk": "Medium"},
-            {"title": f"{ticker} reports chip shortage impact", "risk": "Medium"},
-            {"title": f"{ticker} stock surges after keynote event", "risk": "Low"},
-            {"title": f"{ticker} faces employee union protests", "risk": "Medium"},
-            {"title": f"{ticker} under investigation for data misuse", "risk": "High"},
-        ],
-        "finance": [
-            {"title": f"{ticker} under SEC investigation", "risk": "High"},
-            {"title": f"{ticker} beats earnings estimates", "risk": "Low"},
-            {"title": f"{ticker} reports bad loan exposure", "risk": "Medium"},
-            {"title": f"{ticker} announces 5% workforce layoffs", "risk": "Medium"},
-            {"title": f"{ticker} wins fintech innovation award", "risk": "Low"},
-            {"title": f"{ticker} hit by bond market volatility", "risk": "Medium"},
-            {"title": f"{ticker} faces liquidity pressure from short sellers", "risk": "High"},
-            {"title": f"{ticker} stock rallies on interest rate outlook", "risk": "Low"},
-        ],
-        "retail": [
-            {"title": f"{ticker} hit by falling consumer demand", "risk": "High"},
-            {"title": f"{ticker} launches global e-commerce platform", "risk": "Low"},
-            {"title": f"{ticker} facing inflationary supply cost pressures", "risk": "Medium"},
-            {"title": f"{ticker} recalls product after safety concerns", "risk": "High"},
-            {"title": f"{ticker} reports record holiday season sales", "risk": "Low"},
-            {"title": f"{ticker} sees slow growth in emerging markets", "risk": "Medium"},
-        ]
-    }
+        if not api_key:
+            return {
+                "risk_score": 50.0,
+                "verdict": "Watch",
+                "news": [],
+                "error": "❌ Marketaux API key not set. Please configure it."
+            }
 
-    # Step 2: Guess sector (naive approach for now)
-    ticker_lower = ticker.lower()
-    if any(word in ticker_lower for word in ["bank", "fin", "nbfc", "hdfc", "icici", "sbi"]):
-        sector = "finance"
-    elif any(word in ticker_lower for word in ["tech", "infy", "tcs", "msft", "apple", "meta", "goog", "it"]):
-        sector = "tech"
-    elif any(word in ticker_lower for word in ["reliance", "dmart", "retail", "shop", "cost", "wmt"]):
-        sector = "retail"
-    else:
-        # Fallback if unknown
-        sector = random.choice(["tech", "finance", "retail"])
+        # Select time window based on basis
+        date_filter = "90d" if basis.lower() == "quarterly" else "365d"
 
-    headlines_pool = industry_headlines.get(sector, industry_headlines["tech"])
-    selected_news = random.sample(headlines_pool, 3)
+        params = {
+            "api_token": api_key,
+            "symbols": ticker,
+            "filter_entities": True,
+            "language": "en",
+            "published_after": date_filter,
+            "limit": 5
+        }
 
-    # Step 3: Score logic
-    risk_score = sum(
-        10 if n["risk"] == "High" else 5 if n["risk"] == "Medium" else 0 for n in selected_news
-    )
-    risk_score_normalized = round(100 - (risk_score / 30) * 100, 2)
+        response = requests.get("https://api.marketaux.com/v1/news/all", params=params)
+        data = response.json()
 
-    verdict = (
-        "Safe" if risk_score_normalized >= 70 else
-        "Watch" if risk_score_normalized >= 50 else
-        "Risky"
-    )
+        if "error" in data or response.status_code != 200:
+            return {
+                "risk_score": 50.0,
+                "verdict": "Watch",
+                "news": [],
+                "error": "❌ Daily plan for Marketaux API is exhausted. Try again tomorrow."
+            }
 
-    return {
-        "news": selected_news,
-        "risk_score": risk_score_normalized,
-        "verdict": verdict
-    }
+        articles = data.get("data", [])[:3]
+
+        # Risk scoring based on keywords
+        high_risk_words = ["lawsuit", "fraud", "probe", "investigation", "ban", "scam"]
+        score = 0
+        for article in articles:
+            title = article.get("title", "").lower()
+            score += any(w in title for w in high_risk_words) * 10
+
+        risk_score = round(100 - min(score, 30) / 30 * 100, 2)
+        verdict = "Safe" if risk_score >= 70 else "Watch" if risk_score >= 50 else "Risky"
+
+        return {
+            "risk_score": risk_score,
+            "verdict": verdict,
+            "news": [{"title": a["title"], "url": a.get("url", "#")} for a in articles]
+        }
+
+    except Exception as e:
+        return {
+            "risk_score": 50.0,
+            "verdict": "Watch",
+            "news": [],
+            "error": f"⚠️ News fetch error: {str(e)}"
+        }

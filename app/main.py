@@ -390,6 +390,13 @@ if st.session_state.get("chat_mode") == "run_analysis":
                                     st.markdown(f"- **Risk Score**: {news_risk['risk_score']}/100")
                                     st.markdown(f"- **Verdict**: **{news_risk['verdict']}**")
 
+                                    if news_risk.get("news"):
+                                        st.markdown("##### 📰 Sample Headlines")
+                                        for item in news_risk["news"]:
+                                            st.markdown(f"- [{item['title']}]({item['url']})")
+                                    elif news_risk.get("error"):
+                                        st.warning(news_risk["error"])
+
                                 # Final Combined Score
                                 final_score = round(
                                     0.35 * fa["fa_score"] +
