@@ -348,13 +348,13 @@ if st.session_state.get("chat_mode") == "run_analysis":
                             
                             if any(mod is None or (isinstance(mod, dict) and "error" in mod) for mod in [ta, fa]):
                                 st.error("❌ One or more critical modules failed. Please try again.")
-                                
+
                             else:
                                 # Optional warnings for Sentiment and News
                                 if sentiment is None or (isinstance(sentiment, dict) and "error" in sentiment):
                                     st.warning("⚠️ Sentiment analysis unavailable.")
                                 if news_risk is None or (isinstance(news_risk, dict) and "error" in news_risk):
-                                    st.warning("⚠️ News risk analysis unavailable.")
+                                    st.warning("⚠️ News risk analysis couldn't be completed — the API limit has been reached")
                             
                                 # Technical Analysis Section
                                 st.markdown("### 🧪 Technical Analysis")
