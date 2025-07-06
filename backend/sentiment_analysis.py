@@ -3,27 +3,18 @@ from bs4 import BeautifulSoup
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from textblob import TextBlob
 from datetime import datetime, timedelta
-import streamlit as st  # Import Streamlit
+import streamlit as st
+
 
 def clean_text(html_text):
     return BeautifulSoup(html_text, "html.parser").get_text()
 
-def expand_url(google_news_url):
-    try:
-        st.write(f"Expanding URL: {google_news_url}")  # Log the URL being expanded
-        resp = requests.get(google_news_url, allow_redirects=True, timeout=5)
-        expanded = resp.url
-        st.write(f"Expanded URL: {expanded}")  # Log the expanded URL
-        return expanded
-    except Exception as e:
-        st.write(f"URL expand error: {e}")
-        return google_news_url
 
 def fetch_news(query: str, max_articles=5):
     url = f"https://news.google.com/rss/search?q={query}+stock&hl=en-IN&gl=IN&ceid=IN:en"
-    st.write(f"Fetching news from URL: {url}")  # Log the URL being fetched
+    st.write(f"📡 Fetching news from URL: {url}")
+    
     response = requests.get(url)
-
     try:
         soup = BeautifulSoup(response.content, 'lxml-xml')
     except Exception:
@@ -31,22 +22,11 @@ def fetch_news(query: str, max_articles=5):
 
     items = soup.findAll('item')[:max_articles]
     news = []
+
     for item in items:
-        title = clean_text(item.title.text)
-        link = item.link.text.strip()  # Directly use the link from the RSS feed and strip whitespace
-
-        # Check if the link is valid
-        if not link:
-            st.write(f"Warning: No valid link found for title: {title}")
-            continue  # Skip this article if the link is empty
-
-        # Attempt to expand the Google News link if it is a Google News link
-        if "google.com" in link:
-            expanded_link = expand_url(link)
-            if expanded_link:  # If expansion is successful, use it
-                link = expanded_link
-
+        title = clean_text(item.title.text).strip()
         pub_date_str = item.pubDate.text if item.pubDate else None
+
         if pub_date_str:
             try:
                 pub_date = datetime.strptime(pub_date_str, '%a, %d %b %Y %H:%M:%S %Z')
@@ -55,14 +35,18 @@ def fetch_news(query: str, max_articles=5):
         else:
             pub_date = None
 
-        news.append({'title': title, 'link': link, 'date': pub_date})  # Ensure 'link' is included
+        if title:
+            news.append({
+                "title": title,
+                "date": pub_date
+            })
 
-    # Debugging output
-    st.write("Fetched news articles:")
-    for article in news:
-        st.write(f"Title: {article['title']}, Link: {article['link']}")
+    st.write("📰 Headlines fetched:")
+    for n in news:
+        st.write(f"- {n['title']}")
 
     return news
+
 
 def get_sentiment_score(text):
     analyzer = SentimentIntensityAnalyzer()
@@ -71,47 +55,75 @@ def get_sentiment_score(text):
     avg_score = (vader_score + blob_score) / 2
     return avg_score
 
+
+def get_label_and_color(score):
+    if score >= 0.3:
+        return "🟢 Positive", "green"
+    elif score > -0.3:
+        return "🟡 Neutral", "orange"
+    else:
+        return "🔴 Negative", "red"
+
+
 def analyze_sentiment(ticker: str, basis: str = "annual"):
-    st.write(f"Sentimental basis = {basis}")
+    st.write(f"🧠 Sentiment analysis basis: **{basis}**")
+
     try:
         headlines = fetch_news(ticker, max_articles=10)
-        st.write("Headlines fetched for sentiment analysis:")
-        for headline in headlines:
-            st.write(f"Title: {headline['title']}, Link: {headline['link']}")
 
         if not headlines:
             return {"score": 5, "label": "Neutral", "headlines": []}
 
-        cutoff_days = 90 if basis == "quarterly" else 365
+        cutoff_days = 90 if basis.lower() == "quarterly" else 365
         cutoff_date = datetime.utcnow() - timedelta(days=cutoff_days)
-
         filtered = [n for n in headlines if n.get("date") and n["date"] >= cutoff_date]
 
         if not filtered:
             return {"score": 5, "label": "Neutral", "headlines": []}
 
         total_score = 0
+        result_headlines = []
+
         for news in filtered:
             score = get_sentiment_score(news["title"])
-            news["score"] = round(score, 3)
+            label, color = get_label_and_color(score)
+
+            news_data = {
+                "title": news["title"],
+                "score": round(score, 3),
+                "date": news["date"],
+                "label": label,
+                "color": color
+            }
+
             total_score += score
+            result_headlines.append(news_data)
 
-        avg_score = total_score / len(filtered)
-        sentiment_score = round((avg_score + 1) * 5, 2)  # Normalize -1 to 1 → 0 to 10
+        result_headlines.sort(key=lambda x: abs(x["score"]), reverse=True)
 
-        if sentiment_score >= 6.5:
-            label = "Positive"
-        elif sentiment_score >= 4:
-            label = "Neutral"
-        else:
-            label = "Negative"
+        avg_score = total_score / len(result_headlines)
+        sentiment_score = round((avg_score + 1) * 5, 2)
+
+        overall_label = (
+            "Positive" if sentiment_score >= 6.5 else
+            "Neutral" if sentiment_score >= 4 else
+            "Negative"
+        )
+
+        # Display in Streamlit
+        st.markdown("### 🧠 Sentiment Headlines (Sorted)")
+        for item in result_headlines:
+            st.markdown(
+                f"<span style='color:{item['color']}'><b>{item['label']}</b></span>: {item['title']}",
+                unsafe_allow_html=True
+            )
 
         return {
             "score": sentiment_score,
-            "label": label,
-            "headlines": filtered
+            "label": overall_label,
+            "headlines": result_headlines
         }
 
     except Exception as e:
-        st.write(f"Error in analyze_sentiment: {e}")
+        st.write(f"❌ Error in analyze_sentiment: {e}")
         return {"error": str(e)}
