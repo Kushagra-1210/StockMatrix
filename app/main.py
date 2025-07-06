@@ -89,6 +89,32 @@ from backend.screener_engine import calculate_volatility
 
 # --- Streamlit Config ---
 st.set_page_config(page_title="STOCK ANALYSER", layout="centered")
+st.set_page_config(page_title="STOCK ANALYSER", layout="centered")
+
+# ✅ Custom background color using CSS
+st.markdown("""
+    <style>
+    /* Set full-page background color */
+    .stApp {
+        background-color: #f8f9fa;
+    }
+
+    /* Optional: Set white background for main content */
+    .block-container {
+        background-color: #ffffff;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Optional: Font improvements */
+    html, body, [class*="css"] {
+        font-family: 'Segoe UI', sans-serif;
+        font-size: 16px;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 st.title("StockMatrix")
 
 # --- Session State Initialization ---
