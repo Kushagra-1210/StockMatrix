@@ -24,19 +24,19 @@ from backend import news_risk_analyzer as news_mod
 
 # --- Cached Helper Functions ---
 @st.cache_data(ttl=3600)
-def get_technical_analysis(ticker, basis="annual"):
+def get_technical_analysis(ticker, basis: str = "annual"):
     return ta_mod.analyze_technical_indicators(ticker, basis=basis)
 
 @st.cache_data(ttl=3600)
-def get_fundamental_analysis(ticker, basis="annual"):
+def get_fundamental_analysis(ticker, basis: str = "annual"):
     return fa_mod.analyze_fundamentals(ticker, basis=basis)
 
 @st.cache_data(ttl=1800)
-def get_sentiment_analysis(ticker, basis = "annual"):
+def get_sentiment_analysis(ticker, basis: str = "annual"):
     return sentiment_mod.analyze_sentiment(ticker, basis = basis)
 
 @st.cache_data(ttl=1800)
-def get_news_risk_analysis(ticker,basis = "annual"):
+def get_news_risk_analysis(ticker,basis: str = "annual"):
     return news_mod.fetch_news_risk(ticker, basis = basis)
 
 @st.cache_data(ttl=1800)
@@ -383,7 +383,7 @@ if "chat_mode" in st.session_state:
             tickers = get_top_50_tickers(exchange)
             selected_ticker = st.selectbox("Choose a Stock", tickers, key="report_ticker")
             basis = st.radio("Select Data Basis", ["Quarterly", "Annual"], horizontal=True, key="report_basis")
-            
+
             if st.button("Generate Report", key="generate_report_btn"):
                 with st.spinner("Fetching and analyzing data..."):
                     
