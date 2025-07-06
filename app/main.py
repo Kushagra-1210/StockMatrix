@@ -89,118 +89,6 @@ from backend.screener_engine import calculate_volatility
 
 # --- Streamlit Config ---
 st.set_page_config(page_title="STOCK ANALYSER", layout="centered")
-
-# ✅ Custom background color using CSS
-st.markdown("""
-    <style>
-    /* Modern gradient background with subtle texture */
-    .stApp {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        color: #212529;
-    }
-
-    /* Elevated content container */
-    .block-container {
-        background-color: #ffffff;
-        padding: 2.5rem;
-        border-radius: 18px;
-        box-shadow: 0 6px 30px rgba(0, 0, 0, 0.05);
-        border: 1px solid rgba(0, 0, 0, 0.03);
-    }
-
-    /* Typography system */
-    html, body, [class*="css"] {
-        font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-        font-size: 15px;
-        color: #212529;
-    }
-
-    /* Improved headers with gradient text */
-    h1 {
-        background: linear-gradient(90deg, #2b5876 0%, #4e4376 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        font-weight: 700;
-    }
-
-    h2, h3, h4, h5 {
-        color: #343a40 !important;
-        font-weight: 600;
-    }
-
-    /* Interactive elements */
-    button[kind="primary"] {
-        background: linear-gradient(90deg, #3a7bd5 0%, #00d2ff 100%);
-        border: none;
-        color: white;
-        font-weight: 500;
-        box-shadow: 0 2px 10px rgba(58, 123, 213, 0.3);
-        transition: all 0.2s ease;
-    }
-
-    button[kind="primary"]:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 15px rgba(58, 123, 213, 0.4);
-    }
-
-    /* Form controls */
-    .stSelectbox, .stRadio, .stCheckbox {
-        background-color: #f8f9fa;
-        border-radius: 10px;
-        padding: 12px;
-        border: 1px solid #e9ecef;
-    }
-
-    /* Input fields */
-    input, textarea, select {
-        background-color: #ffffff !important;
-        border: 1px solid #dee2e6 !important;
-        border-radius: 8px !important;
-        padding: 10px 14px !important;
-    }
-
-    /* Status indicators */
-    .st-b7 {
-        background-color: #e6f7ff !important;
-    }
-
-    /* Dataframe styling */
-    .stDataFrame {
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    }
-
-    /* Custom scrollbar */
-    ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-    }
-
-    ::-webkit-scrollbar-track {
-        background: #f1f1f1;
-    }
-
-    ::-webkit-scrollbar-thumb {
-        background: #adb5bd;
-        border-radius: 4px;
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-        background: #6c757d;
-    }
-
-    /* Section dividers */
-    .stHorizontalBlock > div {
-        border-right: 1px solid #e9ecef;
-        padding-right: 20px;
-    }
-
-    .stHorizontalBlock > div:last-child {
-        border-right: none;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
 st.title("StockMatrix")
 
 # --- Session State Initialization ---
@@ -340,18 +228,6 @@ if st.session_state.get("chat_mode") == "run_analysis":
     # Basis selection at the top (applies to all analyses)
     basis = st.radio("Select Data Basis", ["Quarterly", "Annual"], 
                     horizontal=True, key="run_analysis_basis")
-    st.markdown(f"""
-        <div style='
-            background-color: #f0f2f6;
-            border-left: 5px solid #1f77b4;
-            padding: 10px;
-            margin-bottom: 20px;
-            font-weight: 500;
-        '>
-        📊 Currently viewing: <span style="color: #1f77b4;">{basis}</span> data
-        </div>
-    """, unsafe_allow_html=True)
-
 
     st.subheader("1. Select Stock Exchange")
     exchange = st.selectbox("Choose an exchange:", 
@@ -558,17 +434,6 @@ elif st.session_state.get("chat_mode") == "report":
         basis = st.radio("Select Data Basis", ["Quarterly", "Annual"],
                         horizontal=True, key="report_basis",
                         help="Quarterly: Last 3 months data | Annual: Last 12 months data")
-        st.markdown(f"""
-            <div style='
-                background-color: #f0f2f6;
-                border-left: 5px solid #1f77b4;
-                padding: 10px;
-                margin-bottom: 20px;
-                font-weight: 500;
-            '>
-            📊 Currently viewing: <span style="color: #1f77b4;">{basis}</span> data
-            </div>
-        """, unsafe_allow_html=True)
 
         if st.button("Generate Report", key="generate_report_btn"):
             with st.spinner(f"📊 Generating {basis.lower()} report..."):
@@ -663,17 +528,6 @@ elif st.session_state.get("chat_mode") == "screener":
     # Add basis selection at the top
     basis = st.radio("Select Analysis Period", ["Quarterly", "Annual"],
                     horizontal=True, key="screener_basis")
-    st.markdown(f"""
-        <div style='
-            background-color: #f0f2f6;
-            border-left: 5px solid #1f77b4;
-            padding: 10px;
-            margin-bottom: 20px;
-            font-weight: 500;
-        '>
-        📊 Currently viewing: <span style="color: #1f77b4;">{basis}</span> data
-        </div>
-    """, unsafe_allow_html=True)
     
     ta_mod = importlib.import_module("backend.technical_analysis")
     fa_mod = importlib.import_module("backend.fundamental_analysis")
@@ -769,18 +623,6 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
     # Add basis selection at the top
     basis = st.radio("Select Analysis Period", ["Quarterly", "Annual"], 
                     horizontal=True, key="leaderboard_basis")
-    
-    st.markdown(f"""
-        <div style='
-            background-color: #f0f2f6;
-            border-left: 5px solid #1f77b4;
-            padding: 10px;
-            margin-bottom: 20px;
-            font-weight: 500;
-        '>
-        📊 Currently viewing: <span style="color: #1f77b4;">{basis}</span> data
-        </div>
-    """, unsafe_allow_html=True)
     
     from backend.market_selector import get_top_50_tickers
     from backend.technical_analysis import analyze_technical_indicators
