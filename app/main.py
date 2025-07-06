@@ -97,6 +97,8 @@ if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 if "greeted" not in st.session_state:
     st.session_state.greeted = False
+if "chat_mode" not in st.session_state:
+    st.session_state.chat_mode = None
 
 # --- Initial Chat Message ---
 if not st.session_state.greeted:
@@ -167,7 +169,7 @@ if user_input:
 
     # Show sorry message only if no valid command and no response
     if (
-        (st.session_state.chat_mode is None or st.session_state.chat_mode == "") and
+        (st.session_state.get("chat_mode") in [None, ""]) and
         (not response or response.strip() == "")
     ):
         st.chat_message("assistant").markdown(
@@ -180,7 +182,7 @@ if user_input:
 
 
 # --- Module Handling ---
-if st.session_state.chat_mode == "run_analysis":
+if st.session_state.get("chat_mode") == "run_analysis":
     st.subheader("🧪 Run Analysis Module")
     
     # Basis selection at the top (applies to all analyses)
@@ -372,7 +374,7 @@ if st.session_state.chat_mode == "run_analysis":
                     except Exception as e:
                         st.error(f"Analysis failed: {str(e)}")
 
-    elif st.session_state.chat_mode == "insight_generation":
+    elif st.session_state.get("chat_mode") == "insight_generation":
         st.subheader("🔎 Insight Generation")
 
         col1, col2 = st.columns(2)
@@ -387,7 +389,7 @@ if st.session_state.chat_mode == "run_analysis":
                 st.session_state.chat_mode = "stock_leaderboard"
                 st.rerun()
                 
-elif st.session_state.chat_mode == "report":
+elif st.session_state.get("chat_mode") == "report":
     st.subheader("📄 Report Generator")
     report_mod = importlib.import_module("backend.report_generator")
 
@@ -493,7 +495,7 @@ elif st.session_state.chat_mode == "report":
                     st.error(f"Analysis failed: {str(e)}")
 
 
-elif st.session_state.chat_mode == "screener":
+elif st.session_state.get("chat_mode") == "screener":
     st.subheader("📊 Screener Engine")
     
     # Add basis selection at the top
@@ -588,7 +590,7 @@ elif st.session_state.chat_mode == "screener":
             else:
                 st.warning("⚠️ No stocks matched all criteria. Try adjusting filters.")
                     
-elif st.session_state.chat_mode == "stock_leaderboard":
+elif st.session_state.get("chat_mode") == "stock_leaderboard":
     st.subheader("Stock Leaderboard")
     
     # Add basis selection at the top
