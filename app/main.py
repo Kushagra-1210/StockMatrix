@@ -123,6 +123,14 @@ for msg in st.session_state.chat_history:
 user_input = st.chat_input("How can I help you today?", key="main_user_input")
 
 if user_input:
+    
+    if user_input.lower() == "screener":
+        st.session_state.chat_mode = "screener"
+        st.rerun()
+    elif user_input.lower() == "leaderboard":
+        st.session_state.chat_mode = "stock_leaderboard"
+        st.rerun()
+
     st.session_state.chat_history.append({"role": "user", "content": user_input})
 
     cmd = user_input.lower().strip().replace(" ", "")
@@ -142,11 +150,30 @@ if user_input:
 
     elif cmd in ["ig", "insight", "insightgeneration"]:
         st.session_state.chat_mode = "insight_generation"
-        response = "You selected **Insight Generation**. Please choose one of the options below:"
+        # Create a combined message with buttons
+        response = """
+        You selected **Insight Generation**. Please click one of these buttons:
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+            <button onclick="window.parent.postMessage('screener', '*')" style="padding: 8px 15px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">📊 Screener Engine</button>
+            <button onclick="window.parent.postMessage('leaderboard', '*')" style="padding: 8px 15px; background-color: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer;">📈 Stock Leaderboard</button>
+        </div>
+        """
         screener_data = None
         context = None
-        st.session_state.show_insight_buttons = True
-        st.rerun()
+        # Add JavaScript handler
+        st.components.v1.html("""
+        <script>
+        window.addEventListener('message', function(event) {
+            if (event.data === 'screener') {
+                window.parent.document.querySelector('input[aria-label="How can I help you today?"]').value = 'screener';
+                window.parent.document.querySelector('input[aria-label="How can I help you today?"]').dispatchEvent(new Event('input'));
+            } else if (event.data === 'leaderboard') {
+                window.parent.document.querySelector('input[aria-label="How can I help you today?"]').value = 'leaderboard';
+                window.parent.document.querySelector('input[aria-label="How can I help you today?"]').dispatchEvent(new Event('input'));
+            }
+        });
+        </script>
+        """)
 
 
     else:
@@ -377,29 +404,7 @@ if st.session_state.get("chat_mode") == "run_analysis":
                     except Exception as e:
                         st.error(f"Analysis failed: {str(e)}")
 
-    elif st.session_state.get("chat_mode") == "insight_generation":
-        
-        if st.session_state.get("show_insight_buttons", False):
-            st.chat_message("assistant").markdown(response)
 
-            st.write("")
-            col1, col2 = st.columns(2)
-
-            with col1:
-                if st.button("📊 Screener Engine", 
-                            key="screener_btn_ig",
-                            help="Filter stocks based on technical and fundamental metrics"):
-                    st.session_state.chat_mode = "screener"
-                    st.session_state.insight_buttons_ready = False
-                    st.rerun()
-
-            with col2:
-                if st.button("📈 Stock Leaderboard", 
-                            key="leaderboard_btn_ig",
-                            help="View top performing stocks"):
-                    st.session_state.chat_mode = "stock_leaderboard"
-                    st.session_state.insight_buttons_ready = False
-                    st.rerun()
                 
 elif st.session_state.get("chat_mode") == "report":
     st.subheader("📄 Report Generator")
