@@ -629,10 +629,7 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
         "Top 5 Low Risk": lambda df: df.sort_values("Volatility").head(5),
         "Top 5 High Volatility": lambda df: df.sort_values("Volatility", ascending=False).head(5),
         "Top 5 Negative Sentiment": lambda df: df.sort_values("Sentiment Score").head(5),
-        "Top 5 Midcap Opportunities": lambda df: df[
-            (df["Market Cap"] > 2_000_000_000) &  # More inclusive range
-            (df["Market Cap"] < 20_000_000_000)
-        ].sort_values("Final Score", ascending=False).head(5)
+        "Top 5 Midcap Opportunities": lambda df: df[df["Market Cap"] < 10_000_000_000].sort_values("Final Score", ascending=False).head(5)
     }
 
     def fetch_all_scores():
