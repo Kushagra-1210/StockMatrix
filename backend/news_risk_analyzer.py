@@ -51,10 +51,11 @@ def fetch_news_risk(ticker: str, basis: str = "annual") -> dict:
         verdict = "Safe" if risk_score >= 70 else "Watch" if risk_score >= 50 else "Risky"
 
         return {
-            "risk_score": risk_score,
-            "verdict": verdict,
-            "news": [{"title": a["title"], "url": a.get("url", "#")} for a in articles]
-        }
+                "news": [{"title": a.get("title", ""), "url": a.get("url", "")} for a in articles],
+                "risk_score": risk_score,
+                "verdict": verdict
+            }
+
 
     except Exception as e:
         return {

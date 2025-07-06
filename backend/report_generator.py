@@ -89,7 +89,14 @@ def generate_pdf_report(
             for item in news_risk["news"]:
                 if pdf.get_y() > 260:
                     pdf.add_page()
-                headline = f"- {item.get('title', '')} ({item.get('url', '#')})"
+                title = item.get("title", "No headline")
+                url = item.get("url", None)
+
+                if url:
+                    headline = f"- {title} ({url})"
+                else:
+                    headline = f"- {title}"
+
                 pdf.multi_cell(0, 6, headline)
 
 

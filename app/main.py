@@ -391,11 +391,14 @@ if st.session_state.get("chat_mode") == "run_analysis":
                                     st.markdown(f"- **Verdict**: **{news_risk['verdict']}**")
 
                                     if news_risk.get("news"):
-                                        st.markdown("##### 📰 Sample Headlines")
+                                        st.markdown("### 📰 Sample Headlines")
                                         for item in news_risk["news"]:
-                                            st.markdown(f"- [{item['title']}]({item['url']})")
-                                    elif news_risk.get("error"):
-                                        st.warning(news_risk["error"])
+                                            title = item.get("title", "No headline")
+                                            url = item.get("url")
+                                            if url:
+                                                st.markdown(f"- [{title}]({url})")
+                                            else:
+                                                st.markdown(f"- {title}")
 
                                 # Final Combined Score
                                 final_score = round(
