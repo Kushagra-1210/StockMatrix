@@ -67,7 +67,7 @@ def generate_pdf_report(
         pdf.cell(0, 8, f"{key.replace('_', ' ').title()}: {fundamental.get(key, 'N/A')}", 0, 1)
 
     # Sentiment
-        # 💬 Sentiment Analysis
+        # Sentiment Analysis
     if sentiment:
         pdf.ln(5)
         pdf.set_font("Arial", "B", 12)
@@ -88,7 +88,7 @@ def generate_pdf_report(
                 label = item.get("label", "")
                 pdf.multi_cell(0, 6, f"- {title} ({label})")
 
-    # 🛡️ News & Geopolitical Risk
+    # News & Geopolitical Risk
     if news_risk:
         pdf.ln(5)
         pdf.set_font("Arial", "B", 12)
