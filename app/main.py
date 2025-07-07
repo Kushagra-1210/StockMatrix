@@ -153,8 +153,10 @@ else:
 
 
 if user_input:
-
+    # 1. FIRST reset all UI states before processing any input
     st.session_state.show_insight_buttons = False
+    
+    # 2. Handle special commands (screener/leaderboard)
     if user_input.lower() == "screener":
         st.session_state.chat_mode = "screener"
         st.rerun()
@@ -162,21 +164,19 @@ if user_input:
         st.session_state.chat_mode = "stock_leaderboard"
         st.rerun()
 
+    # 3. Add to chat history and process command
     st.session_state.chat_history.append({"role": "user", "content": user_input})
-
     cmd = user_input.lower().strip().replace(" ", "")
 
-    # Check for recognized commands
+    # 4. Command processing with strict state management
     if cmd in ["ra", "runanalysis"]:
         st.session_state.chat_mode = "run_analysis"
-        st.session_state.show_insight_buttons = False
         response = "You selected Run Analysis. Please proceed."
         screener_data = None
         context = None
 
     elif cmd in ["gr", "generatereport", "report"]:
         st.session_state.chat_mode = "report"
-        st.session_state.show_insight_buttons = False
         response = "You selected Report Generator. Please proceed."
         screener_data = None
         context = None
@@ -186,44 +186,60 @@ if user_input:
         response = "You selected **Insight Generation**. Please choose an option:"
         screener_data = None
         context = None
-        # Set flag to show buttons
-        st.session_state.show_insight_buttons = True
-        st.rerun()  # Force refresh to show buttons
+        st.session_state.show_insight_buttons = True  # ONLY set True here
+        st.experimental_rerun()  # More controlled refresh
 
     else:
-        # For inputs other than commands, call chat handler
         response, screener_data, context = handle_chat_command(user_input)
-
-        # If no chat mode set yet, clear it explicitly
         if "chat_mode" not in st.session_state:
             st.session_state.chat_mode = None
 
-    # Show screener data if any
+    # 5. Display outputs
     if screener_data:
         st.dataframe(screener_data)
 
-    # Show follow-up Q&A UI if context present (your existing code handles this)
     if context:
         # (Your follow-up chat UI here)
         pass
 
-    # Show response if any and no follow-up context
     if response and not context:
         st.chat_message("assistant").markdown(response)
 
-    # Show sorry message only if no valid command and no response
-    if (
-        (st.session_state.get("chat_mode") in [None, ""]) and
-        (not response or response.strip() == "")
-    ):
+    # 6. Error message for invalid commands
+    if (st.session_state.get("chat_mode") in [None, ""] and 
+        (not response or response.strip() == "")):
         st.chat_message("assistant").markdown(
-        "⚠️ Sorry, I can only help with:\n\n"
-        "- Run Analysis (RA)\n"
-        "- Generate Report (GR)\n"
-        "- Insight Generation (IG)\n"
-        "Please type one of these to continue."
-    )
+            "⚠️ Sorry, I can only help with:\n\n"
+            "- Run Analysis (RA)\n"
+            "- Generate Report (GR)\n"
+            "- Insight Generation (IG)\n"
+            "Please type one of these to continue."
+        )
 
+# --- Button Rendering Section (updated with strict checks) ---
+if (st.session_state.get("chat_mode") == "insight_generation" and
+    st.session_state.get("show_insight_buttons") is True and
+    not st.session_state.get("force_hide_buttons", False)):
+    
+    st.markdown("#### What do you want to do?")
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("📊 Screener Engine", key="screener_btn_ig"):
+            st.session_state.chat_mode = "screener"
+            st.session_state.show_insight_buttons = False
+            st.rerun()
+
+    with col2:
+        if st.button("📈 Stock Leaderboard", key="leaderboard_btn_ig"):
+            st.session_state.chat_mode = "stock_leaderboard"
+            st.session_state.show_insight_buttons = False
+            st.rerun()
+else:
+    # Double protection to ensure buttons stay hidden
+    st.session_state.show_insight_buttons = False
+    st.session_state.force_hide_buttons = True  # New safety flag
+    
 
 # --- Module Handling ---
 if st.session_state.get("chat_mode") == "run_analysis":
