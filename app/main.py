@@ -354,7 +354,7 @@ if st.session_state.get("chat_mode") == "run_analysis":
                                 if sentiment is None or (isinstance(sentiment, dict) and "error" in sentiment):
                                     st.warning("⚠️ Sentiment analysis unavailable.")
                                 if news_risk is None or (isinstance(news_risk, dict) and "error" in news_risk):
-                                    st.warning("⚠️ News risk analysis couldn't be completed — the API limit has been reached")
+                                    st.warning("⚠️ News risk analysis couldn't be completed — the API limit has been reached, Try again later!")
                             
                                 # Technical Analysis Section
                                 st.markdown("### 🧪 Technical Analysis")
