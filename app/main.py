@@ -127,27 +127,25 @@ with st.expander("💡 Quick Tips", expanded=False):
 
 user_input = st.chat_input("How can I help you today?", key="main_user_input")
 
-# --- Insight Buttons Section ---
-if st.session_state.get("chat_mode") == "insight_generation":
-    if st.session_state.get("show_insight_buttons", False):
-        # Display buttons below the chat
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("📊 Screener Engine", 
-                        key="screener_btn_ig",
-                        help="Filter stocks based on metrics"):
-                st.session_state.chat_mode = "screener"
-                st.session_state.show_insight_buttons = False
-                st.rerun()
-        with col2:
-            if st.button("📈 Stock Leaderboard", 
-                        key="leaderboard_btn_ig",
-                        help="View top performing stocks"):
-                st.session_state.chat_mode = "stock_leaderboard"
-                st.session_state.show_insight_buttons = False
-                st.rerun()
-
-
+# --- Insight Buttons Section (strict check for IG + button toggle) ---
+if (
+    st.session_state.get("chat_mode") == "insight_generation"
+    and st.session_state.get("show_insight_buttons", False)
+):
+    st.markdown("---")
+    st.markdown("#### What do you want to do?")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("📊 Screener Engine", key="screener_btn_ig"):
+            st.session_state.chat_mode = "screener"
+            st.session_state.show_insight_buttons = False
+            st.rerun()
+    with col2:
+        if st.button("📈 Stock Leaderboard", key="leaderboard_btn_ig"):
+            st.session_state.chat_mode = "stock_leaderboard"
+            st.session_state.show_insight_buttons = False
+            st.rerun()
 
 if user_input:
 
