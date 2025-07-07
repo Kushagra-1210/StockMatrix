@@ -174,14 +174,14 @@ if (
     col1, col2 = st.columns(2)
 
     with col1:
-        if st.button("📊 Screener Engine", key="screener_btn_ig"):
+        if st.button("📊 Screener Engine", key="screener_btn_ig_1"):
             st.session_state.chat_mode = "screener"
             st.session_state.show_insight_buttons = False  # Hide after click
             safe_rerun()
 
 
     with col2:
-        if st.button("📈 Stock Leaderboard", key="leaderboard_btn_ig"):
+        if st.button("📈 Stock Leaderboard", key="leaderboard_btn_ig_2"):
             st.session_state.chat_mode = "stock_leaderboard"
             st.session_state.show_insight_buttons = False  # Hide after click
             safe_rerun()
