@@ -205,51 +205,48 @@ if st.session_state.get("chat_mode") == "screener":
 
             if results:
                 st.success(f"✅ {len(results)} stocks matched your criteria.")
-                st.dataframe(pd.DataFrame(results))
-                
-                def color_coding(val, column):
-                    if column == 'FA Score':
-                        # Green gradient for FA Score (lighter to darker)
-                        intensity = min(255, int(val * 2.55))  # Convert 0-100 to 0-255
-                        return f'background-color: rgba(0, 255, 0, {intensity/255})'
-                    elif column == 'TA Score':
-                        # Blue gradient for TA Score
-                        intensity = min(255, int(val * 2.55))
-                        return f'background-color: rgba(0, 0, 255, {intensity/255})'
-                    elif column == 'Volatility':
-                        # Red gradient for Volatility (reversed - higher is more intense)
-                        intensity = min(255, int((100 - float(val.replace('%',''))) * 2.55))
-                        return f'background-color: rgba(255, 0, 0, {intensity/255})'
-                    elif column == 'Verdict':
-                        # Different colors for different verdicts
-                        if 'Undervalued' in val:
-                            return 'background-color: #90EE90'  # Light green
-                        elif 'Fair' in val:
-                            return 'background-color: #ADD8E6'  # Light blue
-                        else:
-                            return ''
-                    return ''
                 
                 # Convert to dataframe
                 df = pd.DataFrame(results)
                 
-                # Apply styling
-                styled_df = df.style.applymap(
-                    lambda x: color_coding(x, 'FA Score'), 
-                    subset=['FA Score']
-                ).applymap(
-                    lambda x: color_coding(x, 'TA Score'), 
-                    subset=['TA Score']
-                ).applymap(
-                    lambda x: color_coding(x, 'Volatility'), 
-                    subset=['Volatility']
-                ).applymap(
-                    lambda x: color_coding(x, 'Verdict'), 
-                    subset=['Verdict']
-                )
+                # Function to apply background colors
+                def background_color(row):
+                    colors = []
+                    for val in row:
+                        if isinstance(val, (int, float)):
+                            # FA Score (Green gradient)
+                            if row.name == 'FA Score':
+                                intensity = int(255 * (val/100))
+                                colors.append(f'background-color: rgba(0, 255, 0, {intensity/255})')
+                            # TA Score (Blue gradient)
+                            elif row.name == 'TA Score':
+                                intensity = int(255 * (val/100))
+                                colors.append(f'background-color: rgba(0, 0, 255, {intensity/255})')
+                            # Volatility (Red gradient - reversed)
+                            elif row.name == 'Volatility':
+                                volatility = float(str(val).replace('%',''))
+                                intensity = int(255 * (1 - volatility/100))
+                                colors.append(f'background-color: rgba(255, 0, 0, {intensity/255})')
+                            else:
+                                colors.append('')
+                        else:
+                            # Verdict text coloring
+                            if row.name == 'Verdict':
+                                if 'Undervalued' in val:
+                                    colors.append('background-color: #90EE90')  # Light green
+                                elif 'Fair' in val:
+                                    colors.append('background-color: #ADD8E6')  # Light blue
+                                else:
+                                    colors.append('')
+                            else:
+                                colors.append('')
+                    return colors
                 
-                # Display styled dataframe
-                st.dataframe(styled_df)
+                # Apply styling
+                styled_df = df.style.apply(background_color, axis=0)
+                
+                # Display using st.write() instead of st.dataframe()
+                st.write(styled_df.to_html(), unsafe_allow_html=True)
             else:
                 st.warning("⚠️ No stocks matched the given filters.")
 
