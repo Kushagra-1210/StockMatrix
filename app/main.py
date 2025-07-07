@@ -209,43 +209,38 @@ if st.session_state.get("chat_mode") == "screener":
                 # Convert to dataframe
                 df = pd.DataFrame(results)
                 
-                # Function to apply background colors
-                def background_color(row):
-                    colors = []
-                    for val in row:
-                        if isinstance(val, (int, float)):
-                            # FA Score (Green gradient)
-                            if row.name == 'FA Score':
-                                intensity = int(255 * (val/100))
-                                colors.append(f'background-color: rgba(0, 255, 0, {intensity/255})')
-                            # TA Score (Blue gradient)
-                            elif row.name == 'TA Score':
-                                intensity = int(255 * (val/100))
-                                colors.append(f'background-color: rgba(0, 0, 255, {intensity/255})')
-                            # Volatility (Red gradient - reversed)
-                            elif row.name == 'Volatility':
-                                volatility = float(str(val).replace('%',''))
-                                intensity = int(255 * (1 - volatility/100))
-                                colors.append(f'background-color: rgba(255, 0, 0, {intensity/255})')
-                            else:
-                                colors.append('')
-                        else:
-                            # Verdict text coloring
-                            if row.name == 'Verdict':
-                                if 'Undervalued' in val:
-                                    colors.append('background-color: #90EE90')  # Light green
-                                elif 'Fair' in val:
-                                    colors.append('background-color: #ADD8E6')  # Light blue
-                                else:
-                                    colors.append('')
-                            else:
-                                colors.append('')
-                    return colors
+                # Define color mapping functions
+                def fa_score_color(val):
+                    intensity = min(0.9, val/120)  # Cap intensity at 0.9
+                    return f'background-color: rgba(144, 238, 144, {intensity})'  # Light green gradient
+                
+                def ta_score_color(val):
+                    intensity = min(0.9, val/120)
+                    return f'background-color: rgba(173, 216, 230, {intensity})'  # Light blue gradient
+                
+                def volatility_color(val):
+                    volatility = float(str(val).replace('%',''))
+                    intensity = min(0.9, (100 - volatility)/100)
+                    return f'background-color: rgba(255, 182, 193, {intensity})'  # Light red gradient (reversed)
+                
+                def verdict_color(val):
+                    if 'Undervalued' in val:
+                        return 'background-color: #90EE90'  # Light green
+                    elif 'Fair' in val:
+                        return 'background-color: #ADD8E6'  # Light blue
+                    elif 'Overvalued' in val:
+                        return 'background-color: #FFCCCB'  # Light red
+                    return ''
                 
                 # Apply styling
-                styled_df = df.style.apply(background_color, axis=0)
+                styled_df = df.style.map(fa_score_color, subset=['FA Score']) \
+                                .map(ta_score_color, subset=['TA Score']) \
+                                .map(volatility_color, subset=['Volatility']) \
+                                .map(verdict_color, subset=['Verdict']) \
+                                .set_properties(**{'text-align': 'center'}) \
+                                .format({'Volatility': '{:.2f}%'})
                 
-                # Display using st.write() instead of st.dataframe()
+                # Display the styled dataframe
                 st.write(styled_df.to_html(), unsafe_allow_html=True)
             else:
                 st.warning("⚠️ No stocks matched the given filters.")
