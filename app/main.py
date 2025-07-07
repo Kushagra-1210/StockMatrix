@@ -187,7 +187,7 @@ if user_input:
         screener_data = None
         context = None
         st.session_state.show_insight_buttons = True  # ONLY set True here
-        st.experimental_rerun()  # More controlled refresh
+        st.rerun()  # More controlled refresh
 
     else:
         response, screener_data, context = handle_chat_command(user_input)
@@ -661,7 +661,7 @@ elif st.session_state.get("chat_mode") == "screener":
                     
 elif st.session_state.get("chat_mode") == "stock_leaderboard":
     st.subheader("Stock Leaderboard")
-        
+
     # Add basis selection at the top
     basis = st.radio("Select Analysis Period", ["Quarterly", "Annual"], 
                     horizontal=True, key="leaderboard_basis")
