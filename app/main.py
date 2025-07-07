@@ -599,16 +599,15 @@ elif st.session_state.get("chat_mode") == "screener":
             
             def analyze_stock(ticker):
                 try:
-                    # Pass basis parameter to both analyses
                     fa = fa_mod.analyze_fundamentals(ticker, basis=basis.lower())
                     ta = ta_mod.analyze_technical_indicators(ticker, basis=basis.lower())
-                    vol = calculate_volatility(ticker)  # Remains period-agnostic
-                    
-                    # Skip if any analysis failed
-                    if "error" in fa or "error" in ta:
+                    vol = calculate_volatility(ticker)
+
+                    # 🛡️ Safer condition: skip if any part is broken
+                    if "error" in fa or "error" in ta or vol is None:
                         return None
-                        
-                    # Apply screening filters
+
+                    # ✅ Apply your filter conditions
                     if (fa["fa_score"] >= min_fa and 
                         ta["ta_score"] >= min_ta and 
                         vol <= max_vol):
@@ -617,47 +616,24 @@ elif st.session_state.get("chat_mode") == "screener":
                             "FA Score": fa["fa_score"],
                             "TA Score": ta["ta_score"],
                             "Volatility": f"{vol}%",
-                            "Period": basis[:3],  # Show "Qua" or "Ann"
+                            "Period": basis[:3],
                             "Verdict": fa["verdict"]
                         }
-                except Exception:
+
+                except Exception as e:
+                    print(f"Error analyzing {ticker}: {e}")  # You can replace with st.warning too
                     return None
-                return None
+                
+            from backend.screener_engine import screen_stocks
 
-            # Parallel execution
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                results = list(executor.map(analyze_stock, tickers))
+            results = screen_stocks(
+                tickers,
+                min_fa=min_fa,
+                min_ta=min_ta,
+                max_volatility=max_vol,
+                basis=basis.lower()
+            )
 
-            filtered = [r for r in results if r is not None]
-            
-            if filtered:
-                df = pd.DataFrame(filtered)
-                
-                # Sort by combined score
-                df["Combined Score"] = 0.5*df["FA Score"] + 0.5*df["TA Score"]
-                df = df.sort_values("Combined Score", ascending=False)
-                
-                st.success(f"✅ Found {len(df)} stocks matching {basis.lower()} criteria:")
-                
-                # Enhanced dataframe display
-                st.dataframe(
-                    df.style
-                    .background_gradient(subset=["FA Score"], cmap="Greens")
-                    .background_gradient(subset=["TA Score"], cmap="Blues")
-                    .format({"FA Score": "{:.1f}", "TA Score": "{:.1f}"}),
-                    height=500
-                )
-                
-                # Download options
-                csv = df.to_csv(index=False).encode("utf-8")
-                st.download_button(
-                    "📥 Download CSV", 
-                    csv, 
-                    f"{exchange}_{basis.lower()}_screener_results.csv", 
-                    "text/csv"
-                )
-            else:
-                st.warning("⚠️ No stocks matched all criteria. Try adjusting filters.")
                     
 elif st.session_state.get("chat_mode") == "stock_leaderboard":
     st.subheader("Stock Leaderboard")
