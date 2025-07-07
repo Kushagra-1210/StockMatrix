@@ -225,7 +225,7 @@ if user_input:
         screener_data = None
         context = None
         st.session_state.show_insight_buttons = True  # ONLY set True here
-        st.safe_rerun()   # More controlled refresh
+        safe_rerun()   # More controlled refresh
 
     else:
         response, screener_data, context = handle_chat_command(user_input)
