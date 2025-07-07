@@ -112,15 +112,15 @@ if not st.session_state.greeted:
     st.session_state.chat_history.append({"role": "assistant", "content": greeting_msg})
     st.session_state.greeted = True
 
-with st.expander("💡 Quick Tips", expanded=False):
-    st.markdown("""
-    **You can type:**
-    - `RA` or `Run Analysis` to analyze a stock
-    - `GR` or `Generate Report` to get a downloadable PDF/CSV
-    - `IG` or `Insight Generation` for screener and leaderboard
-        - `Screener` to find high-potential stocks
-        - `Leaderboard` to view top-ranked stocks
-    """)
+    with st.expander("💡 Quick Tips", expanded=False):
+        st.markdown("""
+        **You can type:**
+        - `RA` or `Run Analysis` to analyze a stock
+        - `GR` or `Generate Report` to get a downloadable PDF/CSV
+        - `IG` or `Insight Generation` for screener and leaderboard
+            - `Screener` to find high-potential stocks
+            - `Leaderboard` to view top-ranked stocks
+        """)
 # --- Display Chat History ---
 # --- Display Chat History ---
 for msg in st.session_state.chat_history:
