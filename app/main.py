@@ -9,9 +9,37 @@ import plotly.graph_objs as go
 from datetime import datetime
 import importlib
 import concurrent.futures
-
 import logging
 logging.basicConfig(level=logging.DEBUG)
+
+def safe_rerun():
+    """Safely rerun the app while keeping critical session state."""
+    # Step 1: Save important variables
+    backup_state = {
+        'chat_mode': st.session_state.get('chat_mode'),
+        'show_insight_buttons': st.session_state.get('show_insight_buttons'),
+        'leaderboard_df': st.session_state.get('leaderboard_df'),
+        'last_basis': st.session_state.get('last_basis'),
+        'last_exchange': st.session_state.get('last_exchange'),
+        'leaderboard_type': st.session_state.get('leaderboard_type'),
+        'chat_history': st.session_state.get('chat_history', []),
+        'greeted': st.session_state.get('greeted', False)
+    }
+    
+    # Step 2: Clear ALL session state
+    st.session_state.clear()
+    
+    # Step 3: Restore the saved variables
+    for key, value in backup_state.items():
+        if value is not None:
+            st.session_state[key] = value
+    
+    # Step 4: Trigger rerun (works in all Streamlit versions)
+    if hasattr(st, 'experimental_rerun'):
+        st.experimental_rerun()  # For older Streamlit
+    else:
+        st.rerun()  # For newer versions
+
 st.set_option('client.showErrorDetails', True)
 
 # 🔥 TEST: Is Streamlit rendering anything at all?
@@ -97,6 +125,15 @@ if "greeted" not in st.session_state:
     st.session_state.greeted = False
 if "chat_mode" not in st.session_state:
     st.session_state.chat_mode = None
+# Add these if they don't exist
+if "leaderboard_df" not in st.session_state:
+    st.session_state.leaderboard_df = None
+if "last_basis" not in st.session_state:
+    st.session_state.last_basis = None
+if "last_exchange" not in st.session_state:
+    st.session_state.last_exchange = None
+if "leaderboard_type" not in st.session_state:
+    st.session_state.leaderboard_type = None
 
 # --- Initial Chat Message ---
 if not st.session_state.greeted:
@@ -140,13 +177,14 @@ if (
         if st.button("📊 Screener Engine", key="screener_btn_ig"):
             st.session_state.chat_mode = "screener"
             st.session_state.show_insight_buttons = False  # Hide after click
-            st.rerun()
+            safe_rerun()
+
 
     with col2:
         if st.button("📈 Stock Leaderboard", key="leaderboard_btn_ig"):
             st.session_state.chat_mode = "stock_leaderboard"
             st.session_state.show_insight_buttons = False  # Hide after click
-            st.rerun()
+            safe_rerun()
 else:
     # ✅ Failsafe: always hide if not in IG mode
     st.session_state.show_insight_buttons = False
@@ -187,7 +225,7 @@ if user_input:
         screener_data = None
         context = None
         st.session_state.show_insight_buttons = True  # ONLY set True here
-        st.rerun()  # More controlled refresh
+        st.safe_rerun()   # More controlled refresh
 
     else:
         response, screener_data, context = handle_chat_command(user_input)
@@ -292,7 +330,7 @@ if st.session_state.get("chat_mode") == "run_analysis":
 
                     if auto_refresh:
                         time.sleep(30)
-                        st.experimental_rerun()
+                        safe_rerun()
 
                 except Exception as e:
                     st.error(f"Error fetching stock data: {str(e)}")
@@ -746,7 +784,7 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
     for label, col in zip(categories.keys(), [col1, col2, col3, col4, col5, col6, col7]):
         if col.button(label):
             st.session_state.leaderboard_type = label
-            st.rerun()
+            safe_rerun()
 
     if leaderboard_type and "leaderboard_df" in st.session_state:
         df = st.session_state.leaderboard_df.copy()
