@@ -153,9 +153,11 @@ if user_input:
 
     if user_input.lower() == "screener":
         st.session_state.chat_mode = "screener"
+        st.session_state.show_insight_buttons = False
         st.rerun()
     elif user_input.lower() == "leaderboard":
         st.session_state.chat_mode = "stock_leaderboard"
+        st.session_state.show_insight_buttons = False
         st.rerun()
 
     st.session_state.chat_history.append({"role": "user", "content": user_input})
