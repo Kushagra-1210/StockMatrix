@@ -112,6 +112,9 @@ if not st.session_state.greeted:
     st.session_state.chat_history.append({"role": "assistant", "content": greeting_msg})
     st.session_state.greeted = True
 
+for msg in st.session_state.chat_history:
+    st.chat_message(msg["role"]).markdown(msg["content"])
+
 with st.expander("💡 Quick Tips", expanded=False):
     st.markdown("""
     **You can type:**
@@ -121,9 +124,6 @@ with st.expander("💡 Quick Tips", expanded=False):
         - `Screener` to find high-potential stocks
         - `Leaderboard` to view top-ranked stocks
     """)
-# --- Display Chat History ---
-for msg in st.session_state.chat_history:
-    st.chat_message(msg["role"]).markdown(msg["content"])
 
 user_input = st.chat_input("How can I help you today?", key="main_user_input")
 
