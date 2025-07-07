@@ -128,24 +128,29 @@ with st.expander("💡 Quick Tips", expanded=False):
 user_input = st.chat_input("How can I help you today?", key="main_user_input")
 
 # --- Insight Buttons Section (strict check for IG + button toggle) ---
+# --- Insight Buttons (Strict Display Only During IG) ---
 if (
     st.session_state.get("chat_mode") == "insight_generation"
-    and st.session_state.get("show_insight_buttons", False)
+    and st.session_state.get("show_insight_buttons") is True
 ):
-    st.markdown("---")
     st.markdown("#### What do you want to do?")
-    
     col1, col2 = st.columns(2)
+
     with col1:
         if st.button("📊 Screener Engine", key="screener_btn_ig"):
             st.session_state.chat_mode = "screener"
-            st.session_state.show_insight_buttons = False
+            st.session_state.show_insight_buttons = False  # Hide after click
             st.rerun()
+
     with col2:
         if st.button("📈 Stock Leaderboard", key="leaderboard_btn_ig"):
             st.session_state.chat_mode = "stock_leaderboard"
-            st.session_state.show_insight_buttons = False
+            st.session_state.show_insight_buttons = False  # Hide after click
             st.rerun()
+else:
+    # ✅ Failsafe: always hide if not in IG mode
+    st.session_state.show_insight_buttons = False
+
 
 if user_input:
 
