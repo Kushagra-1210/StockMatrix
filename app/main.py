@@ -168,12 +168,14 @@ if user_input:
         response = "You selected Run Analysis. Please proceed."
         screener_data = None
         context = None
+        st.session_state.show_insight_buttons = False
 
     elif cmd in ["gr", "generatereport", "report"]:
         st.session_state.chat_mode = "report"
         response = "You selected Report Generator. Please proceed."
         screener_data = None
         context = None
+        st.session_state.show_insight_buttons = False
 
     elif cmd in ["ig", "insight", "insightgeneration"]:
         st.session_state.chat_mode = "insight_generation"
