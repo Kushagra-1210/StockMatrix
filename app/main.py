@@ -634,6 +634,12 @@ elif st.session_state.get("chat_mode") == "screener":
                 basis=basis.lower()
             )
 
+            if results:
+                st.success(f"✅ {len(results)} stocks matched your criteria.")
+                st.dataframe(pd.DataFrame(results))
+            else:
+                st.warning("⚠️ No stocks matched the given filters.")
+
                     
 elif st.session_state.get("chat_mode") == "stock_leaderboard":
     st.subheader("Stock Leaderboard")
