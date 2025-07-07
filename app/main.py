@@ -297,6 +297,7 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
         st.markdown("### Leaderboard Categories")
         col1, col2 = st.columns(2)
         col3, col4 = st.columns(2)
+        col5, col6 = st.columns(2)
         
         if col1.button("Top 5 Strong Buys"):
             st.dataframe(df.sort_values("Final Score", ascending=False).head(5))
@@ -306,7 +307,11 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
             st.dataframe(df.sort_values("TA Score", ascending=False).head(5))
         if col4.button("Top 5 Low Risk"):
             st.dataframe(df.sort_values("Volatility").head(5))
-
+        if col5.button("Top 5 Negative Sentiment"):
+            st.dataframe(df.sort_values("Sentiment").head(5))  # Lowest sentiment scores first
+        if col6.button("Top 5 High Volatility"):
+            st.dataframe(df.sort_values("Volatility", ascending=False).head(5)) 
+        
 elif st.session_state.get("chat_mode") == "insight_generation":
     if st.session_state.show_insight_buttons:
         st.markdown("#### What do you want to do?")
