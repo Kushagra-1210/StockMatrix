@@ -239,7 +239,7 @@ else:
     # Double protection to ensure buttons stay hidden
     st.session_state.show_insight_buttons = False
     st.session_state.force_hide_buttons = True  # New safety flag
-    
+
 
 # --- Module Handling ---
 if st.session_state.get("chat_mode") == "run_analysis":
@@ -661,7 +661,13 @@ elif st.session_state.get("chat_mode") == "screener":
                     
 elif st.session_state.get("chat_mode") == "stock_leaderboard":
     st.subheader("Stock Leaderboard")
-    
+    # Step 1: Add exchange selector at the top
+    exchange = st.selectbox(
+        "Select Stock Exchange", 
+        ["NSE", "HKEX", "NYSE", "LSE", "TSE"], 
+        key="leaderboard_exchange"
+    )
+
     # Add basis selection at the top
     basis = st.radio("Select Analysis Period", ["Quarterly", "Annual"], 
                     horizontal=True, key="leaderboard_basis")
@@ -684,8 +690,8 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
         "Top 5 Midcap Opportunities": lambda df: df[df["Market Cap"] < 10_000_000_000].sort_values("Final Score", ascending=False).head(5)
     }
 
-    def fetch_all_scores():
-        tickers = get_top_50_tickers("NSE")
+    def fetch_all_scores(exchange):
+        tickers = get_top_50_tickers(exchange)
         data = []
         for ticker in tickers:
             try:
@@ -718,13 +724,18 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
 
     # Recompute when basis changes
     if ("leaderboard_df" not in st.session_state or 
-        st.session_state.get("last_basis") != basis):
+        st.session_state.get("last_basis") != basis or 
+        st.session_state.get("last_exchange") != exchange):
+
         st.session_state.last_basis = basis
-        with st.spinner(f"🔄 Computing {basis.lower()} scores..."):
-            st.session_state.leaderboard_df = fetch_all_scores()
+        st.session_state.last_exchange = exchange
+
+        with st.spinner(f"🔄 Computing {basis.lower()} scores for {exchange}..."):
+            st.session_state.leaderboard_df = fetch_all_scores(exchange)
 
     # Display current analysis period
     st.markdown(f"**Current Analysis Period:** {basis}")
+    st.markdown(f"**Current Stock Exchange:** {exchange}")
     
     # [Rest of your leaderboard UI code remains identical...]
     col1, col2 = st.columns(2)
