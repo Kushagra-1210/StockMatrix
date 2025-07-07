@@ -14,69 +14,35 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 st.set_option('client.showErrorDetails', True)
 
-# 🔥 TEST: Is Streamlit rendering anything at all?
-
 from backend import technical_analysis as ta_mod
 from backend import fundamental_analysis as fa_mod
 from backend import sentiment_analysis as sentiment_mod
 from backend import news_risk_analyzer as news_mod
 
 # --- Cached Helper Functions ---
-# --- Cached Helper Functions ---
 @st.cache_data(ttl=3600)
 def get_technical_analysis(ticker, basis: str = "annual"):
-    """
-    Get technical analysis with period awareness
-    Args:
-        ticker: Stock symbol
-        basis: 'quarterly' or 'annual' (default)
-    Returns:
-        dict: TA results with scores/indicators
-    """
-    return ta_mod.analyze_technical_indicators(ticker, basis=basis.lower())  # Ensure lowercase
+    return ta_mod.analyze_technical_indicators(ticker, basis=basis.lower())
 
 @st.cache_data(ttl=3600)
 def get_fundamental_analysis(ticker, basis: str = "annual"):
-    """
-    Get fundamental analysis with period awareness
-    Args:
-        ticker: Stock symbol
-        basis: 'quarterly' or 'annual' (default)
-    Returns:
-        dict: FA results with financial metrics
-    """
-    return fa_mod.analyze_fundamentals(ticker, basis=basis.lower())  # Ensure lowercase
+    return fa_mod.analyze_fundamentals(ticker, basis=basis.lower())
 
 @st.cache_data(ttl=1800)
 def get_sentiment_analysis(ticker, basis: str = "annual"):
-    """
-    Get sentiment analysis with time filtering
-    Args:
-        ticker: Stock symbol
-        basis: Filters news - 'quarterly' (90d) or 'annual' (365d)
-    """
-    return sentiment_mod.analyze_sentiment(ticker, basis=basis.lower())  # Ensure lowercase
+    return sentiment_mod.analyze_sentiment(ticker, basis=basis.lower())
 
 @st.cache_data(ttl=1800)
 def get_news_risk_analysis(ticker, basis: str = "annual"):
-    """
-    Get news risk with time filtering
-    Args:
-        ticker: Stock symbol
-        basis: 'quarterly' (90d) or 'annual' (365d) news
-    """
-    return news_mod.fetch_news_risk(ticker, basis=basis.lower())  # Ensure lowercase
+    return news_mod.fetch_news_risk(ticker, basis=basis.lower())
 
 @st.cache_data(ttl=1800)
 def get_yf_info(ticker):
-    """Get basic stock info (period-agnostic)"""
     return yf.Ticker(ticker).info
 
 @st.cache_data(ttl=1800)
 def get_stock_history(ticker, period="6mo"):
-    """Get price history (period-agnostic)"""
     return yf.Ticker(ticker).history(period=period)
-
 
 # --- Path Setup ---
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -97,6 +63,8 @@ if "greeted" not in st.session_state:
     st.session_state.greeted = False
 if "chat_mode" not in st.session_state:
     st.session_state.chat_mode = None
+if "show_insight_buttons" not in st.session_state:
+    st.session_state.show_insight_buttons = False
 
 # --- Initial Chat Message ---
 if not st.session_state.greeted:
@@ -127,36 +95,17 @@ with st.expander("💡 Quick Tips", expanded=False):
 
 user_input = st.chat_input("How can I help you today?", key="main_user_input")
 
-# --- Insight Buttons Section (strict check for IG + button toggle) ---
-# --- Insight Buttons (Strict Display Only During IG) ---
-if (
-    st.session_state.get("chat_mode") == "insight_generation"
-    and st.session_state.get("show_insight_buttons") is True
-):
-    st.markdown("#### What do you want to do?")
-    col1, col2 = st.columns(2)
-
-    with col1:
-        if st.button("📊 Screener Engine", key="screener_btn_ig"):
-            st.session_state.chat_mode = "screener"
-            st.session_state.show_insight_buttons = False  # Hide after click
-            st.rerun()
-
-    with col2:
-        if st.button("📈 Stock Leaderboard", key="leaderboard_btn_ig"):
-            st.session_state.chat_mode = "stock_leaderboard"
-            st.session_state.show_insight_buttons = False  # Hide after click
-            st.rerun()
-else:
-    # ✅ Failsafe: always hide if not in IG mode
-    st.session_state.show_insight_buttons = False
-
-
+# --- Command Processing ---
+# --- Command Processing ---
 if user_input:
-    # 1. FIRST reset all UI states before processing any input
     st.session_state.show_insight_buttons = False
     
-    # 2. Handle special commands (screener/leaderboard)
+    # Initialize all variables with default values
+    response = None
+    screener_data = None
+    context = None  # Explicitly initialize context
+
+    # Handle special commands
     if user_input.lower() == "screener":
         st.session_state.chat_mode = "screener"
         st.rerun()
@@ -164,50 +113,40 @@ if user_input:
         st.session_state.chat_mode = "stock_leaderboard"
         st.rerun()
 
-    # 3. Add to chat history and process command
     st.session_state.chat_history.append({"role": "user", "content": user_input})
     cmd = user_input.lower().strip().replace(" ", "")
 
-    # 4. Command processing with strict state management
+    # Process commands
     if cmd in ["ra", "runanalysis"]:
         st.session_state.chat_mode = "run_analysis"
         response = "You selected Run Analysis. Please proceed."
-        screener_data = None
-        context = None
-
     elif cmd in ["gr", "generatereport", "report"]:
         st.session_state.chat_mode = "report"
         response = "You selected Report Generator. Please proceed."
-        screener_data = None
-        context = None
-
     elif cmd in ["ig", "insight", "insightgeneration"]:
         st.session_state.chat_mode = "insight_generation"
         response = "You selected **Insight Generation**. Please choose an option:"
-        screener_data = None
-        context = None
-        st.session_state.show_insight_buttons = True  # ONLY set True here
-        st.rerun()  # More controlled refresh
-
+        st.session_state.show_insight_buttons = True
+        st.rerun()
     else:
         response, screener_data, context = handle_chat_command(user_input)
         if "chat_mode" not in st.session_state:
             st.session_state.chat_mode = None
 
-    # 5. Display outputs
+    # Safe response handling
+    if response:
+        # Only show if we're not in a specific mode
+        if st.session_state.get("chat_mode") in [None, ""]:
+            st.chat_message("assistant").markdown(response)
+        # For specific modes, let their sections handle the display
+    
+    # Handle screener data if present
     if screener_data:
         st.dataframe(screener_data)
 
-    if context:
-        # (Your follow-up chat UI here)
-        pass
-
-    if response and not context:
-        st.chat_message("assistant").markdown(response)
-
-    # 6. Error message for invalid commands
-    if (st.session_state.get("chat_mode") in [None, ""] and 
-        (not response or response.strip() == "")):
+    # Handle invalid commands
+    if (not response and 
+        st.session_state.get("chat_mode") in [None, ""]):
         st.chat_message("assistant").markdown(
             "⚠️ Sorry, I can only help with:\n\n"
             "- Run Analysis (RA)\n"
@@ -216,33 +155,140 @@ if user_input:
             "Please type one of these to continue."
         )
 
-# --- Button Rendering Section (updated with strict checks) ---
-if (st.session_state.get("chat_mode") == "insight_generation" and
-    st.session_state.get("show_insight_buttons") is True and
-    not st.session_state.get("force_hide_buttons", False)):
+# --- Main Content Rendering ---
+if st.session_state.get("chat_mode") == "screener":
+
+    if st.button("← Back to Main Menu"):
+        st.session_state.chat_mode = None
+        st.rerun()
     
-    st.markdown("#### What do you want to do?")
-    col1, col2 = st.columns(2)
-
+    st.subheader("📊 Screener Engine")
+    basis = st.radio("Select Analysis Period", ["Quarterly", "Annual"],
+                    horizontal=True, key="screener_basis")
+    
+    exchange = st.selectbox("Select Exchange", 
+                          ["NSE", "HKEX", "NYSE", "LSE", "TSE"], 
+                          key="screener_exchange")
+    
+    col1, col2, col3 = st.columns(3)
     with col1:
-        if st.button("📊 Screener Engine", key="screener_btn_ig"):
-            st.session_state.chat_mode = "screener"
-            st.session_state.show_insight_buttons = False
-            st.rerun()
-
+        min_fa = st.slider("Minimum FA Score", 0, 100, 50)
     with col2:
-        if st.button("📈 Stock Leaderboard", key="leaderboard_btn_ig"):
-            st.session_state.chat_mode = "stock_leaderboard"
-            st.session_state.show_insight_buttons = False
-            st.rerun()
-else:
-    # Double protection to ensure buttons stay hidden
-    st.session_state.show_insight_buttons = False
-    st.session_state.force_hide_buttons = True  # New safety flag
+        min_ta = st.slider("Minimum TA Score", 0, 100, 50)
+    with col3:
+        max_vol = st.slider("Max Volatility %", 0, 100, 50)
 
+    if st.button("Run Screener", key="run_screener_btn"):
+        with st.spinner(f"⏳ Screening {basis.lower()} data..."):
+            tickers = get_top_50_tickers(exchange)
+            results = []
+            
+            for ticker in tickers:
+                try:
+                    fa = get_fundamental_analysis(ticker, basis=basis.lower())
+                    ta = get_technical_analysis(ticker, basis=basis.lower())
+                    vol = calculate_volatility(ticker)
 
-# --- Module Handling ---
-if st.session_state.get("chat_mode") == "run_analysis":
+                    if "error" not in fa and "error" not in ta and vol is not None:
+                        if (fa["fa_score"] >= min_fa and 
+                            ta["ta_score"] >= min_ta and 
+                            vol <= max_vol):
+                            results.append({
+                                "Ticker": ticker,
+                                "FA Score": fa["fa_score"],
+                                "TA Score": ta["ta_score"],
+                                "Volatility": f"{vol}%",
+                                "Verdict": fa["verdict"]
+                            })
+                except Exception:
+                    continue
+
+            if results:
+                st.success(f"✅ {len(results)} stocks matched your criteria.")
+                st.dataframe(pd.DataFrame(results))
+            else:
+                st.warning("⚠️ No stocks matched the given filters.")
+
+elif st.session_state.get("chat_mode") == "stock_leaderboard":
+    if st.button("← Back to Main Menu"):
+        st.session_state.chat_mode = None
+        st.rerun()
+
+    st.subheader("Stock Leaderboard")
+
+    basis = st.radio("Select Analysis Period", ["Quarterly", "Annual"], 
+                    horizontal=True, key="leaderboard_basis")
+    
+    if st.button("🔄 Refresh Data"):
+        st.session_state.leaderboard_df = None
+    
+    if "leaderboard_df" not in st.session_state or st.button("Compute Scores"):
+        with st.spinner(f"🔄 Computing {basis.lower()} scores..."):
+            tickers = get_top_50_tickers("NSE")
+            data = []
+            
+            for ticker in tickers:
+                try:
+                    ta = get_technical_analysis(ticker, basis=basis.lower())
+                    fa = get_fundamental_analysis(ticker, basis=basis.lower())
+                    sentiment = get_sentiment_analysis(ticker, basis=basis.lower())
+                    vol = calculate_volatility(ticker)
+
+                    if "error" not in ta and "error" not in fa and "error" not in sentiment:
+                        final_score = round(
+                            0.35 * fa["fa_score"] + 
+                            0.35 * ta["ta_score"] + 
+                            0.2 * sentiment["score"] * 10 + 
+                            0.1 * (100 - vol), 2
+                        )
+                        
+                        data.append({
+                            "Ticker": ticker,
+                            "FA Score": fa["fa_score"],
+                            "TA Score": ta["ta_score"],
+                            "Sentiment": sentiment["score"] * 10,
+                            "Volatility": vol,
+                            "Final Score": final_score
+                        })
+                except Exception:
+                    continue
+            
+            st.session_state.leaderboard_df = pd.DataFrame(data)
+
+    if "leaderboard_df" in st.session_state:
+        df = st.session_state.leaderboard_df
+        
+        st.markdown("### Leaderboard Categories")
+        col1, col2 = st.columns(2)
+        col3, col4 = st.columns(2)
+        
+        if col1.button("Top 5 Strong Buys"):
+            st.dataframe(df.sort_values("Final Score", ascending=False).head(5))
+        if col2.button("Top 5 Undervalued"):
+            st.dataframe(df.sort_values("FA Score", ascending=False).head(5))
+        if col3.button("Top 5 Bullish"):
+            st.dataframe(df.sort_values("TA Score", ascending=False).head(5))
+        if col4.button("Top 5 Low Risk"):
+            st.dataframe(df.sort_values("Volatility").head(5))
+
+elif st.session_state.get("chat_mode") == "insight_generation":
+    if st.session_state.show_insight_buttons:
+        st.markdown("#### What do you want to do?")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button("📊 Screener Engine"):
+                st.session_state.chat_mode = "screener"
+                st.session_state.show_insight_buttons = False
+                st.rerun()
+                
+        with col2:
+            if st.button("📈 Stock Leaderboard"):
+                st.session_state.chat_mode = "stock_leaderboard"
+                st.session_state.show_insight_buttons = False
+                st.rerun()
+
+elif st.session_state.get("chat_mode") == "run_analysis":
     st.subheader("🧪 Run Analysis Module")
     
     # Basis selection at the top (applies to all analyses)
@@ -457,7 +503,6 @@ if st.session_state.get("chat_mode") == "run_analysis":
                         st.error(f"Analysis failed: {str(e)}")
 
 
-                
 elif st.session_state.get("chat_mode") == "report":
     st.subheader("📄 Report Generator")
     report_mod = importlib.import_module("backend.report_generator")
@@ -564,169 +609,8 @@ elif st.session_state.get("chat_mode") == "report":
                     st.error(f"Analysis failed: {str(e)}")
 
 
-elif st.session_state.get("chat_mode") == "screener":
-    st.subheader("📊 Screener Engine")
-    
-    # Add basis selection at the top
-    basis = st.radio("Select Analysis Period", ["Quarterly", "Annual"],
-                    horizontal=True, key="screener_basis")
-    
-    ta_mod = importlib.import_module("backend.technical_analysis")
-    fa_mod = importlib.import_module("backend.fundamental_analysis")
-    from backend.market_selector import get_top_50_tickers
-
-    exchange = st.selectbox("Select Exchange", 
-                          ["NSE", "HKEX", "NYSE", "LSE", "TSE"], 
-                          key="screener_exchange")
-    
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        min_fa = st.slider("Minimum FA Score", 0, 100, 50, 
-                          help="Fundamental Analysis score threshold",
-                          key="screener_fa")
-    with col2:
-        min_ta = st.slider("Minimum TA Score", 0, 100, 50,
-                          help="Technical Analysis score threshold",
-                          key="screener_ta")
-    with col3:
-        max_vol = st.slider("Max Volatility %", 0, 100, 50,
-                           help="Maximum allowed volatility",
-                           key="screener_vol")
-
-    if st.button("Run Screener", key="run_screener_btn"):
-        with st.spinner(f"⏳ Screening {basis.lower()} data..."):
-            tickers = get_top_50_tickers(exchange)
-            
-            def analyze_stock(ticker):
-                try:
-                    fa = fa_mod.analyze_fundamentals(ticker, basis=basis.lower())
-                    ta = ta_mod.analyze_technical_indicators(ticker, basis=basis.lower())
-                    vol = calculate_volatility(ticker)
-
-                    # 🛡️ Safer condition: skip if any part is broken
-                    if "error" in fa or "error" in ta or vol is None:
-                        return None
-
-                    # ✅ Apply your filter conditions
-                    if (fa["fa_score"] >= min_fa and 
-                        ta["ta_score"] >= min_ta and 
-                        vol <= max_vol):
-                        return {
-                            "Ticker": ticker,
-                            "FA Score": fa["fa_score"],
-                            "TA Score": ta["ta_score"],
-                            "Volatility": f"{vol}%",
-                            "Period": basis[:3],
-                            "Verdict": fa["verdict"]
-                        }
-
-                except Exception as e:
-                    print(f"Error analyzing {ticker}: {e}")  # You can replace with st.warning too
-                    return None
-                
-            from backend.screener_engine import screen_stocks
-
-            results = screen_stocks(
-                tickers,
-                min_fa=min_fa,
-                min_ta=min_ta,
-                max_volatility=max_vol,
-                basis=basis.lower()
-            )
-
-            if results:
-                st.success(f"✅ {len(results)} stocks matched your criteria.")
-                st.dataframe(pd.DataFrame(results))
-            else:
-                st.warning("⚠️ No stocks matched the given filters.")
-
-                    
-elif st.session_state.get("chat_mode") == "stock_leaderboard":
-    st.subheader("Stock Leaderboard")
-
-    # Add basis selection at the top
-    basis = st.radio("Select Analysis Period", ["Quarterly", "Annual"], 
-                    horizontal=True, key="leaderboard_basis")
-    
-    from backend.market_selector import get_top_50_tickers
-    from backend.technical_analysis import analyze_technical_indicators
-    from backend.fundamental_analysis import analyze_fundamentals
-    from backend.sentiment_analysis import analyze_sentiment
-    from backend.screener_engine import calculate_volatility
-
-    leaderboard_type = st.session_state.get("leaderboard_type", None)
-
-    categories = {
-        "Top 5 Strong Buys": lambda df: df.sort_values("Final Score", ascending=False).head(5),
-        "Top 5 Undervalued Stocks": lambda df: df.sort_values("PE Ratio").head(5),
-        "Top 5 Bullish Momentum": lambda df: df.sort_values("TA Score", ascending=False).head(5),
-        "Top 5 Low Risk": lambda df: df.sort_values("Volatility").head(5),
-        "Top 5 High Volatility": lambda df: df.sort_values("Volatility", ascending=False).head(5),
-        "Top 5 Negative Sentiment": lambda df: df.sort_values("Sentiment Score").head(5),
-        "Top 5 Midcap Opportunities": lambda df: df[df["Market Cap"] < 10_000_000_000].sort_values("Final Score", ascending=False).head(5)
-    }
-
-    def fetch_all_scores():
-        tickers = get_top_50_tickers("NSE")
-        data = []
-        for ticker in tickers:
-            try:
-                # Pass basis parameter to all analysis functions
-                ta = analyze_technical_indicators(ticker, basis=basis.lower())
-                fa = analyze_fundamentals(ticker, basis=basis.lower())
-                sentiment = analyze_sentiment(ticker, basis=basis.lower())
-                vol = calculate_volatility(ticker)
-
-                if "error" in ta or "error" in fa or "error" in sentiment:
-                    continue
-
-                final_score = round(0.35 * fa["fa_score"] + 0.35 * ta["ta_score"] + 
-                             0.2 * sentiment["score"] * 10 + 0.1 * (100 - vol), 2)
-
-                data.append({
-                    "Ticker": ticker,
-                    "TA Score": ta["ta_score"],
-                    "FA Score": fa["fa_score"],
-                    "Sentiment Score": sentiment["score"] * 10,
-                    "PE Ratio": fa["pe_ratio"],
-                    "Market Cap": fa["market_cap"],
-                    "Volatility": vol,
-                    "Final Score": final_score,
-                    "Period": basis  # Track analysis period
-                })
-            except Exception:
-                continue
-        return pd.DataFrame(data)
-
-    # Recompute when basis changes
-    if ("leaderboard_df" not in st.session_state or 
-        st.session_state.get("last_basis") != basis):
-        st.session_state.last_basis = basis
-        with st.spinner(f"🔄 Computing {basis.lower()} scores..."):
-            st.session_state.leaderboard_df = fetch_all_scores()
-
-    # Display current analysis period
-    st.markdown(f"**Current Analysis Period:** {basis}")
-    
-    # [Rest of your leaderboard UI code remains identical...]
-    col1, col2 = st.columns(2)
-    col3, col4 = st.columns(2)
-    col5, col6 = st.columns(2)
-    col7 = st.columns(1)[0]
-
-    for label, col in zip(categories.keys(), [col1, col2, col3, col4, col5, col6, col7]):
-        if col.button(label):
-            st.session_state.leaderboard_type = label
-            st.rerun()
-
-    if leaderboard_type and "leaderboard_df" in st.session_state:
-        df = st.session_state.leaderboard_df.copy()
-        top_df = categories[leaderboard_type](df)
-        st.markdown(f"### 🏆 {leaderboard_type} ({basis})")  # Show period in title
-        st.dataframe(top_df)
-
-        st.markdown("Explore other leaderboard categories also(just click on them)")
-        st.session_state.leaderboard_type = None
-
-
+# Debug info (optional)
+st.sidebar.markdown("### Debug Info")
+st.sidebar.write("Current Mode:", st.session_state.get("chat_mode"))
+st.sidebar.write("Show Buttons:", st.session_state.get("show_insight_buttons"))
 
