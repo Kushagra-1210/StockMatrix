@@ -567,195 +567,167 @@ elif st.session_state.get("chat_mode") == "report":
 elif st.session_state.get("chat_mode") == "screener":
     st.subheader("📊 Screener Engine")
     
-    # Add basis selection at the top
     basis = st.radio("Select Analysis Period", ["Quarterly", "Annual"],
                     horizontal=True, key="screener_basis")
     
-    ta_mod = importlib.import_module("backend.technical_analysis")
-    fa_mod = importlib.import_module("backend.fundamental_analysis")
-    from backend.market_selector import get_top_50_tickers
-
     exchange = st.selectbox("Select Exchange", 
                           ["NSE", "HKEX", "NYSE", "LSE", "TSE"], 
                           key="screener_exchange")
     
     col1, col2, col3 = st.columns(3)
     with col1:
-        min_fa = st.slider("Minimum FA Score", 0, 100, 50, 
-                          help="Fundamental Analysis score threshold",
-                          key="screener_fa")
+        min_fa = st.slider("Minimum FA Score", 0, 100, 50, key="screener_fa")
     with col2:
-        min_ta = st.slider("Minimum TA Score", 0, 100, 50,
-                          help="Technical Analysis score threshold",
-                          key="screener_ta")
+        min_ta = st.slider("Minimum TA Score", 0, 100, 50, key="screener_ta")
     with col3:
-        max_vol = st.slider("Max Volatility %", 0, 100, 50,
-                           help="Maximum allowed volatility",
-                           key="screener_vol")
+        max_vol = st.slider("Max Volatility %", 0, 100, 50, key="screener_vol")
 
     if st.button("Run Screener", key="run_screener_btn"):
         with st.spinner(f"⏳ Screening {basis.lower()} data..."):
-            tickers = get_top_50_tickers(exchange)
-            
-            def analyze_stock(ticker):
-                try:
-                    # Pass basis parameter to both analyses
-                    fa = fa_mod.analyze_fundamentals(ticker, basis=basis.lower())
-                    ta = ta_mod.analyze_technical_indicators(ticker, basis=basis.lower())
-                    vol = calculate_volatility(ticker)  # Remains period-agnostic
-                    
-                    # Skip if any analysis failed
-                    if "error" in fa or "error" in ta:
-                        return None
+            try:
+                tickers = get_top_50_tickers(exchange)
+                st.write(f"Found {len(tickers)} tickers to analyze")  # Debug output
+                
+                results = []
+                for ticker in tickers[:5]:  # Limit to 5 for testing
+                    try:
+                        st.write(f"Analyzing {ticker}...")  # Debug output
                         
-                    # Apply screening filters
-                    if (fa["fa_score"] >= min_fa and 
-                        ta["ta_score"] >= min_ta and 
-                        vol <= max_vol):
-                        return {
-                            "Ticker": ticker,
-                            "FA Score": fa["fa_score"],
-                            "TA Score": ta["ta_score"],
-                            "Volatility": f"{vol}%",
-                            "Period": basis[:3],  # Show "Qua" or "Ann"
-                            "Verdict": fa["verdict"]
-                        }
-                except Exception:
-                    return None
-                return None
-
-            # Parallel execution
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                results = list(executor.map(analyze_stock, tickers))
-
-            filtered = [r for r in results if r is not None]
-            
-            if filtered:
-                df = pd.DataFrame(filtered)
+                        # Get analyses with basis parameter
+                        fa = get_fundamental_analysis(ticker, basis=basis.lower())
+                        ta = get_technical_analysis(ticker, basis=basis.lower())
+                        vol = calculate_volatility(ticker)
+                        
+                        if "error" in fa or "error" in ta:
+                            st.write(f"Skipping {ticker} due to errors")  # Debug
+                            continue
+                            
+                        if (fa["fa_score"] >= min_fa and 
+                            ta["ta_score"] >= min_ta and 
+                            vol <= max_vol):
+                            results.append({
+                                "Ticker": ticker,
+                                "FA Score": fa["fa_score"],
+                                "TA Score": ta["ta_score"],
+                                "Volatility": f"{vol}%",
+                                "Period": basis[:3],
+                                "Verdict": fa["verdict"]
+                            })
+                    except Exception as e:
+                        st.write(f"Error analyzing {ticker}: {str(e)}")  # Debug
+                        continue
                 
-                # Sort by combined score
-                df["Combined Score"] = 0.5*df["FA Score"] + 0.5*df["TA Score"]
-                df = df.sort_values("Combined Score", ascending=False)
-                
-                st.success(f"✅ Found {len(df)} stocks matching {basis.lower()} criteria:")
-                
-                # Enhanced dataframe display
-                st.dataframe(
-                    df.style
-                    .background_gradient(subset=["FA Score"], cmap="Greens")
-                    .background_gradient(subset=["TA Score"], cmap="Blues")
-                    .format({"FA Score": "{:.1f}", "TA Score": "{:.1f}"}),
-                    height=500
-                )
-                
-                # Download options
-                csv = df.to_csv(index=False).encode("utf-8")
-                st.download_button(
-                    "📥 Download CSV", 
-                    csv, 
-                    f"{exchange}_{basis.lower()}_screener_results.csv", 
-                    "text/csv"
-                )
-            else:
-                st.warning("⚠️ No stocks matched all criteria. Try adjusting filters.")
+                if results:
+                    df = pd.DataFrame(results)
+                    df["Combined Score"] = 0.5*df["FA Score"] + 0.5*df["TA Score"]
+                    df = df.sort_values("Combined Score", ascending=False)
+                    
+                    st.success(f"✅ Found {len(df)} stocks matching criteria")
+                    st.dataframe(df)
+                    
+                    csv = df.to_csv(index=False).encode("utf-8")
+                    st.download_button(
+                        "📥 Download CSV", 
+                        csv, 
+                        f"{exchange}_{basis.lower()}_screener_results.csv", 
+                        "text/csv"
+                    )
+                else:
+                    st.warning("⚠️ No stocks matched all criteria")
+                    
+            except Exception as e:
+                st.error(f"Screener failed: {str(e)}")
                     
 elif st.session_state.get("chat_mode") == "stock_leaderboard":
     st.subheader("Stock Leaderboard")
-    # Step 1: Add exchange selector at the top
+    
     exchange = st.selectbox(
         "Select Stock Exchange", 
         ["NSE", "HKEX", "NYSE", "LSE", "TSE"], 
         key="leaderboard_exchange"
     )
-
-    # Add basis selection at the top
+    
     basis = st.radio("Select Analysis Period", ["Quarterly", "Annual"], 
                     horizontal=True, key="leaderboard_basis")
     
-    from backend.market_selector import get_top_50_tickers
-    from backend.technical_analysis import analyze_technical_indicators
-    from backend.fundamental_analysis import analyze_fundamentals
-    from backend.sentiment_analysis import analyze_sentiment
-    from backend.screener_engine import calculate_volatility
-
-    leaderboard_type = st.session_state.get("leaderboard_type", None)
-
+    # Define leaderboard categories
     categories = {
-        "Top 5 Strong Buys": lambda df: df.sort_values("Final Score", ascending=False).head(5),
-        "Top 5 Undervalued Stocks": lambda df: df.sort_values("PE Ratio").head(5),
-        "Top 5 Bullish Momentum": lambda df: df.sort_values("TA Score", ascending=False).head(5),
-        "Top 5 Low Risk": lambda df: df.sort_values("Volatility").head(5),
-        "Top 5 High Volatility": lambda df: df.sort_values("Volatility", ascending=False).head(5),
-        "Top 5 Negative Sentiment": lambda df: df.sort_values("Sentiment Score").head(5),
-        "Top 5 Midcap Opportunities": lambda df: df[df["Market Cap"] < 10_000_000_000].sort_values("Final Score", ascending=False).head(5)
+        "Top 5 Strong Buys": "Final Score",
+        "Top 5 Undervalued Stocks": "PE Ratio",
+        "Top 5 Bullish Momentum": "TA Score",
+        "Top 5 Low Risk": "Volatility",
+        "Top 5 High Volatility": "Volatility",
+        "Top 5 Negative Sentiment": "Sentiment Score",
+        "Top 5 Midcap Opportunities": "Final Score"
     }
-
-    def fetch_all_scores(exchange):
-        tickers = get_top_50_tickers(exchange)
-        data = []
-        for ticker in tickers:
-            try:
-                # Pass basis parameter to all analysis functions
-                ta = analyze_technical_indicators(ticker, basis=basis.lower())
-                fa = analyze_fundamentals(ticker, basis=basis.lower())
-                sentiment = analyze_sentiment(ticker, basis=basis.lower())
-                vol = calculate_volatility(ticker)
-
-                if "error" in ta or "error" in fa or "error" in sentiment:
-                    continue
-
-                final_score = round(0.35 * fa["fa_score"] + 0.35 * ta["ta_score"] + 
-                             0.2 * sentiment["score"] * 10 + 0.1 * (100 - vol), 2)
-
-                data.append({
-                    "Ticker": ticker,
-                    "TA Score": ta["ta_score"],
-                    "FA Score": fa["fa_score"],
-                    "Sentiment Score": sentiment["score"] * 10,
-                    "PE Ratio": fa["pe_ratio"],
-                    "Market Cap": fa["market_cap"],
-                    "Volatility": vol,
-                    "Final Score": final_score,
-                    "Period": basis  # Track analysis period
-                })
-            except Exception:
-                continue
-        return pd.DataFrame(data)
-
-    # Recompute when basis changes
-    if ("leaderboard_df" not in st.session_state or 
-        st.session_state.get("last_basis") != basis or 
-        st.session_state.get("last_exchange") != exchange):
-
-        st.session_state.last_basis = basis
-        st.session_state.last_exchange = exchange
-
-        with st.spinner(f"🔄 Computing {basis.lower()} scores for {exchange}..."):
-            st.session_state.leaderboard_df = fetch_all_scores(exchange)
-
-    # Display current analysis period
-    st.markdown(f"**Current Analysis Period:** {basis}")
-    st.markdown(f"**Current Stock Exchange:** {exchange}")
     
-    # [Rest of your leaderboard UI code remains identical...]
-    col1, col2 = st.columns(2)
-    col3, col4 = st.columns(2)
-    col5, col6 = st.columns(2)
-    col7 = st.columns(1)[0]
-
-    for label, col in zip(categories.keys(), [col1, col2, col3, col4, col5, col6, col7]):
-        if col.button(label):
-            st.session_state.leaderboard_type = label
-            st.rerun()
-
-    if leaderboard_type and "leaderboard_df" in st.session_state:
-        df = st.session_state.leaderboard_df.copy()
-        top_df = categories[leaderboard_type](df)
-        st.markdown(f"### 🏆 {leaderboard_type} ({basis})")  # Show period in title
-        st.dataframe(top_df)
-
-        st.markdown("Explore other leaderboard categories also(just click on them)")
-        st.session_state.leaderboard_type = None
-
+    # Create buttons for each category
+    cols = st.columns(2)
+    for i, (label, sort_by) in enumerate(categories.items()):
+        with cols[i % 2]:
+            if st.button(label):
+                st.session_state.selected_category = label
+                st.session_state.sort_by = sort_by
+                st.session_state.ascending = not ("High" in label or "Bullish" in label)
+    
+    # Display selected category
+    if "selected_category" in st.session_state:
+        st.subheader(f"🏆 {st.session_state.selected_category}")
+        
+        try:
+            # Get data with progress bar
+            with st.spinner(f"Loading {basis} data..."):
+                tickers = get_top_50_tickers(exchange)
+                data = []
+                
+                for ticker in tickers[:10]:  # Limit for testing
+                    try:
+                        ta = get_technical_analysis(ticker, basis=basis.lower())
+                        fa = get_fundamental_analysis(ticker, basis=basis.lower())
+                        sentiment = get_sentiment_analysis(ticker, basis=basis.lower())
+                        vol = calculate_volatility(ticker)
+                        
+                        if "error" in ta or "error" in fa or "error" in sentiment:
+                            continue
+                            
+                        final_score = round(
+                            0.35 * fa["fa_score"] + 
+                            0.35 * ta["ta_score"] + 
+                            0.2 * sentiment["score"] * 10 + 
+                            0.1 * (100 - vol), 2
+                        )
+                        
+                        data.append({
+                            "Ticker": ticker,
+                            "TA Score": ta["ta_score"],
+                            "FA Score": fa["fa_score"],
+                            "Sentiment Score": sentiment["score"] * 10,
+                            "PE Ratio": fa["pe_ratio"],
+                            "Market Cap": fa["market_cap"],
+                            "Volatility": vol,
+                            "Final Score": final_score
+                        })
+                    except Exception:
+                        continue
+                
+                if data:
+                    df = pd.DataFrame(data)
+                    
+                    # Special handling for midcap
+                    if "Midcap" in st.session_state.selected_category:
+                        df = df[df["Market Cap"] < 10_000_000_000]
+                    
+                    # Sort the data
+                    df = df.sort_values(
+                        st.session_state.sort_by,
+                        ascending=st.session_state.ascending
+                    ).head(5)
+                    
+                    st.dataframe(df)
+                else:
+                    st.warning("No data available for selected category")
+                    
+        except Exception as e:
+            st.error(f"Failed to load leaderboard: {str(e)}")
 
 
