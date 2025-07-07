@@ -60,13 +60,7 @@ def get_leaderboard(exchange, category, basis = "annual"):
         return df.sort_values("Sentiment").head(5)
 
     elif category == "Top 5 Midcap Opportunities":
-        # Midcaps: Between $1B and $10B
-        midcap_df = df[(df["Market Cap"] > 1e9) & (df["Market Cap"] < 1e10)]
-
-        if midcap_df.empty:
-            # fallback: relax criteria slightly if nothing found
-            midcap_df = df[(df["Market Cap"] > 5e8) & (df["Market Cap"] < 2e10)]
-
+        midcap_df = df[(df["Market Cap"] > 1e9) & (df["Market Cap"] < 10e9)]
         return midcap_df.sort_values("Final Score", ascending=False).head(5)
 
     return pd.DataFrame()
