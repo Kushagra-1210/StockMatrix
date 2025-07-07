@@ -125,6 +125,8 @@ with st.expander("💡 Quick Tips", expanded=False):
 for msg in st.session_state.chat_history:
     st.chat_message(msg["role"]).markdown(msg["content"])
 
+user_input = st.chat_input("How can I help you today?", key="main_user_input")
+
 # --- Insight Buttons Section ---
 if st.session_state.get("chat_mode") == "insight_generation":
     if st.session_state.get("show_insight_buttons", False):
@@ -145,8 +147,7 @@ if st.session_state.get("chat_mode") == "insight_generation":
                 st.session_state.show_insight_buttons = False
                 st.rerun()
 
-user_input = st.chat_input("How can I help you today?", key="main_user_input")
-# 💡 Show quick tips only when waiting for input
+
 
 if user_input:
 
