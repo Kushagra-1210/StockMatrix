@@ -257,28 +257,20 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
 
     st.subheader("Stock Leaderboard")
 
-    # Analysis period first (Quarterly/Annual)
     basis = st.radio("Select Analysis Period", ["Quarterly", "Annual"], 
                     horizontal=True, key="leaderboard_basis")
     
-    # Then stock exchange selection
     exchange = st.selectbox(
         "Select Stock Exchange",
         ["NSE", "NYSE", "NASDAQ", "BSE", "HKEX"],
         key="leaderboard_exchange"
     )
     
-    # Refresh button
     if st.button("🔄 Refresh Data"):
         st.session_state.leaderboard_df = None
     
-    # Data computation
-    if ("leaderboard_df" not in st.session_state or 
-        st.session_state.get("last_exchange") != exchange or
-        st.session_state.get("last_basis") != basis or
-        st.button("Compute Scores")):
-        
-        with st.spinner(f"🔄 Computing {exchange} {basis.lower()} scores..."):
+    if "leaderboard_df" not in st.session_state or st.button("Compute Scores"):
+        with st.spinner(f"🔄 Computing {basis.lower()} scores..."):
             tickers = get_top_50_tickers(exchange)
             data = []
             
@@ -299,41 +291,44 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
                         
                         data.append({
                             "Ticker": ticker,
-                            "Exchange": exchange,
                             "FA Score": fa["fa_score"],
                             "TA Score": ta["ta_score"],
-                            "Sentiment": sentiment["score"] * 10,
+                            "Sentiment": sentiment["score"] * 10,  # Ensure this exists
                             "Volatility": vol,
                             "Final Score": final_score
                         })
-                except Exception:
+                except Exception as e:
+                    print(f"Error processing {ticker}: {str(e)}")
                     continue
             
             st.session_state.leaderboard_df = pd.DataFrame(data)
-            st.session_state.last_exchange = exchange
-            st.session_state.last_basis = basis
 
-    # Display categories
     if "leaderboard_df" in st.session_state:
         df = st.session_state.leaderboard_df
         
-        st.markdown("### Leaderboard Categories")
-        col1, col2 = st.columns(2)
-        col3, col4 = st.columns(2)
-        col5, col6 = st.columns(2)
-        
-        if col1.button("Top 5 Strong Buys"):
-            st.dataframe(df.sort_values("Final Score", ascending=False).head(5))
-        if col2.button("Top 5 Undervalued"):
-            st.dataframe(df.sort_values("FA Score", ascending=False).head(5))
-        if col3.button("Top 5 Bullish"):
-            st.dataframe(df.sort_values("TA Score", ascending=False).head(5))
-        if col4.button("Top 5 Low Risk"):
-            st.dataframe(df.sort_values("Volatility").head(5))
-        if col5.button("Top 5 Negative Sentiment"):
-            st.dataframe(df.sort_values("Sentiment").head(5))
-        if col6.button("Top 5 High Volatility"):
-            st.dataframe(df.sort_values("Volatility", ascending=False).head(5))
+        # Check if required columns exist before displaying
+        required_columns = ["Final Score", "FA Score", "TA Score", "Sentiment", "Volatility"]
+        if not all(col in df.columns for col in required_columns):
+            st.error("Missing required data columns. Please recompute scores.")
+            st.write("Available columns:", df.columns.tolist())
+        else:
+            st.markdown("### Leaderboard Categories")
+            col1, col2 = st.columns(2)
+            col3, col4 = st.columns(2)
+            col5, col6 = st.columns(2)
+            
+            if col1.button("Top 5 Strong Buys"):
+                st.dataframe(df.sort_values("Final Score", ascending=False).head(5))
+            if col2.button("Top 5 Undervalued"):
+                st.dataframe(df.sort_values("FA Score", ascending=False).head(5))
+            if col3.button("Top 5 Bullish"):
+                st.dataframe(df.sort_values("TA Score", ascending=False).head(5))
+            if col4.button("Top 5 Low Risk"):
+                st.dataframe(df.sort_values("Volatility").head(5))
+            if col5.button("Top 5 Negative Sentiment"):
+                st.dataframe(df.sort_values("Sentiment").head(5))
+            if col6.button("Top 5 High Volatility"):
+                st.dataframe(df.sort_values("Volatility", ascending=False).head(5))
 
 elif st.session_state.get("chat_mode") == "insight_generation":
     if st.session_state.show_insight_buttons:
