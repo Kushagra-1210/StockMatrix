@@ -223,13 +223,13 @@ st.markdown("""
     }
     /* 🧼 Remove vertical gap before/after st.radio and st.selectbox */
     div[data-testid="stRadio"] {
-        margin-top: -18px !important;
-        margin-bottom: -18px !important;
+        margin-top: -25px !important;
+        margin-bottom: -25px !important;
     }
 
     div[data-testid="stSelectbox"] {
-        margin-top: -18px !important;
-        margin-bottom: -18px !important;
+        margin-top: -25px !important;
+        margin-bottom: -25px !important;
     }
 
     </style>
