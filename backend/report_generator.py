@@ -36,19 +36,29 @@ def generate_pdf_report(
     try:
         stock = yf.Ticker(stock_info["ticker"])
         hist = stock.history(period="6mo")
+
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=hist.index, y=hist["Close"], name="Close Price"))
-        fig.update_layout(title="Price Trend (6 Months)", xaxis_title="Date", yaxis_title="Price")
 
-        # Generate smaller image bytes (height ↓)
-        img_bytes = pio.to_image(fig, format="png", width=600, height=250)
+        # ✅ Remove white space around chart
+        fig.update_layout(
+            title="Price Trend (6 Months)",
+            xaxis_title="Date",
+            yaxis_title="Price",
+            margin=dict(l=20, r=20, t=30, b=30),  # ⬅️ tighter margins
+            height=250,  # smaller chart height
+            width=600
+        )
+
+        # Export as PNG with smaller height
+        img_bytes = pio.to_image(fig, format="png")
         img_path = "temp_chart.png"
         with open(img_path, "wb") as f:
             f.write(img_bytes)
 
-        # Insert with reduced height
-        pdf.image(img_path, x=10, y=pdf.get_y(), w=pdf.w - 20, h=65)  # 💡 height is controlled
-        pdf.ln(5)  # small gap
+        # ✅ Insert into PDF with explicit Y and H
+        pdf.image(img_path, x=10, y=pdf.get_y(), w=pdf.w - 20, h=60)
+        pdf.ln(5)  # minimal space below
     except Exception as e:
         pdf.set_font("Arial", "I", 10)
         pdf.cell(0, 10, sanitize(f"(Chart not available: {str(e)})"), 0, 1)
