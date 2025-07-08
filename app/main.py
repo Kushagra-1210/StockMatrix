@@ -4,56 +4,64 @@ import yfinance as yf
 st.markdown("""
     <style>
     body {
-        background: linear-gradient(135deg, #0f2027 0%, #283e51 100%) !important;
+        background: #F5F5F5 !important; /* Light Gray */
         min-height: 100vh;
-        color: #e3eafc !important;
+        color: #0A1F44 !important; /* Navy text */
     }
     .stApp {
-        background: linear-gradient(135deg, #0f2027 0%, #283e51 100%) !important;
+        background: #F5F5F5 !important;
         min-height: 100vh;
-        color: #e3eafc !important;
+        color: #0A1F44 !important;
     }
     .top-banner {
         padding: 10px 20px;
         font-size: 40px;
         font-weight: 700;
-        border-bottom: 1px solid #1a237e;
+        border-bottom: 1px solid #0A1F44;
         position: sticky;
         top: 0;
         z-index: 999;
-        background: linear-gradient(90deg, #1a237e 60%, #ffd700 100%);
-        color: #ffd700 !important;
-        box-shadow: 0 2px 8px rgba(26, 35, 126, 0.12);
+        background: linear-gradient(90deg, #0A1F44 60%, #FFD700 100%);
+        color: #FFFFFF !important; /* White text for max contrast */
+        text-shadow: 0 2px 12px #0A1F44, 0 0 8px #FFD700, 0 1px 0 #fff;
+        box-shadow: 0 2px 8px rgba(10, 31, 68, 0.12);
         border-radius: 0 0 18px 18px;
         letter-spacing: 1px;
     }
     .block-container {
-        background: rgba(26, 35, 126, 0.08);
+        background: #FFFFFF;
         border-radius: 18px;
         padding: 24px;
-        box-shadow: 0 4px 32px rgba(26, 35, 126, 0.12);
-        color: #e3eafc !important;
+        box-shadow: 0 4px 32px rgba(10, 31, 68, 0.10);
+        color: #0A1F44 !important;
     }
     /* Make all markdown and widget text visible */
     .stMarkdown, .stText, .stExpander, .stDataFrame, .stRadio, .stSelectbox, .stButton, .stSlider, .stDownloadButton, .stChatInputContainer, .stChatMessage, .stChatInput, .stTextInput, .stTextArea, .stSelectbox > div, .stSelectbox label, .stRadio label, .stExpanderHeader, .stExpanderContent, .stAlert, .stSubheader, .stHeader, .stCaption, .stTable, .stDataFrame, .stCheckbox label {
-        color: #e3eafc !important;
+        color: #0A1F44 !important;
+    }
+    /* Headline and subheader text */
+    .stHeader, .stSubheader, h1, h2, h3, h4, h5, h6 {
+        color: #0A1F44 !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.5px;
+        text-shadow: 0 1px 8px #fff;
     }
     /* Chat input bar and send button - THEME UPDATE */
     section[data-testid="stChatInput"],
-    .stChatInputContainer, /* fallback for older/newer Streamlit versions */
+    .stChatInputContainer,
     div[data-testid="stChatInput"] {
-        background: #ffd700 !important; /* Gold background */
-        color: #162447 !important; /* Royal blue text */
+        background: #FFFFFF !important; /* White for input bar */
+        color: #0A1F44 !important;
         border-radius: 16px !important;
-        border: 2px solid #162447 !important;
-        box-shadow: 0 2px 12px 0 rgba(26, 35, 126, 0.25) !important;
+        border: 2px solid #0A1F44 !important;
+        box-shadow: 0 2px 12px 0 rgba(10, 31, 68, 0.10) !important;
         margin-bottom: 24px !important;
     }
     section[data-testid="stChatInput"] input,
     .stChatInputContainer input,
     div[data-testid="stChatInput"] input {
-        background: #ffd700 !important;
-        color: #162447 !important;
+        background: #FFFFFF !important;
+        color: #0A1F44 !important;
         border: none !important;
         font-weight: 500 !important;
         font-size: 18px !important;
@@ -61,24 +69,24 @@ st.markdown("""
     section[data-testid="stChatInput"] button,
     .stChatInputContainer button,
     div[data-testid="stChatInput"] button {
-        background: #162447 !important;
-        color: #ffd700 !important;
+        background: #FFD700 !important;
+        color: #0A1F44 !important;
         border-radius: 8px !important;
         font-weight: bold !important;
-        border: 2px solid #162447 !important;
-        box-shadow: 0 2px 8px 0 rgba(26, 35, 126, 0.18) !important;
+        border: 2px solid #FFD700 !important;
+        box-shadow: 0 2px 8px 0 rgba(10, 31, 68, 0.10) !important;
         transition: background 0.2s, color 0.2s !important;
     }
     section[data-testid="stChatInput"] button:hover,
     .stChatInputContainer button:hover,
     div[data-testid="stChatInput"] button:hover {
-        background: #ffd700 !important;
-        color: #162447 !important;
-        border: 2px solid #162447 !important;
+        background: #0A1F44 !important;
+        color: #FFD700 !important;
+        border: 2px solid #0A1F44 !important;
     }
     /* Expander header color and icon */
     .stExpanderHeader {
-        color: #ffd700 !important;
+        color: #FFD700 !important;
         font-weight: 600;
         font-size: 18px;
         position: relative;
@@ -89,7 +97,7 @@ st.markdown("""
         position: absolute;
         left: 0;
         top: 2px;
-        color: #ffd700;
+        color: #FFD700;
         font-size: 18px;
         transition: transform 0.2s;
     }
@@ -99,18 +107,28 @@ st.markdown("""
     }
     /* Expander background */
     .stExpander {
-        background: rgba(26, 35, 126, 0.7) !important;
+        background: #F5F5F5 !important;
         border-radius: 12px !important;
-        border: 1px solid #ffd700 !important;
+        border: 1px solid #FFD700 !important;
         margin-bottom: 12px !important;
     }
     /* Links */
     a {
-        color: #ffd700 !important;
+        color: #0A1F44 !important;
     }
     /* Make all markdown text visible */
     .stMarkdown p, .stMarkdown ul, .stMarkdown li, .stMarkdown span, .stMarkdown strong, .stMarkdown em {
-        color: #e3eafc !important;
+        color: #0A1F44 !important;
+    }
+    /* Highlighted inline code in Quick Tips expander */
+    .stExpander .stMarkdown code {
+        background: #FFD700 !important;
+        color: #0A1F44 !important;
+        border-radius: 6px !important;
+        font-weight: 700;
+        font-size: 1em;
+        padding: 2px 8px !important;
+        box-shadow: 0 1px 4px 0 rgba(10, 31, 68, 0.10);
     }
     /* Remove white bar at bottom (footer) */
     footer, .st-emotion-cache-1v0mbdj, .st-emotion-cache-1avcm0n {
@@ -125,7 +143,7 @@ st.markdown("""
     }
     </style>
     <div class="top-banner">
-        🪙<span style='color:#ffd700'>StockMatrix</span>
+        🪙<span style='color:#FFFFFF; text-shadow: 0 2px 12px #0A1F44, 0 0 8px #FFD700, 0 1px 0 #fff; font-weight:900; font-size:44px;'>StockMatrix</span>
     </div>
 """, unsafe_allow_html=True)
 
