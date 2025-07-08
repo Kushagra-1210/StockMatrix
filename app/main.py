@@ -264,9 +264,9 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
     # Then stock exchange
     exchange = st.selectbox(
         "Select Stock Exchange",
-        ["NSE", "NYSE", "NASDAQ", "BSE", "HKEX"],
+        ["NSE", "NYSE", "TSE", "LSE", "HKEX"],
         key="leaderboard_exchange"
-    )
+    )   
     
     # Data computation with proper initialization
     if st.button("🔄 Compute/Refresh Data"):
