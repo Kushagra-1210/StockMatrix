@@ -324,22 +324,22 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
             st.warning("No data available. Please compute scores first.")
         else:
             st.markdown("### Leaderboard Categories")
-            with st.expander("🏆 Top 5 Strong Buys"):
+            with st.expander("Top 5 Strong Buys"):
                 st.dataframe(df.nlargest(5, "Final Score"))
 
-            with st.expander("📈 Top 5 Bullish (TA Score)"):
+            with st.expander("Top 5 Bullish (TA Score)"):
                 st.dataframe(df.nlargest(5, "TA Score"))
 
-            with st.expander("🔥 Top 5 High Volatility"):
+            with st.expander("Top 5 High Volatility"):
                 st.dataframe(df.nlargest(5, "Volatility"))
 
-            with st.expander("💰 Top 5 Undervalued (FA Score)"):
+            with st.expander("Top 5 Undervalued (FA Score)"):
                 st.dataframe(df.nlargest(5, "FA Score"))
 
-            with st.expander("🛡️ Top 5 Low Risk (Volatility)"):
+            with st.expander("Top 5 Low Risk (Volatility)"):
                 st.dataframe(df.nsmallest(5, "Volatility"))
 
-            with st.expander("⚠️ Top 5 Negative Sentiment"):
+            with st.expander("Top 5 Negative Sentiment"):
                 st.dataframe(df.nsmallest(5, "Sentiment"))
     else:
         st.warning("Leaderboard data not initialized. Please compute scores.")
