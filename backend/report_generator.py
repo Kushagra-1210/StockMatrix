@@ -41,8 +41,8 @@ def generate_pdf_report(
         img_path = "temp_chart.png"
         with open(img_path, "wb") as f:
             f.write(img_bytes)
-        pdf.image(img_path, x=10, y=None, w=pdf.w - 20)  # y=None auto-places it
-        pdf.ln(10)  # Add enough spacing after image before Summary`
+            pdf.image(img_path, x=10, y=pdf.get_y(), w=pdf.w - 20, h=80)        
+            pdf.ln(10)  # Add enough spacing after image before Summary`
     except Exception as e:
         pdf.set_font("Arial", "I", 10)
         pdf.cell(0, 10, sanitize(f"(Chart not available: {str(e)})"), 0, 1)
