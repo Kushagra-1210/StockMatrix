@@ -221,6 +221,7 @@ st.markdown("""
     margin: 0 !important;
     box-shadow: none !important;
     }
+    
     </style>
     <div class="top-banner">
         🪙<span style='color:#FFD700; font-weight:900; font-size:44px;'>StockMatrix</span>
@@ -440,7 +441,7 @@ if st.session_state.get("chat_mode") == "screener":
                         "Ticker": ticker,
                         "FA Score": fa["fa_score"],
                         "TA Score": ta["ta_score"],
-                        "Volatility": f"{vol}%",
+                        "Volatility": vol,
                         "Verdict": fa["verdict"]
                     }
             except Exception:
