@@ -1,4 +1,23 @@
 import streamlit as st
+st.markdown("""
+    <style>
+    .top-banner {
+        background-color: #0a0a23;
+        color: white;
+        padding: 10px 20px;
+        font-size: 20px;
+        font-weight: 600;
+        border-bottom: 1px solid #444;
+        position: sticky;
+        top: 0;
+        z-index: 999;
+    }
+    </style>
+    <div class="top-banner">
+        StockMatrix — AI-Powered Global Stock Analyzer
+    </div>
+""", unsafe_allow_html=True)
+
 st.set_page_config(page_title="STOCK ANALYSER", layout="centered")
 
 import concurrent.futures
@@ -57,7 +76,6 @@ from nlp.chat_router import handle_chat_command
 from backend.screener_engine import calculate_volatility
 
 # --- Streamlit Config ---
-st.title("StockMatrix")
 
 # --- Session State Initialization ---
 DEFAULT_STATE = {
@@ -76,15 +94,21 @@ for key, value in DEFAULT_STATE.items():
 
 # --- Initial Chat Message ---
 if not st.session_state.greeted:
-    greeting_msg = (
-        "👋 Hello! I am **StockMatrix - your AI Stock Assistant**.\n\n"
-        "I analyze top 50 stocks from 5 major stock exchanges: **NSE, NYSE, LSE, HKEX, and TSE**.\n\n"
-        "**What would you like to do today?**\n\n"
-        "- Run Analysis\n"
-        "- Generate a Report\n"
-        "- Insight Generation\n\n"
-        "Please type your choice below:"
-    )
+    greeting_msg = ("""
+        👋 **Welcome to StockMatrix** — your AI-powered stock research assistant.
+
+        I analyze the top 50 stocks across major global exchanges:  
+        🇮🇳 NSE, 🇺🇸 NYSE, 🇬🇧 LSE, 🇭🇰 HKEX, and 🇯🇵 TSE.
+
+        What would you like to do today?
+
+        - 📊 **Run Analysis**  
+        - 🧾 **Generate a Report**  
+        - 💡 **Get Investment Insights**
+
+        Type your choice below to begin:
+        """)
+    
     st.session_state.chat_history.append({"role": "assistant", "content": greeting_msg})
     st.session_state.greeted = True
 
