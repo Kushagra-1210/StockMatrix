@@ -202,6 +202,13 @@ st.markdown("""
         border: none !important;
         outline: none !important;
     }
+    /* --- Remove background & spacing from radio buttons --- */
+    div[data-testid="stRadio"] {
+    background: transparent !important;
+    padding: 0 !important;
+    margin-top: -10px !important;
+    box-shadow: none !important;
+    }
     </style>
     <div class="top-banner">
         🪙<span style='color:#FFD700; font-weight:900; font-size:44px;'>StockMatrix</span>
@@ -602,9 +609,8 @@ elif st.session_state.get("chat_mode") == "run_analysis":
     st.subheader("🧪 Run Analysis Module")
     
     # Basis selection at the top (applies to all analyses)
-    st.markdown("**Select Data Basis**")
-    basis = st.radio("", ["Quarterly", "Annual"], 
-                    horizontal=True, key="run_analysis_basis")
+    st.markdown("**Select Data Basis**", unsafe_allow_html=True)
+    basis = st.radio(label="", options=["Quarterly", "Annual"], horizontal=True, key="run_analysis_basis")
 
     st.subheader("1. Select Stock Exchange")
     st.markdown("#### Choose an Exchange", unsafe_allow_html=True)
