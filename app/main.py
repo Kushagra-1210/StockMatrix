@@ -222,14 +222,20 @@ st.markdown("""
     box-shadow: none !important;
     }
     /* 🧼 Remove vertical gap before/after st.radio and st.selectbox */
-    div[data-testid="stRadio"] {
-        margin-top: -25px !important;
-        margin-bottom: -25px !important;
+    div[data-testid="stRadio"],
+    div[data-testid="stSelectbox"],
+    .stMarkdown > div {
+        margin-top: -18px !important;
+        margin-bottom: -18px !important;
+        padding-top: 0px !important;
+        padding-bottom: 0px !important;
     }
 
-    div[data-testid="stSelectbox"] {
-        margin-top: -25px !important;
-        margin-bottom: -25px !important;
+    /* ✂️ Tighten heading + paragraph spacing */
+    h1, h2, h3, h4, h5, h6, p {
+        margin-top: 0px !important;
+        margin-bottom: 4px !important;
+        line-height: 1.2 !important;
     }
 
     </style>
