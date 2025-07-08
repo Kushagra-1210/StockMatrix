@@ -1,6 +1,8 @@
 import streamlit as st
 st.set_page_config(page_title="STOCK ANALYSER", layout="centered")
 
+import concurrent.futures
+from functools import partial
 import time
 import os
 import sys
@@ -10,13 +12,13 @@ import pandas as pd
 import plotly.graph_objs as go
 from datetime import datetime
 import importlib
-import concurrent.futures
+
 
 import logging
 logging.basicConfig(level=logging.DEBUG)
 st.set_option('client.showErrorDetails', True)
+from typing import Dict, Any
 
-st.write("Script reloaded at:", datetime.now())
 
 from backend import technical_analysis as ta_mod
 from backend import fundamental_analysis as fa_mod
@@ -40,16 +42,14 @@ def get_sentiment_analysis(ticker, basis: str = "annual"):
 def get_news_risk_analysis(ticker, basis: str = "annual"):
     return news_mod.fetch_news_risk(ticker, basis=basis.lower())
 
-@st.cache_data(ttl=1800)
+# Increase cache times and add hash_funcs for yfinance objects
+@st.cache_data(ttl=86400, show_spinner=False, hash_funcs={yf.Ticker: lambda _: None})
 def get_yf_info(ticker):
     return yf.Ticker(ticker).info
 
-@st.cache_data(ttl=1800)
+@st.cache_data(ttl=86400, show_spinner=False)
 def get_stock_history(ticker, period="6mo"):
     return yf.Ticker(ticker).history(period=period)
-
-# --- Path Setup ---
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # --- Load Static Imports ---
 from backend.market_selector import get_top_50_tickers
@@ -60,14 +60,19 @@ from backend.screener_engine import calculate_volatility
 st.title("StockMatrix")
 
 # --- Session State Initialization ---
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
-if "greeted" not in st.session_state:
-    st.session_state.greeted = False
-if "chat_mode" not in st.session_state:
-    st.session_state.chat_mode = None
-if "show_insight_buttons" not in st.session_state:
-    st.session_state.show_insight_buttons = False
+DEFAULT_STATE = {
+    "chat_history": [],
+    "greeted": False,
+    "chat_mode": None,
+    "show_insight_buttons": False,
+    "essential_data": {
+        "exchanges": ["NSE", "NYSE", "LSE", "HKEX", "TSE"],
+        "basic_tickers": ["AAPL", "MSFT", "GOOG"]
+    }
+}
+
+for key, value in DEFAULT_STATE.items():
+    st.session_state.setdefault(key, value)
 
 # --- Initial Chat Message ---
 if not st.session_state.greeted:
@@ -181,77 +186,108 @@ if st.session_state.get("chat_mode") == "screener":
     with col3:
         max_vol = st.slider("Max Volatility %", 0, 100, 50)
 
-    if st.button("Run Screener", key="run_screener_btn"):
-        with st.spinner(f"⏳ Screening {basis.lower()} data..."):
-            tickers = get_top_50_tickers(exchange)
+if st.button("Run Screener", key="run_screener_btn"):
+    with st.spinner(f"⏳ Screening {basis.lower()} data..."):
+        tickers = get_top_50_tickers(exchange)
+        
+        def process_ticker(ticker):
+            try:
+                # Get all analyses in parallel
+                fa = get_fundamental_analysis(ticker, basis=basis.lower())
+                ta = get_technical_analysis(ticker, basis=basis.lower())
+                vol = calculate_volatility(ticker)
+                
+                # Check if meets all criteria
+                if ("error" not in fa and 
+                    "error" not in ta and 
+                    vol is not None and
+                    fa["fa_score"] >= min_fa and 
+                    ta["ta_score"] >= min_ta and 
+                    vol <= max_vol):
+                    return {
+                        "Ticker": ticker,
+                        "FA Score": fa["fa_score"],
+                        "TA Score": ta["ta_score"],
+                        "Volatility": f"{vol}%",
+                        "Verdict": fa["verdict"]
+                    }
+            except Exception as e:
+                st.warning(f"Skipped {ticker}: Error in processing")
+                return None
+
+        # Process all tickers in parallel
+        with concurrent.futures.ThreadPoolExecutor() as executor:
             results = []
+            progress_bar = st.progress(0)
+            status_text = st.empty()
             
-            for ticker in tickers:
-                try:
-                    fa = get_fundamental_analysis(ticker, basis=basis.lower())
-                    ta = get_technical_analysis(ticker, basis=basis.lower())
-                    vol = calculate_volatility(ticker)
+            # Process in batches for better progress tracking
+            for i, result in enumerate(executor.map(process_ticker, tickers)):
+                if result:  # Only append valid results
+                    results.append(result)
+                progress = (i + 1) / len(tickers)
+                progress_bar.progress(progress)
+                status_text.text(f"Processed {i+1}/{len(tickers)} tickers")
+            
+            progress_bar.empty()
+            status_text.empty()
 
-                    if "error" not in fa and "error" not in ta and vol is not None:
-                        if (fa["fa_score"] >= min_fa and 
-                            ta["ta_score"] >= min_ta and 
-                            vol <= max_vol):
-                            results.append({
-                                "Ticker": ticker,
-                                "FA Score": fa["fa_score"],
-                                "TA Score": ta["ta_score"],
-                                "Volatility": f"{vol}%",
-                                "Verdict": fa["verdict"]
-                            })
-                except Exception:
-                    continue
-
-            if results:
-                st.success(f"✅ {len(results)} stocks matched your criteria.")
-                
-                # Convert to dataframe
-                df = pd.DataFrame(results)
-                
-                # Function to apply background colors
-                def background_color(row):
-                    colors = []
-                    for val in row:
-                        if isinstance(val, (int, float)):
-                            # FA Score (Green gradient)
-                            if row.name == 'FA Score':
-                                intensity = int(255 * (val/100))
-                                colors.append(f'background-color: rgba(0, 255, 0, {intensity/255})')
-                            # TA Score (Blue gradient)
-                            elif row.name == 'TA Score':
-                                intensity = int(255 * (val/100))
-                                colors.append(f'background-color: rgba(0, 0, 255, {intensity/255})')
-                            # Volatility (Red gradient - reversed)
-                            elif row.name == 'Volatility':
-                                volatility = float(str(val).replace('%',''))
-                                intensity = int(255 * (1 - volatility/100))
-                                colors.append(f'background-color: rgba(255, 0, 0, {intensity/255})')
+        # Display results
+        if results:
+            st.success(f"✅ {len(results)} stocks matched your criteria.")
+            df = pd.DataFrame(results)
+            
+            # Enhanced styling function
+            def background_color(row):
+                colors = []
+                for val in row:
+                    if isinstance(val, (int, float)):
+                        # FA Score (Green gradient)
+                        if row.name == 'FA Score':
+                            intensity = min(255, int(255 * (val/100)))
+                            colors.append(f'background-color: rgba(0, 255, 0, {intensity/255})')
+                        # TA Score (Blue gradient)
+                        elif row.name == 'TA Score':
+                            intensity = min(255, int(255 * (val/100)))
+                            colors.append(f'background-color: rgba(0, 0, 255, {intensity/255})')
+                        # Volatility (Red gradient - reversed)
+                        elif row.name == 'Volatility':
+                            volatility = float(str(val).replace('%',''))
+                            intensity = min(255, int(255 * (1 - volatility/100)))
+                            colors.append(f'background-color: rgba(255, 0, 0, {intensity/255})')
+                        else:
+                            colors.append('')
+                    else:
+                        # Verdict text coloring
+                        if row.name == 'Verdict':
+                            if 'Undervalued' in val:
+                                colors.append('background-color: #90EE90')  # Light green
+                            elif 'Fair' in val:
+                                colors.append('background-color: #ADD8E6')  # Light blue
                             else:
                                 colors.append('')
                         else:
-                            # Verdict text coloring
-                            if row.name == 'Verdict':
-                                if 'Undervalued' in val:
-                                    colors.append('background-color: #90EE90')  # Light green
-                                elif 'Fair' in val:
-                                    colors.append('background-color: #ADD8E6')  # Light blue
-                                else:
-                                    colors.append('')
-                            else:
-                                colors.append('')
-                    return colors
-                
-                # Apply styling
-                styled_df = df.style.apply(background_color, axis=0)
-                
-                # Display using st.write() instead of st.dataframe()
-                st.write(styled_df.to_html(), unsafe_allow_html=True)
-            else:
-                st.warning("⚠️ No stocks matched the given filters.")
+                            colors.append('')
+                return colors
+            
+            # Apply styling with improved performance
+            styled_df = df.style.apply(background_color, axis=0)\
+                              .format({'Volatility': "{:.2f}%"})\
+                              .set_properties(**{'text-align': 'center'})
+            
+            # Optimized display
+            st.markdown(styled_df.to_html(), unsafe_allow_html=True)
+            
+            # Add download button
+            csv = df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                "📥 Download Results as CSV",
+                data=csv,
+                file_name=f"{exchange}_screener_results.csv",
+                mime="text/csv"
+            )
+        else:
+            st.warning("⚠️ No stocks matched the given filters.")
 
 elif st.session_state.get("chat_mode") == "stock_leaderboard":
     if st.button("← Back to Main Menu"):
@@ -272,51 +308,35 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
     )   
     
     # Data computation with proper initialization
+# REMOVE the manual data list building and replace with:
     if st.button("🔄 Compute/Refresh Data"):
-        with st.spinner(f"Computing {exchange} {basis.lower()} scores..."):
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        def process_leaderboard_ticker(ticker, i, total):
+            status_text.text(f"Processing {i+1}/{total}")
+            progress_bar.progress((i+1)/total)
             try:
-                tickers = get_top_50_tickers(exchange)
-                if not tickers:
-                    st.error(f"No tickers found for {exchange} exchange")
-                    st.session_state.leaderboard_df = pd.DataFrame()  # Initialize empty
-                    st.stop()
-                
-                data = []
-                for ticker in tickers:
-                    try:
-                        ta = get_technical_analysis(ticker, basis=basis.lower())
-                        fa = get_fundamental_analysis(ticker, basis=basis.lower())
-                        sentiment = get_sentiment_analysis(ticker, basis=basis.lower())
-                        vol = calculate_volatility(ticker)
+                ta = get_technical_analysis(ticker, basis.lower())
+                fa = get_fundamental_analysis(ticker, basis.lower())
+                sentiment = get_sentiment_analysis(ticker, basis.lower())
+                vol = calculate_volatility(ticker)
+                return {
+                    "Ticker": ticker,
+                    "FA Score": fa["fa_score"],
+                    "TA Score": ta["ta_score"],
+                    "Sentiment": sentiment["score"] * 10,
+                    "Volatility": vol,
+                    "Final Score": round(0.35*fa["fa_score"] + 0.35*ta["ta_score"] + 0.2*sentiment["score"]*10 + 0.1*(100-vol), 2)
+                }
+            except Exception:
+                return None
 
-                        if all("error" not in x for x in [ta, fa, sentiment]):
-                            final_score = round(
-                                0.35 * fa["fa_score"] + 
-                                0.35 * ta["ta_score"] + 
-                                0.2 * sentiment["score"] * 10 + 
-                                0.1 * (100 - vol), 2
-                            )
-                            
-                            data.append({
-                                "Ticker": ticker,
-                                "FA Score": fa["fa_score"],
-                                "TA Score": ta["ta_score"],
-                                "Sentiment": sentiment["score"] * 10,
-                                "Volatility": vol,
-                                "Final Score": final_score
-                            })
-                    except Exception as e:
-                        st.warning(f"Skipped {ticker}: {str(e)}")
-                        continue
-                
-                st.session_state.leaderboard_df = pd.DataFrame(data) if data else pd.DataFrame()
-                st.session_state.last_exchange = exchange
-                st.session_state.last_basis = basis
-                
-            except Exception as e:
-                st.error(f"Computation failed: {str(e)}")
-                st.session_state.leaderboard_df = pd.DataFrame()  # Initialize empty
-                st.stop()
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            tickers = get_top_50_tickers(exchange)
+            processed = list(filter(None, [process_leaderboard_ticker(t, i, len(tickers)) 
+                            for i, t in enumerate(tickers)]))
+            st.session_state.leaderboard_df = pd.DataFrame(processed)
 
     # Display section with proper null checks
     if "leaderboard_df" in st.session_state:
@@ -684,9 +704,4 @@ elif st.session_state.get("chat_mode") == "report":
                 except Exception as e:
                     st.error(f"Analysis failed: {str(e)}")
 
-
-# Debug info (optional)
-st.sidebar.markdown("### Debug Info")
-st.sidebar.write("Current Mode:", st.session_state.get("chat_mode"))
-st.sidebar.write("Show Buttons:", st.session_state.get("show_insight_buttons"))
 
