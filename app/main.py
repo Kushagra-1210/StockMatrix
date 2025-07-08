@@ -257,79 +257,95 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
 
     st.subheader("Stock Leaderboard")
 
+    # Analysis period first
     basis = st.radio("Select Analysis Period", ["Quarterly", "Annual"], 
                     horizontal=True, key="leaderboard_basis")
     
+    # Then stock exchange
     exchange = st.selectbox(
         "Select Stock Exchange",
         ["NSE", "NYSE", "NASDAQ", "BSE", "HKEX"],
         key="leaderboard_exchange"
     )
     
-    if st.button("🔄 Refresh Data"):
+    # Data computation with error handling
+    if st.button("🔄 Compute/Refresh Data"):
         st.session_state.leaderboard_df = None
     
-    if "leaderboard_df" not in st.session_state or st.button("Compute Scores"):
-        with st.spinner(f"🔄 Computing {basis.lower()} scores..."):
-            tickers = get_top_50_tickers(exchange)
-            data = []
-            
-            for ticker in tickers:
-                try:
-                    ta = get_technical_analysis(ticker, basis=basis.lower())
-                    fa = get_fundamental_analysis(ticker, basis=basis.lower())
-                    sentiment = get_sentiment_analysis(ticker, basis=basis.lower())
-                    vol = calculate_volatility(ticker)
+    if "leaderboard_df" not in st.session_state:
+        with st.spinner(f"Computing {exchange} {basis.lower()} scores..."):
+            try:
+                tickers = get_top_50_tickers(exchange)
+                if not tickers:
+                    st.error(f"No tickers found for {exchange} exchange")
+                    st.stop()
+                
+                data = []
+                for ticker in tickers:
+                    try:
+                        ta = get_technical_analysis(ticker, basis=basis.lower())
+                        fa = get_fundamental_analysis(ticker, basis=basis.lower())
+                        sentiment = get_sentiment_analysis(ticker, basis=basis.lower())
+                        vol = calculate_volatility(ticker)
 
-                    if "error" not in ta and "error" not in fa and "error" not in sentiment:
-                        final_score = round(
-                            0.35 * fa["fa_score"] + 
-                            0.35 * ta["ta_score"] + 
-                            0.2 * sentiment["score"] * 10 + 
-                            0.1 * (100 - vol), 2
-                        )
-                        
-                        data.append({
-                            "Ticker": ticker,
-                            "FA Score": fa["fa_score"],
-                            "TA Score": ta["ta_score"],
-                            "Sentiment": sentiment["score"] * 10,  # Ensure this exists
-                            "Volatility": vol,
-                            "Final Score": final_score
-                        })
-                except Exception as e:
-                    print(f"Error processing {ticker}: {str(e)}")
-                    continue
-            
-            st.session_state.leaderboard_df = pd.DataFrame(data)
+                        if all("error" not in x for x in [ta, fa, sentiment]):
+                            final_score = round(
+                                0.35 * fa["fa_score"] + 
+                                0.35 * ta["ta_score"] + 
+                                0.2 * sentiment["score"] * 10 + 
+                                0.1 * (100 - vol), 2
+                            )
+                            
+                            data.append({
+                                "Ticker": ticker,
+                                "FA Score": fa["fa_score"],
+                                "TA Score": ta["ta_score"],
+                                "Sentiment": sentiment["score"] * 10,
+                                "Volatility": vol,
+                                "Final Score": final_score
+                            })
+                    except Exception as e:
+                        st.warning(f"Skipped {ticker}: {str(e)}")
+                        continue
+                
+                if not data:
+                    st.error("No valid data computed - please check your analysis functions")
+                    st.stop()
+                
+                st.session_state.leaderboard_df = pd.DataFrame(data)
+                st.session_state.last_exchange = exchange
+                st.session_state.last_basis = basis
+                
+            except Exception as e:
+                st.error(f"Computation failed: {str(e)}")
+                st.stop()
 
+    # Display section with data validation
     if "leaderboard_df" in st.session_state:
         df = st.session_state.leaderboard_df
         
-        # Check if required columns exist before displaying
-        required_columns = ["Final Score", "FA Score", "TA Score", "Sentiment", "Volatility"]
-        if not all(col in df.columns for col in required_columns):
-            st.error("Missing required data columns. Please recompute scores.")
-            st.write("Available columns:", df.columns.tolist())
+        if df.empty:
+            st.error("Computed data is empty - please recompute")
         else:
             st.markdown("### Leaderboard Categories")
-            col1, col2 = st.columns(2)
-            col3, col4 = st.columns(2)
-            col5, col6 = st.columns(2)
+            cols = st.columns(2)
             
-            if col1.button("Top 5 Strong Buys"):
-                st.dataframe(df.sort_values("Final Score", ascending=False).head(5))
-            if col2.button("Top 5 Undervalued"):
-                st.dataframe(df.sort_values("FA Score", ascending=False).head(5))
-            if col3.button("Top 5 Bullish"):
-                st.dataframe(df.sort_values("TA Score", ascending=False).head(5))
-            if col4.button("Top 5 Low Risk"):
-                st.dataframe(df.sort_values("Volatility").head(5))
-            if col5.button("Top 5 Negative Sentiment"):
-                st.dataframe(df.sort_values("Sentiment").head(5))
-            if col6.button("Top 5 High Volatility"):
-                st.dataframe(df.sort_values("Volatility", ascending=False).head(5))
-
+            with cols[0]:
+                if st.button("Top 5 Strong Buys"):
+                    st.dataframe(df.nlargest(5, "Final Score"))
+                if st.button("Top 5 Bullish"):
+                    st.dataframe(df.nlargest(5, "TA Score"))
+                if st.button("Top 5 High Volatility"):
+                    st.dataframe(df.nlargest(5, "Volatility"))
+            
+            with cols[1]:
+                if st.button("Top 5 Undervalued"):
+                    st.dataframe(df.nlargest(5, "FA Score"))
+                if st.button("Top 5 Low Risk"):
+                    st.dataframe(df.nsmallest(5, "Volatility"))
+                if st.button("Top 5 Negative Sentiment"):
+                    st.dataframe(df.nsmallest(5, "Sentiment"))
+                    
 elif st.session_state.get("chat_mode") == "insight_generation":
     if st.session_state.show_insight_buttons:
         st.markdown("#### What do you want to do?")
