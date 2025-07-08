@@ -209,6 +209,12 @@ st.markdown("""
     margin-top: -10px !important;
     box-shadow: none !important;
     }
+    div[data-testid="stSelectbox"] > div:first-child {
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    }
     </style>
     <div class="top-banner">
         🪙<span style='color:#FFD700; font-weight:900; font-size:44px;'>StockMatrix</span>
