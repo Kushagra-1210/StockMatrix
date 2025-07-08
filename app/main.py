@@ -95,31 +95,42 @@ st.markdown("""
     }
     /* Expander header color and icon */
     .stExpanderHeader {
-        color: #FFD700 !important;
+        color: #000000 !important;
         font-weight: 600;
         font-size: 18px;
         position: relative;
         padding-left: 28px !important;
+        text-shadow: none !important;
     }
     .stExpanderHeader:before {
-        content: '\25BC';
-        position: absolute;
-        left: 0;
-        top: 2px;
-        color: #FFD700;
-        font-size: 18px;
-        transition: transform 0.2s;
+        color: #000000 !important;
+        /* Remove gold icon color */
     }
-    /* Rotate icon when expanded */
-    .stExpander[aria-expanded="true"] .stExpanderHeader:before {
-        transform: rotate(180deg);
-    }
-    /* Expander background */
+    /* Expander background and border */
     .stExpander {
         background: #FAFAFA !important;
         border-radius: 12px !important;
-        border: 1px solid #FFD700 !important;
+        border: 1px solid #000000 !important;
         margin-bottom: 12px !important;
+        box-shadow: none !important;
+    }
+    /* Remove gold outline from expander content */
+    .stExpanderContent {
+        border: none !important;
+    }
+    /* Streamlit button style: gold background, black text */
+    .stButton > button, .stDownloadButton > button {
+        background: #FFD700 !important;
+        color: #000000 !important;
+        border: none !important;
+        font-weight: bold !important;
+        border-radius: 8px !important;
+        box-shadow: none !important;
+        transition: background 0.2s, color 0.2s !important;
+    }
+    .stButton > button:hover, .stDownloadButton > button:hover {
+        background: #FFC300 !important;
+        color: #000000 !important;
     }
     /* Links */
     a {
