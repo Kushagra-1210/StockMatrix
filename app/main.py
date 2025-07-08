@@ -2,7 +2,6 @@ import streamlit as st
 st.markdown("""
     <style>
     .top-banner {
-        color: white;
         padding: 10px 20px;
         font-size: 40px;
         font-weight: 700;
