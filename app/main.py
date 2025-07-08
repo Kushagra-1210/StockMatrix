@@ -7,7 +7,6 @@ import time
 import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-import yfinance as yf
 import pandas as pd
 import plotly.graph_objs as go
 from datetime import datetime
@@ -43,11 +42,12 @@ def get_news_risk_analysis(ticker, basis: str = "annual"):
     return news_mod.fetch_news_risk(ticker, basis=basis.lower())
 
 # Increase cache times and add hash_funcs for yfinance objects
-@st.cache_data(ttl=86400, show_spinner=False, hash_funcs={yf.Ticker: lambda _: None})
+@st.cache_resource(ttl=86400)
 def get_yf_info(ticker):
+    import yfinance as yf
     return yf.Ticker(ticker).info
 
-@st.cache_data(ttl=86400, show_spinner=False)
+@st.cache_resource(ttl=86400)
 def get_stock_history(ticker, period="6mo"):
     return yf.Ticker(ticker).history(period=period)
 
