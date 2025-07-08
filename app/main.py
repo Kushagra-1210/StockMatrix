@@ -4,54 +4,62 @@ import yfinance as yf
 st.markdown("""
     <style>
     body {
-        background: #F5F5F5 !important; /* Light Gray */
+        background: #FAFAFA !important; /* Off-White Neutral */
         min-height: 100vh;
-        color: #0A1F44 !important; /* Navy text */
+        color: #1A1A1A !important; /* Almost Black for main text */
     }
     .stApp {
-        background: #F5F5F5 !important;
+        background: #FAFAFA !important;
         min-height: 100vh;
-        color: #0A1F44 !important;
+        color: #1A1A1A !important;
     }
     .top-banner {
         padding: 10px 20px;
-        font-size: 40px;
-        font-weight: 700;
+        font-size: 44px;
+        font-weight: 900;
         border-bottom: 1px solid #0A1F44;
         position: sticky;
         top: 0;
         z-index: 999;
         background: linear-gradient(90deg, #0A1F44 60%, #FFD700 100%);
-        color: #FFFFFF !important; /* White text for max contrast */
+        color: #FFFFFF!important; /* White text for max contrast */
         text-shadow: 0 2px 12px #0A1F44, 0 0 8px #FFD700, 0 1px 0 #fff;
         box-shadow: 0 2px 8px rgba(10, 31, 68, 0.12);
         border-radius: 0 0 18px 18px;
         letter-spacing: 1px;
+    }
+    .curated-footer {
+        text-align: right;
+        font-size: 15px;
+        color: #FFD700;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        padding: 10px 20px;
     }
     .block-container {
         background: #FFFFFF;
         border-radius: 18px;
         padding: 24px;
         box-shadow: 0 4px 32px rgba(10, 31, 68, 0.10);
-        color: #0A1F44 !important;
+        color: #1A1A1A !important;
     }
     /* Make all markdown and widget text visible */
     .stMarkdown, .stText, .stExpander, .stDataFrame, .stRadio, .stSelectbox, .stButton, .stSlider, .stDownloadButton, .stChatInputContainer, .stChatMessage, .stChatInput, .stTextInput, .stTextArea, .stSelectbox > div, .stSelectbox label, .stRadio label, .stExpanderHeader, .stExpanderContent, .stAlert, .stSubheader, .stHeader, .stCaption, .stTable, .stDataFrame, .stCheckbox label {
-        color: #0A1F44 !important;
+        color: #1A1A1A !important;
     }
     /* Headline and subheader text */
     .stHeader, .stSubheader, h1, h2, h3, h4, h5, h6 {
         color: #0A1F44 !important;
-        font-weight: 700 !important;
+        font-weight: 900 !important;
         letter-spacing: 0.5px;
-        text-shadow: 0 1px 8px #fff;
+        text-shadow: 0 1px 8px #FFD700, 0 2px 8px #FAFAFA;
     }
     /* Chat input bar and send button - THEME UPDATE */
     section[data-testid="stChatInput"],
     .stChatInputContainer,
     div[data-testid="stChatInput"] {
         background: #FFFFFF !important; /* White for input bar */
-        color: #0A1F44 !important;
+        color: #1A1A1A !important;
         border-radius: 16px !important;
         border: 2px solid #0A1F44 !important;
         box-shadow: 0 2px 12px 0 rgba(10, 31, 68, 0.10) !important;
@@ -61,7 +69,7 @@ st.markdown("""
     .stChatInputContainer input,
     div[data-testid="stChatInput"] input {
         background: #FFFFFF !important;
-        color: #0A1F44 !important;
+        color: #1A1A1A !important;
         border: none !important;
         font-weight: 500 !important;
         font-size: 18px !important;
@@ -69,7 +77,7 @@ st.markdown("""
     section[data-testid="stChatInput"] button,
     .stChatInputContainer button,
     div[data-testid="stChatInput"] button {
-        background: #FFD700 !important;
+        background: linear-gradient(90deg, #FFD700 60%, #C9B037 100%) !important;
         color: #0A1F44 !important;
         border-radius: 8px !important;
         font-weight: bold !important;
@@ -80,9 +88,9 @@ st.markdown("""
     section[data-testid="stChatInput"] button:hover,
     .stChatInputContainer button:hover,
     div[data-testid="stChatInput"] button:hover {
-        background: #0A1F44 !important;
+        background: #5F4B8B !important; /* Royal Purple for hover */
         color: #FFD700 !important;
-        border: 2px solid #0A1F44 !important;
+        border: 2px solid #5F4B8B !important;
     }
     /* Expander header color and icon */
     .stExpanderHeader {
@@ -107,18 +115,18 @@ st.markdown("""
     }
     /* Expander background */
     .stExpander {
-        background: #F5F5F5 !important;
+        background: #FAFAFA !important;
         border-radius: 12px !important;
         border: 1px solid #FFD700 !important;
         margin-bottom: 12px !important;
     }
     /* Links */
     a {
-        color: #0A1F44 !important;
+        color: #5F4B8B !important; /* Royal Purple for links */
     }
     /* Make all markdown text visible */
     .stMarkdown p, .stMarkdown ul, .stMarkdown li, .stMarkdown span, .stMarkdown strong, .stMarkdown em {
-        color: #0A1F44 !important;
+        color: #1A1A1A !important;
     }
     /* Highlighted inline code in Quick Tips expander */
     .stExpander .stMarkdown code {
@@ -143,11 +151,11 @@ st.markdown("""
     }
     </style>
     <div class="top-banner">
-        🪙<span style='color:#FFFFFF; text-shadow: 0 2px 12px #0A1F44, 0 0 8px #FFD700, 0 1px 0 #fff; font-weight:900; font-size:44px;'>StockMatrix</span>
+        🪙<span style='color:#FFD700; font-weight:900; font-size:44px;'>StockMatrix</span>
     </div>
 """, unsafe_allow_html=True)
 
-st.markdown("<div style='text-align: right; font-size: 13px; color: #ffd700; font-weight: 600; letter-spacing: 0.5px;'>Curated and powered by Kushagra Bansal</div>", unsafe_allow_html=True)
+st.markdown("<div class='curated-footer' style='color: #000000;'>Curated and powered by Kushagra Bansal</div>", unsafe_allow_html=True)
 
 
 st.set_page_config(page_title="STOCK ANALYSER", layout="centered")
