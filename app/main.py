@@ -120,18 +120,28 @@ st.markdown("""
     }
     /* Streamlit button style: grey background, black text */
     .stButton > button, .stDownloadButton > button {
-        background: #23242B !important;
-        color: #000000 !important;
+        background: #B0B0B0 !important;   /* Light grey */
+        color: #000000 !important;        /* Black text */
         border: none !important;
         font-weight: bold !important;
-        border-radius: 8px !important;
+        border-radius: 14px !important;
         box-shadow: none !important;
         transition: background 0.2s, color 0.2s !important;
     }
+
+    /* Button hover state */
     .stButton > button:hover, .stDownloadButton > button:hover {
-        background: #44454B !important;
+        background: #A0A0A0 !important;   /* Slightly darker grey */
         color: #000000 !important;
     }
+
+    /* Button disabled state */
+    .stButton > button:disabled, .stDownloadButton > button:disabled {
+        background: #D3D3D3 !important;   /* Even lighter grey */
+        color: #888888 !important;        /* Greyed out text */
+        opacity: 1 !important;
+    }
+
     /* Links */
     a {
         color: #5F4B8B !important; /* Royal Purple for links */
