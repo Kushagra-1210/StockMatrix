@@ -257,15 +257,29 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
 
     st.subheader("Stock Leaderboard")
 
+    # Analysis period first (Quarterly/Annual)
     basis = st.radio("Select Analysis Period", ["Quarterly", "Annual"], 
                     horizontal=True, key="leaderboard_basis")
     
+    # Then stock exchange selection
+    exchange = st.selectbox(
+        "Select Stock Exchange",
+        ["NSE", "NYSE", "NASDAQ", "BSE", "HKEX"],
+        key="leaderboard_exchange"
+    )
+    
+    # Refresh button
     if st.button("🔄 Refresh Data"):
         st.session_state.leaderboard_df = None
     
-    if "leaderboard_df" not in st.session_state or st.button("Compute Scores"):
-        with st.spinner(f"🔄 Computing {basis.lower()} scores..."):
-            tickers = get_top_50_tickers("NSE")
+    # Data computation
+    if ("leaderboard_df" not in st.session_state or 
+        st.session_state.get("last_exchange") != exchange or
+        st.session_state.get("last_basis") != basis or
+        st.button("Compute Scores")):
+        
+        with st.spinner(f"🔄 Computing {exchange} {basis.lower()} scores..."):
+            tickers = get_top_50_tickers(exchange)
             data = []
             
             for ticker in tickers:
@@ -285,6 +299,7 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
                         
                         data.append({
                             "Ticker": ticker,
+                            "Exchange": exchange,
                             "FA Score": fa["fa_score"],
                             "TA Score": ta["ta_score"],
                             "Sentiment": sentiment["score"] * 10,
@@ -295,7 +310,10 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
                     continue
             
             st.session_state.leaderboard_df = pd.DataFrame(data)
+            st.session_state.last_exchange = exchange
+            st.session_state.last_basis = basis
 
+    # Display categories
     if "leaderboard_df" in st.session_state:
         df = st.session_state.leaderboard_df
         
@@ -313,9 +331,9 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
         if col4.button("Top 5 Low Risk"):
             st.dataframe(df.sort_values("Volatility").head(5))
         if col5.button("Top 5 Negative Sentiment"):
-            st.dataframe(df.sort_values("Sentiment").head(5))  # Lowest sentiment scores first
+            st.dataframe(df.sort_values("Sentiment").head(5))
         if col6.button("Top 5 High Volatility"):
-            st.dataframe(df.sort_values("Volatility", ascending=False).head(5)) 
+            st.dataframe(df.sort_values("Volatility", ascending=False).head(5))
 
 elif st.session_state.get("chat_mode") == "insight_generation":
     if st.session_state.show_insight_buttons:
