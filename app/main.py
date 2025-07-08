@@ -603,12 +603,12 @@ elif st.session_state.get("chat_mode") == "run_analysis":
     
     # Basis selection at the top (applies to all analyses)
     st.markdown("**Select Data Basis**")
-    basis = st.radio("", ["Quarterly", "Annual"], 
+    basis = st.radio(["Quarterly", "Annual"], 
                     horizontal=True, key="run_analysis_basis")
 
     st.subheader("1. Select Stock Exchange")
     st.markdown("#### Choose an Exchange", unsafe_allow_html=True)
-    exchange = st.selectbox("", 
+    exchange = st.selectbox( 
                             ["NSE", "HKEX", "NYSE", "LSE", "TSE"], 
                             key="run_analysis_exchange")
 
@@ -620,7 +620,7 @@ elif st.session_state.get("chat_mode") == "run_analysis":
         st.session_state.last_exchange = exchange
 
     st.markdown("#### 2. Choose a Stock", unsafe_allow_html=True)
-    selected_ticker = st.selectbox("", tickers, 
+    selected_ticker = st.selectbox(tickers, 
                                    key="run_analysis_ticker")
 
     col1, col2 = st.columns(2)
