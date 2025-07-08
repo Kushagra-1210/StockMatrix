@@ -31,18 +31,24 @@ def generate_pdf_report(
     pdf.cell(0, 10, sanitize(f"Stock Analysis Report: {stock_info.get('ticker', '')}"), 0, 1, "C")
 
     # Stock Chart
+# Replace your current chart section with this 👇
+# (inside generate_pdf_report)
     try:
         stock = yf.Ticker(stock_info["ticker"])
         hist = stock.history(period="6mo")
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=hist.index, y=hist["Close"], name="Close Price"))
         fig.update_layout(title="Price Trend (6 Months)", xaxis_title="Date", yaxis_title="Price")
-        img_bytes = pio.to_image(fig, format="png", width=700, height=400)
+
+        # Generate smaller image bytes (height ↓)
+        img_bytes = pio.to_image(fig, format="png", width=600, height=250)
         img_path = "temp_chart.png"
         with open(img_path, "wb") as f:
             f.write(img_bytes)
-            pdf.image(img_path, x=10, y=pdf.get_y(), w=pdf.w - 20, h=80)        
-            pdf.ln(10)  # Add enough spacing after image before Summary`
+
+        # Insert with reduced height
+        pdf.image(img_path, x=10, y=pdf.get_y(), w=pdf.w - 20, h=65)  # 💡 height is controlled
+        pdf.ln(5)  # small gap
     except Exception as e:
         pdf.set_font("Arial", "I", 10)
         pdf.cell(0, 10, sanitize(f"(Chart not available: {str(e)})"), 0, 1)
