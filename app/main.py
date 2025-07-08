@@ -1,4 +1,5 @@
 import streamlit as st
+
 st.markdown("""
     <style>
     .top-banner {
@@ -16,19 +17,8 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-st.markdown("""
-<style>
-footer {visibility: hidden;}
-[data-testid="stAppViewContainer"]::after {
-    content: "Made by Kushagra Bansal";
-    position: fixed;
-    bottom: 8px;
-    right: 12px;
-    font-size: 12px;
-    color: #ccc;
-}
-</style>
-""", unsafe_allow_html=True)
+st.markdown("<div style='text-align: right; font-size: 13px; color: gray;'>Curated and powered by Kushagra Bansal</div>", unsafe_allow_html=True)
+
 
 st.set_page_config(page_title="STOCK ANALYSER", layout="centered")
 
