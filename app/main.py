@@ -187,10 +187,11 @@ st.markdown("""
         font-weight: 700 !important;
     }
     .stSelectbox div[data-baseweb="select"] > div {
-        background: #F0F0F0 !important;
-        color: #1A1A1A !important;
-        border-radius: 12px !important;
+    background: #F0F0F0 !important;   /* Light gray for dropdown */
+    color: #1A1A1A !important;
+    border-radius: 12px !important;
     }
+
     /* Remove selectbox focus/active border and shadow */
     .stSelectbox > div:focus-within, .stSelectbox > div:active, .stSelectbox > div[data-baseweb="select"]:focus-within, .stSelectbox > div[data-baseweb="select"]:active {
         box-shadow: none !important;
@@ -606,10 +607,10 @@ elif st.session_state.get("chat_mode") == "run_analysis":
                     horizontal=True, key="run_analysis_basis")
 
     st.subheader("1. Select Stock Exchange")
-    st.markdown("**Choose an exchange**")
-    exchange = st.selectbox("", 
-                          options=["NSE", "HKEX", "NYSE", "LSE", "TSE"], 
-                          key="run_analysis_exchange")
+    st.markdown("#### Choose an Exchange", unsafe_allow_html=True)
+    exchange = st.selectbox("Select Exchange", 
+                            ["NSE", "HKEX", "NYSE", "LSE", "TSE"], 
+                            key="run_analysis_exchange")
 
     tickers = get_top_50_tickers(exchange)
 
@@ -618,6 +619,7 @@ elif st.session_state.get("chat_mode") == "run_analysis":
         st.session_state["run_analysis_ticker"] = tickers[0] if tickers else None
         st.session_state.last_exchange = exchange
 
+    st.markdown("#### 2. Choose a Stock", unsafe_allow_html=True)
     selected_ticker = st.selectbox("2. Choose a Stock", tickers, 
                                    key="run_analysis_ticker")
 
