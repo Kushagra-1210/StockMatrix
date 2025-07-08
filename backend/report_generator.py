@@ -4,6 +4,7 @@ import pandas as pd
 import plotly.graph_objs as go
 import plotly.io as pio
 import yfinance as yf
+from PIL import Image
 from datetime import datetime
 import unicodedata
 import re
@@ -50,15 +51,19 @@ def generate_pdf_report(
             width=600
         )
 
-        # Export as PNG with smaller height
+        # Export Plotly figure to PNG bytes
         img_bytes = pio.to_image(fig, format="png")
-        img_path = "temp_chart.png"
-        with open(img_path, "wb") as f:
-            f.write(img_bytes)
 
-        # ✅ Insert into PDF with explicit Y and H
-        pdf.image(img_path, x=10, y=pdf.get_y(), w=pdf.w - 20, h=60)
-        pdf.ln(5)  # minimal space below
+        # 🧽 Auto-crop using PIL
+        with Image.open(io.BytesIO(img_bytes)) as im:
+            cropped = im.crop(im.getbbox())  # Automatically remove outer white pixels
+            cropped_path = "temp_chart_cropped.png"
+            cropped.save(cropped_path)
+
+        # ✅ Insert cropped image into PDF
+        pdf.image(cropped_path, x=10, y=pdf.get_y(), w=pdf.w - 20, h=55)
+        pdf.ln(4)
+
     except Exception as e:
         pdf.set_font("Arial", "I", 10)
         pdf.cell(0, 10, sanitize(f"(Chart not available: {str(e)})"), 0, 1)
