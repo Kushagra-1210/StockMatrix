@@ -1,29 +1,35 @@
-# Python
-__pycache__/
-*.py[cod]
-*.egg
-*.egg-info/
-dist/
-build/
-.eggs/
-*.pyo
-
-# Environment
-.env
-.venv/
-env/
+# Ignore virtual environments and cache
 venv/
-
-# Jupyter
-.ipynb_checkpoints/
-
-# macOS/Windows
-.DS_Store
-Thumbs.db
-
-# Streamlit cache
-.streamlit/
-
-# Byte-compiled / optimized / DLL files
 __pycache__/
-*.py[cod]
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+.venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+*.log
+
+# Ignore system and IDE files
+.DS_Store
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Ignore Streamlit internal
+.streamlit/
