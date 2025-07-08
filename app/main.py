@@ -631,6 +631,13 @@ elif st.session_state.get("chat_mode") == "report":
     exchange = st.selectbox("Select Exchange", 
                           ["NSE", "HKEX", "NYSE", "LSE", "TSE"], 
                           key="report_exchange")
+    available_stocks = {
+        "NSE": ["RELIANCE.NS", "ADANIPORTS.NS", "TCS.NS"],
+        "NYSE": ["AAPL", "MSFT", "GOOGL"],
+        "LSE": ["VOD.L", "HSBA.L", "BP.L"],
+        "HKEX": ["0700.HK", "0941.HK"],
+        "TSE": ["6758.T", "9984.T"]
+    }
     
     if exchange:
         tickers = get_top_50_tickers(exchange)
