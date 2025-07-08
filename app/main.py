@@ -268,16 +268,14 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
         key="leaderboard_exchange"
     )
     
-    # Data computation with error handling
+    # Data computation with proper initialization
     if st.button("🔄 Compute/Refresh Data"):
-        st.session_state.leaderboard_df = None
-    
-    if "leaderboard_df" not in st.session_state:
         with st.spinner(f"Computing {exchange} {basis.lower()} scores..."):
             try:
                 tickers = get_top_50_tickers(exchange)
                 if not tickers:
                     st.error(f"No tickers found for {exchange} exchange")
+                    st.session_state.leaderboard_df = pd.DataFrame()  # Initialize empty
                     st.stop()
                 
                 data = []
@@ -308,25 +306,20 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
                         st.warning(f"Skipped {ticker}: {str(e)}")
                         continue
                 
-                if not data:
-                    st.error("No valid data computed - please check your analysis functions")
-                    st.stop()
-                
-                st.session_state.leaderboard_df = pd.DataFrame(data)
+                st.session_state.leaderboard_df = pd.DataFrame(data) if data else pd.DataFrame()
                 st.session_state.last_exchange = exchange
                 st.session_state.last_basis = basis
                 
             except Exception as e:
                 st.error(f"Computation failed: {str(e)}")
+                st.session_state.leaderboard_df = pd.DataFrame()  # Initialize empty
                 st.stop()
 
-    # Display section with data validation
-    if "leaderboard_df" in st.session_state:
+    # Display section with proper null checks
+    if "leaderboard_df" in st.session_state and st.session_state.leaderboard_df is not None:
         df = st.session_state.leaderboard_df
         
-        if df.empty:
-            st.error("Computed data is empty - please recompute")
-        else:
+        if not df.empty:
             st.markdown("### Leaderboard Categories")
             cols = st.columns(2)
             
@@ -345,7 +338,11 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
                     st.dataframe(df.nsmallest(5, "Volatility"))
                 if st.button("Top 5 Negative Sentiment"):
                     st.dataframe(df.nsmallest(5, "Sentiment"))
-                    
+        else:
+            st.warning("No data available. Please compute scores first.")
+    else:
+        st.warning("Leaderboard data not initialized. Please compute scores.")
+        
 elif st.session_state.get("chat_mode") == "insight_generation":
     if st.session_state.show_insight_buttons:
         st.markdown("#### What do you want to do?")
