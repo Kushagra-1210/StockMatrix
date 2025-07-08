@@ -1,4 +1,6 @@
 import streamlit as st
+st.set_page_config(page_title="STOCK ANALYSER", layout="centered")
+
 import time
 import os
 import sys
@@ -13,6 +15,8 @@ import concurrent.futures
 import logging
 logging.basicConfig(level=logging.DEBUG)
 st.set_option('client.showErrorDetails', True)
+
+st.write("Script reloaded at:", datetime.now())
 
 from backend import technical_analysis as ta_mod
 from backend import fundamental_analysis as fa_mod
@@ -53,7 +57,6 @@ from nlp.chat_router import handle_chat_command
 from backend.screener_engine import calculate_volatility
 
 # --- Streamlit Config ---
-st.set_page_config(page_title="STOCK ANALYSER", layout="centered")
 st.title("StockMatrix")
 
 # --- Session State Initialization ---
