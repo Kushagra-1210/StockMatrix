@@ -24,7 +24,6 @@ st.markdown("<div style='text-align: right; font-size: 13px; color: gray;'>Curat
 st.set_page_config(page_title="STOCK ANALYSER", layout="centered")
 
 import concurrent.futures
-from functools import partial
 import time
 import os
 import sys
@@ -38,7 +37,6 @@ import importlib
 import logging
 logging.basicConfig(level=logging.DEBUG)
 st.set_option('client.showErrorDetails', True)
-from typing import Dict, Any
 
 
 from backend import technical_analysis as ta_mod
@@ -235,7 +233,7 @@ if st.session_state.get("chat_mode") == "screener":
                         "Volatility": f"{vol}%",
                         "Verdict": fa["verdict"]
                     }
-            except Exception as e:
+            except Exception:
                 st.warning(f"Skipped {ticker}: Error in processing")
                 return None
 
@@ -245,6 +243,7 @@ if st.session_state.get("chat_mode") == "screener":
             progress_bar = st.progress(0)
             status_text = st.empty()
             
+            tickers = get_top_50_tickers(exchange)
             # Process in batches for better progress tracking
             for i, result in enumerate(executor.map(process_ticker, tickers)):
                 if result:  # Only append valid results
@@ -627,19 +626,14 @@ elif st.session_state.get("chat_mode") == "report":
     st.subheader("📄 Report Generator")
     report_mod = importlib.import_module("backend.report_generator")
 
-    # Exchange and stock selection
-    exchange = st.selectbox("Select Exchange", 
-                          ["NSE", "HKEX", "NYSE", "LSE", "TSE"], 
-                          key="report_exchange")
-    available_stocks = {
-        "NSE": ["RELIANCE.NS", "ADANIPORTS.NS", "TCS.NS"],
-        "NYSE": ["AAPL", "MSFT", "GOOGL"],
-        "LSE": ["VOD.L", "HSBA.L", "BP.L"],
-        "HKEX": ["0700.HK", "0941.HK"],
-        "TSE": ["6758.T", "9984.T"]
-    }
-    
-    if exchange:
+    # Exchange and stock selection (move outside try block)
+    exchange = st.selectbox(
+        "Select Exchange", 
+        ["NSE", "HKEX", "NYSE", "LSE", "TSE"], 
+        key="report_exchange"
+    )
+
+    try:
         tickers = get_top_50_tickers(exchange)
         selected_ticker = st.selectbox("Choose a Stock", tickers, 
                                      key="report_ticker")
@@ -734,5 +728,7 @@ elif st.session_state.get("chat_mode") == "report":
 
                 except Exception as e:
                     st.error(f"Analysis failed: {str(e)}")
+    except Exception as e:
+        st.error(f"Error initializing report section: {str(e)}")
 
 
