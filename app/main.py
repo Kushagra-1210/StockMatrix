@@ -608,7 +608,7 @@ elif st.session_state.get("chat_mode") == "run_analysis":
 
     st.subheader("1. Select Stock Exchange")
     st.markdown("#### Choose an Exchange", unsafe_allow_html=True)
-    exchange = st.selectbox("Select Exchange", 
+    exchange = st.selectbox("", 
                             ["NSE", "HKEX", "NYSE", "LSE", "TSE"], 
                             key="run_analysis_exchange")
 
@@ -620,7 +620,7 @@ elif st.session_state.get("chat_mode") == "run_analysis":
         st.session_state.last_exchange = exchange
 
     st.markdown("#### 2. Choose a Stock", unsafe_allow_html=True)
-    selected_ticker = st.selectbox("2. Choose a Stock", tickers, 
+    selected_ticker = st.selectbox("", tickers, 
                                    key="run_analysis_ticker")
 
     col1, col2 = st.columns(2)
