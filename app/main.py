@@ -49,10 +49,11 @@ st.markdown("""
     }
     /* Headline and subheader text */
     .stHeader, .stSubheader, h1, h2, h3, h4, h5, h6 {
-        color: #0A1F44 !important;
+        color: #000000 !important;
         font-weight: 900 !important;
-        letter-spacing: 0.5px;
-        text-shadow: 0 1px 8px #FFD700, 0 2px 8px #FAFAFA;
+        /* Remove all shadows and effects */
+        text-shadow: none !important;
+        letter-spacing: normal !important;
     }
     /* Chat input bar and send button - THEME UPDATE */
     section[data-testid="stChatInput"],
@@ -867,5 +868,4 @@ elif st.session_state.get("chat_mode") == "report":
                     st.error(f"Analysis failed: {str(e)}")
     except Exception as e:
         st.error(f"Error initializing report section: {str(e)}")
-
 
