@@ -161,6 +161,14 @@ st.markdown("""
         margin: 0 !important;
         padding: 0 !important;
     }
+    /* Make all radio/checkbox/select options and labels black and bold */
+    .stRadio label, .stRadio span, .stRadio div, 
+    .stCheckbox label, .stCheckbox span, .stCheckbox div,
+    .stSelectbox label, .stSelectbox span, .stSelectbox div,
+    .stSlider label, .stSlider span, .stSlider div {
+        color: #000000 !important;
+        font-weight: 700 !important;
+    }
     </style>
     <div class="top-banner">
         🪙<span style='color:#FFD700; font-weight:900; font-size:44px;'>StockMatrix</span>
