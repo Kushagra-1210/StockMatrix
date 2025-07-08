@@ -8,7 +8,6 @@ EXCHANGES = {
     "NSE": ".NS",
     "HKEX": ".HK",
     "NYSE": "",
-    "NASDAQ": "",
     "LSE": ".L",
     "TSE": ".T"
 }
