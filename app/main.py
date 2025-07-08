@@ -622,12 +622,12 @@ elif st.session_state.get("chat_mode") == "run_analysis":
     
     # Basis selection at the top (applies to all analyses)
     st.markdown("**Select Data Basis**", unsafe_allow_html=True)
-    st.markdown("<div style='margin-top: -5px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top: -20px'></div>", unsafe_allow_html=True)
     basis = st.radio(label="", options=["Quarterly", "Annual"], horizontal=True, key="run_analysis_basis")
 
     st.subheader("1. Select Stock Exchange")
     st.markdown("#### Choose an Exchange", unsafe_allow_html=True)
-    st.markdown("<div style='margin-top: -5px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top: -20px'></div>", unsafe_allow_html=True)
     exchange = st.selectbox("", 
                             ["NSE", "HKEX", "NYSE", "LSE", "TSE"], 
                             key="run_analysis_exchange")
@@ -640,7 +640,7 @@ elif st.session_state.get("chat_mode") == "run_analysis":
         st.session_state.last_exchange = exchange
 
     st.markdown("#### 2. Choose a Stock", unsafe_allow_html=True)
-    st.markdown("<div style='margin-top: -5px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top: -20px'></div>", unsafe_allow_html=True)
     selected_ticker = st.selectbox("", tickers, 
                                    key="run_analysis_ticker")
 
