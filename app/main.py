@@ -1,4 +1,5 @@
 import streamlit as st
+import yfinance as yf
 
 st.markdown("""
     <style>
@@ -106,7 +107,7 @@ if not st.session_state.greeted:
 
         - 📊 **Run Analysis**  
         - 🧾 **Generate a Report**  
-        - 💡 **Get Investment Insights**
+        - 💡 **Get Insights**
 
         Type your choice below to begin:
         """)
