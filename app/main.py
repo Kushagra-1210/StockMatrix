@@ -316,10 +316,13 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
                 st.stop()
 
     # Display section with proper null checks
-    if "leaderboard_df" in st.session_state and st.session_state.leaderboard_df is not None:
+    if "leaderboard_df" in st.session_state:
         df = st.session_state.leaderboard_df
         
-        if not df.empty:
+        # Check if df is None or empty
+        if df is None or df.empty:
+            st.warning("No data available. Please compute scores first.")
+        else:
             st.markdown("### Leaderboard Categories")
             cols = st.columns(2)
             
@@ -338,11 +341,9 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
                     st.dataframe(df.nsmallest(5, "Volatility"))
                 if st.button("Top 5 Negative Sentiment"):
                     st.dataframe(df.nsmallest(5, "Sentiment"))
-        else:
-            st.warning("No data available. Please compute scores first.")
     else:
         st.warning("Leaderboard data not initialized. Please compute scores.")
-        
+
 elif st.session_state.get("chat_mode") == "insight_generation":
     if st.session_state.show_insight_buttons:
         st.markdown("#### What do you want to do?")
