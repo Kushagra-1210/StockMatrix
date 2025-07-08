@@ -327,19 +327,19 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
             cols = st.columns(2)
             
             with cols[0]:
-                if st.button("Top 5 Strong Buys"):
+                if st.expander("Top 5 Strong Buys"):
                     st.dataframe(df.nlargest(5, "Final Score"))
-                if st.button("Top 5 Bullish"):
+                if st.expander("Top 5 Bullish"):
                     st.dataframe(df.nlargest(5, "TA Score"))
-                if st.button("Top 5 High Volatility"):
+                if st.expander("Top 5 High Volatility"):
                     st.dataframe(df.nlargest(5, "Volatility"))
             
             with cols[1]:
-                if st.button("Top 5 Undervalued"):
+                if st.expander("Top 5 Undervalued"):
                     st.dataframe(df.nlargest(5, "FA Score"))
-                if st.button("Top 5 Low Risk"):
+                if st.expander("Top 5 Low Risk"):
                     st.dataframe(df.nsmallest(5, "Volatility"))
-                if st.button("Top 5 Negative Sentiment"):
+                if st.expander("Top 5 Negative Sentiment"):
                     st.dataframe(df.nsmallest(5, "Sentiment"))
     else:
         st.warning("Leaderboard data not initialized. Please compute scores.")
