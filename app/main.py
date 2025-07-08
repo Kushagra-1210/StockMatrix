@@ -118,27 +118,30 @@ st.markdown("""
     .stExpanderContent {
         border: none !important;
     }
-    /* Streamlit button style: DEFAULT (remove custom grey) */
-    /* REMOVE or comment out the following block to revert to default:
+    /* Streamlit button style: grey background, black text */
     .stButton > button, .stDownloadButton > button {
-        background: #B0B0B0 !important;
-        color: #000000 !important;
+        background: linear-gradient(90deg, #FFD700 80%, #FFC300 100%) !important;
+        color: #1A1A1A !important;
         border: none !important;
         font-weight: bold !important;
         border-radius: 14px !important;
-        box-shadow: none !important;
+        box-shadow: 0 2px 8px rgba(10, 31, 68, 0.10) !important;
         transition: background 0.2s, color 0.2s !important;
     }
+
+    /* Button hover state */
     .stButton > button:hover, .stDownloadButton > button:hover {
-        background: #A0A0A0 !important;
-        color: #000000 !important;
+        background: #FFEA70 !important;
+        color: #0A1F44 !important;
     }
+
+    /* Button disabled state */
     .stButton > button:disabled, .stDownloadButton > button:disabled {
-        background: #D3D3D3 !important;
+        background: #FFF8DC !important;
         color: #888888 !important;
         opacity: 1 !important;
     }
-    */
+
     /* Links */
     a {
         color: #5F4B8B !important; /* Royal Purple for links */
@@ -175,6 +178,18 @@ st.markdown("""
     .stSlider label, .stSlider span, .stSlider div {
         color: #000000 !important;
         font-weight: 700 !important;
+    }
+    /* Light gray selectbox (dropdown) styling */
+    .stSelectbox > div, .stSelectbox label, .stSelectbox span {
+        background: #F0F0F0 !important;   /* Light gray */
+        color: #1A1A1A !important;        /* Black text */
+        border-radius: 12px !important;
+        font-weight: 700 !important;
+    }
+    .stSelectbox div[data-baseweb="select"] > div {
+        background: #F0F0F0 !important;
+        color: #1A1A1A !important;
+        border-radius: 12px !important;
     }
     </style>
     <div class="top-banner">
