@@ -2,11 +2,10 @@ import streamlit as st
 st.markdown("""
     <style>
     .top-banner {
-        background-color: #0a0a23;
-        color: white;
+        color: black;
         padding: 10px 20px;
-        font-size: 20px;
-        font-weight: 600;
+        font-size: 40px;
+        font-weight: 700;
         border-bottom: 1px solid #444;
         position: sticky;
         top: 0;
@@ -14,8 +13,22 @@ st.markdown("""
     }
     </style>
     <div class="top-banner">
-        StockMatrix — AI-Powered Global Stock Analyzer
+        🪙StockMatrix
     </div>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+<style>
+footer {visibility: hidden;}
+[data-testid="stAppViewContainer"]::after {
+    content: "Made by Kushagra Bansal";
+    position: fixed;
+    bottom: 8px;
+    right: 12px;
+    font-size: 12px;
+    color: #ccc;
+}
+</style>
 """, unsafe_allow_html=True)
 
 st.set_page_config(page_title="STOCK ANALYSER", layout="centered")
