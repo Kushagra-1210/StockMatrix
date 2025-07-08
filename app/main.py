@@ -191,6 +191,16 @@ st.markdown("""
         color: #1A1A1A !important;
         border-radius: 12px !important;
     }
+    /* Remove selectbox focus/active border and shadow */
+    .stSelectbox > div:focus-within, .stSelectbox > div:active, .stSelectbox > div[data-baseweb="select"]:focus-within, .stSelectbox > div[data-baseweb="select"]:active {
+        box-shadow: none !important;
+        border: none !important;
+        outline: none !important;
+    }
+    .stSelectbox > div, .stSelectbox div[data-baseweb="select"] > div {
+        border: none !important;
+        outline: none !important;
+    }
     </style>
     <div class="top-banner">
         🪙<span style='color:#FFD700; font-weight:900; font-size:44px;'>StockMatrix</span>
@@ -378,7 +388,8 @@ if st.session_state.get("chat_mode") == "screener":
     basis = st.radio("Select Analysis Period", ["Quarterly", "Annual"],
                     horizontal=True, key="screener_basis")
     
-    exchange = st.selectbox("Select Exchange", 
+    st.markdown("**Choose an exchange**")
+    exchange = st.selectbox("", 
                           ["NSE", "HKEX", "NYSE", "LSE", "TSE"], 
                           key="screener_exchange")
     
@@ -590,11 +601,13 @@ elif st.session_state.get("chat_mode") == "run_analysis":
     st.subheader("🧪 Run Analysis Module")
     
     # Basis selection at the top (applies to all analyses)
-    basis = st.radio("Select Data Basis", ["Quarterly", "Annual"], 
+    st.markdown("**Select Data Basis**")
+    basis = st.radio("", ["Quarterly", "Annual"], 
                     horizontal=True, key="run_analysis_basis")
 
     st.subheader("1. Select Stock Exchange")
-    exchange = st.selectbox("Choose an exchange:", 
+    st.markdown("**Choose an exchange**")
+    exchange = st.selectbox("", 
                           options=["NSE", "HKEX", "NYSE", "LSE", "TSE"], 
                           key="run_analysis_exchange")
 
@@ -823,7 +836,8 @@ elif st.session_state.get("chat_mode") == "report":
                                      key="report_ticker")
         
         # Basis selection with clear labels
-        basis = st.radio("Select Data Basis", ["Quarterly", "Annual"],
+        st.markdown("**Select Data Basis**")
+        basis = st.radio("", ["Quarterly", "Annual"],
                         horizontal=True, key="report_basis",
                         help="Quarterly: Last 3 months data | Annual: Last 12 months data")
 
