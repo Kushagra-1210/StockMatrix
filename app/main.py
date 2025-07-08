@@ -118,30 +118,27 @@ st.markdown("""
     .stExpanderContent {
         border: none !important;
     }
-    /* Streamlit button style: grey background, black text */
+    /* Streamlit button style: DEFAULT (remove custom grey) */
+    /* REMOVE or comment out the following block to revert to default:
     .stButton > button, .stDownloadButton > button {
-        background: #B0B0B0 !important;   /* Light grey */
-        color: #000000 !important;        /* Black text */
+        background: #B0B0B0 !important;
+        color: #000000 !important;
         border: none !important;
         font-weight: bold !important;
         border-radius: 14px !important;
         box-shadow: none !important;
         transition: background 0.2s, color 0.2s !important;
     }
-
-    /* Button hover state */
     .stButton > button:hover, .stDownloadButton > button:hover {
-        background: #A0A0A0 !important;   /* Slightly darker grey */
+        background: #A0A0A0 !important;
         color: #000000 !important;
     }
-
-    /* Button disabled state */
     .stButton > button:disabled, .stDownloadButton > button:disabled {
-        background: #D3D3D3 !important;   /* Even lighter grey */
-        color: #888888 !important;        /* Greyed out text */
+        background: #D3D3D3 !important;
+        color: #888888 !important;
         opacity: 1 !important;
     }
-
+    */
     /* Links */
     a {
         color: #5F4B8B !important; /* Royal Purple for links */
