@@ -180,12 +180,18 @@ st.markdown("""
         font-weight: 700 !important;
     }
     /* Light gray selectbox (dropdown) styling */
-    .stSelectbox > div, .stSelectbox label, .stSelectbox span {
-        background: #F0F0F0 !important;   /* Light gray */
-        color: #1A1A1A !important;        /* Black text */
+    .stSelectbox label {
+        color: #1A1A1A !important;
+        font-weight: 700 !important;
+    }
+
+    .stSelectbox div[data-baseweb="select"] > div {
+        background: #F0F0F0 !important;   /* Light gray dropdown field only */
+        color: #1A1A1A !important;
         border-radius: 12px !important;
         font-weight: 700 !important;
     }
+
     .stSelectbox div[data-baseweb="select"] > div {
     background: #F0F0F0 !important;   /* Light gray for dropdown */
     color: #1A1A1A !important;
