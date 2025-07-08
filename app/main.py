@@ -470,7 +470,9 @@ if st.session_state.get("chat_mode") == "screener":
         if results:
             st.success(f"✅ {len(results)} stocks matched your criteria.")
             df = pd.DataFrame(results)
-            
+            col1, col2, col3 = st.columns([1, 6, 1])  # Wider middle column
+            with col2:
+                st.dataframe(df)
             # Enhanced styling function
             def background_color(row):
                 colors = []
