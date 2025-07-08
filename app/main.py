@@ -186,9 +186,6 @@ if st.session_state.get("chat_mode") == "screener":
     with col3:
         max_vol = st.slider("Max Volatility %", 0, 100, 50)
 
-if st.button("Run Screener", key="run_screener_btn"):
-    with st.spinner(f"⏳ Screening {basis.lower()} data..."):
-        tickers = get_top_50_tickers(exchange)
         
         def process_ticker(ticker):
             try:
