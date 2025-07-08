@@ -118,9 +118,9 @@ st.markdown("""
     .stExpanderContent {
         border: none !important;
     }
-    /* Streamlit button style: gold background, black text */
+    /* Streamlit button style: grey background, black text */
     .stButton > button, .stDownloadButton > button {
-        background: #FFD700 !important;
+        background: #23242B !important;
         color: #000000 !important;
         border: none !important;
         font-weight: bold !important;
@@ -129,7 +129,7 @@ st.markdown("""
         transition: background 0.2s, color 0.2s !important;
     }
     .stButton > button:hover, .stDownloadButton > button:hover {
-        background: #FFC300 !important;
+        background: #44454B !important;
         color: #000000 !important;
     }
     /* Links */
