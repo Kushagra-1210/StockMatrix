@@ -3,22 +3,133 @@ import yfinance as yf
 
 st.markdown("""
     <style>
+    body {
+        background: linear-gradient(135deg, #0f2027 0%, #283e51 100%) !important;
+        min-height: 100vh;
+        color: #e3eafc !important;
+    }
+    .stApp {
+        background: linear-gradient(135deg, #0f2027 0%, #283e51 100%) !important;
+        min-height: 100vh;
+        color: #e3eafc !important;
+    }
     .top-banner {
         padding: 10px 20px;
         font-size: 40px;
         font-weight: 700;
-        border-bottom: 1px solid #444;
+        border-bottom: 1px solid #1a237e;
         position: sticky;
         top: 0;
         z-index: 999;
+        background: linear-gradient(90deg, #1a237e 60%, #ffd700 100%);
+        color: #ffd700 !important;
+        box-shadow: 0 2px 8px rgba(26, 35, 126, 0.12);
+        border-radius: 0 0 18px 18px;
+        letter-spacing: 1px;
+    }
+    .block-container {
+        background: rgba(26, 35, 126, 0.08);
+        border-radius: 18px;
+        padding: 24px;
+        box-shadow: 0 4px 32px rgba(26, 35, 126, 0.12);
+        color: #e3eafc !important;
+    }
+    /* Make all markdown and widget text visible */
+    .stMarkdown, .stText, .stExpander, .stDataFrame, .stRadio, .stSelectbox, .stButton, .stSlider, .stDownloadButton, .stChatInputContainer, .stChatMessage, .stChatInput, .stTextInput, .stTextArea, .stSelectbox > div, .stSelectbox label, .stRadio label, .stExpanderHeader, .stExpanderContent, .stAlert, .stSubheader, .stHeader, .stCaption, .stTable, .stDataFrame, .stCheckbox label {
+        color: #e3eafc !important;
+    }
+    /* Chat input bar and send button - THEME UPDATE */
+    section[data-testid="stChatInput"],
+    .stChatInputContainer, /* fallback for older/newer Streamlit versions */
+    div[data-testid="stChatInput"] {
+        background: #ffd700 !important; /* Gold background */
+        color: #162447 !important; /* Royal blue text */
+        border-radius: 16px !important;
+        border: 2px solid #162447 !important;
+        box-shadow: 0 2px 12px 0 rgba(26, 35, 126, 0.25) !important;
+        margin-bottom: 24px !important;
+    }
+    section[data-testid="stChatInput"] input,
+    .stChatInputContainer input,
+    div[data-testid="stChatInput"] input {
+        background: #ffd700 !important;
+        color: #162447 !important;
+        border: none !important;
+        font-weight: 500 !important;
+        font-size: 18px !important;
+    }
+    section[data-testid="stChatInput"] button,
+    .stChatInputContainer button,
+    div[data-testid="stChatInput"] button {
+        background: #162447 !important;
+        color: #ffd700 !important;
+        border-radius: 8px !important;
+        font-weight: bold !important;
+        border: 2px solid #162447 !important;
+        box-shadow: 0 2px 8px 0 rgba(26, 35, 126, 0.18) !important;
+        transition: background 0.2s, color 0.2s !important;
+    }
+    section[data-testid="stChatInput"] button:hover,
+    .stChatInputContainer button:hover,
+    div[data-testid="stChatInput"] button:hover {
+        background: #ffd700 !important;
+        color: #162447 !important;
+        border: 2px solid #162447 !important;
+    }
+    /* Expander header color and icon */
+    .stExpanderHeader {
+        color: #ffd700 !important;
+        font-weight: 600;
+        font-size: 18px;
+        position: relative;
+        padding-left: 28px !important;
+    }
+    .stExpanderHeader:before {
+        content: '\25BC';
+        position: absolute;
+        left: 0;
+        top: 2px;
+        color: #ffd700;
+        font-size: 18px;
+        transition: transform 0.2s;
+    }
+    /* Rotate icon when expanded */
+    .stExpander[aria-expanded="true"] .stExpanderHeader:before {
+        transform: rotate(180deg);
+    }
+    /* Expander background */
+    .stExpander {
+        background: rgba(26, 35, 126, 0.7) !important;
+        border-radius: 12px !important;
+        border: 1px solid #ffd700 !important;
+        margin-bottom: 12px !important;
+    }
+    /* Links */
+    a {
+        color: #ffd700 !important;
+    }
+    /* Make all markdown text visible */
+    .stMarkdown p, .stMarkdown ul, .stMarkdown li, .stMarkdown span, .stMarkdown strong, .stMarkdown em {
+        color: #e3eafc !important;
+    }
+    /* Remove white bar at bottom (footer) */
+    footer, .st-emotion-cache-1v0mbdj, .st-emotion-cache-1avcm0n {
+        background: transparent !important;
+        color: transparent !important;
+        box-shadow: none !important;
+        border: none !important;
+        height: 0 !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
     </style>
     <div class="top-banner">
-        🪙StockMatrix
+        🪙<span style='color:#ffd700'>StockMatrix</span>
     </div>
 """, unsafe_allow_html=True)
 
-st.markdown("<div style='text-align: right; font-size: 13px; color: gray;'>Curated and powered by Kushagra Bansal</div>", unsafe_allow_html=True)
+st.markdown("<div style='text-align: right; font-size: 13px; color: #ffd700; font-weight: 600; letter-spacing: 0.5px;'>Curated and powered by Kushagra Bansal</div>", unsafe_allow_html=True)
 
 
 st.set_page_config(page_title="STOCK ANALYSER", layout="centered")
