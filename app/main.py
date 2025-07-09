@@ -402,7 +402,7 @@ if user_input:
             "⚠️ Sorry, I can only help with:\n\n"
             "- Run Analysis (RA)\n"
             "- Generate Report (GR)\n"
-            "- Insight Generation (IG)\n"
+            "- Insight Generation (IG)\n\n"
             "Please type one of these to continue."
         )
 
