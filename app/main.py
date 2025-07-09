@@ -484,15 +484,12 @@ if st.session_state.get("chat_mode") == "screener":
                 colors = []
                 for val in row:
                     if isinstance(val, (int, float)):
-                        # FA Score (Green gradient)
                         if row.name == 'FA Score':
                             intensity = min(255, int(255 * (val/100)))
                             colors.append(f'background-color: rgba(0, 255, 0, {intensity/255})')
-                        # TA Score (Blue gradient)
                         elif row.name == 'TA Score':
                             intensity = min(255, int(255 * (val/100)))
                             colors.append(f'background-color: rgba(0, 0, 255, {intensity/255})')
-                        # Volatility (Red gradient - reversed)
                         elif row.name == 'Volatility':
                             volatility = float(str(val).replace('%',''))
                             intensity = min(255, int(255 * (1 - volatility/100)))
@@ -500,47 +497,57 @@ if st.session_state.get("chat_mode") == "screener":
                         else:
                             colors.append('')
                     else:
-                        # Verdict text coloring
                         if row.name == 'Verdict':
                             if 'Undervalued' in val:
-                                colors.append('background-color: #90EE90')  # Light green
+                                colors.append('background-color: #90EE90')
                             elif 'Fair' in val:
-                                colors.append('background-color: #ADD8E6')  # Light blue
+                                colors.append('background-color: #ADD8E6')
                             else:
                                 colors.append('')
                         else:
                             colors.append('')
                 return colors
             
-            # Apply styling with improved performance
-            styled_df = df.style.apply(background_color, axis=0)\
-                              .format({'Volatility': "{:.2f}%"})\
-                              .set_properties(**{'text-align': 'center'})
-            
-            # Optimized display
-            # Step 1: Inject scoped CSS for Screener Table only
+            # Add CSS styling at the top of your script (right after your existing CSS)
             st.markdown("""
             <style>
-            .perfectly-centered-table {
+            .centered-table-container {
                 display: flex;
                 justify-content: center;
                 width: 100%;
-                margin: 0 auto;           
-            }
-            .centered-table table {
                 margin: 0 auto;
-                width: auto !important; /* Allow table to shrink */
+            }
+            .centered-table-container table {
+                margin: 0 auto;
+                border-collapse: collapse;
+                width: auto !important;
+            }
+            .centered-table-container th, 
+            .centered-table-container td {
+                text-align: center !important;
+                padding: 8px 12px !important;
             }
             </style>
             """, unsafe_allow_html=True)
-                
-            # Display the styled table in the centered container
+
+            # Apply styling
+            styled_df = df.style\
+                .apply(background_color, axis=0)\
+                .format({'Volatility': "{:.2f}%"})\
+                .set_properties(**{
+                    'text-align': 'center',
+                    'margin': '0 auto'
+                })
+            
+            # Display the table in a centered container
             st.markdown(
-                f'<div class="perfectlty-centered-table">{styled_df.to_html()}</div>',
+                '<div class="centered-table-container">' + 
+                styled_df.to_html() + 
+                '</div>', 
                 unsafe_allow_html=True
             )
-                        
-            # Add download button
+            
+            # Download button (unchanged)
             csv = df.to_csv(index=False).encode('utf-8')
             st.download_button(
                 "📥 Download Results as CSV",
@@ -548,8 +555,6 @@ if st.session_state.get("chat_mode") == "screener":
                 file_name=f"{exchange}_screener_results.csv",
                 mime="text/csv"
             )
-        else:
-            st.warning("⚠️ No stocks matched the given filters.")
 
 elif st.session_state.get("chat_mode") == "stock_leaderboard":
     if st.button("← Back to Main Menu"):
