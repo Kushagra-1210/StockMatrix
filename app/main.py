@@ -428,9 +428,20 @@ if st.session_state.get("chat_mode") == "screener":
     with col2:
         min_ta = st.slider("Minimum TA Score", 0, 100, 50)
     with col3:
-        max_vol = st.slider("Max Volatility %", 0, 100, 50)
+        max_vol = st.slider(
+            "Volatility Threshold (Annualized %)", 
+            0, 100, 50, 
+            help="This sets the max allowable annualized volatility. Lower = more stable stocks."
+        )
 
-        
+        def get_volatility_risk_label(vol):
+            if vol < 2:
+                return "🟢 Low"
+            elif vol < 5:
+                return "🟡 Medium"
+            else:
+                return "🔴 High"
+
         def process_ticker(ticker):
             try:
                 # Get all analyses in parallel
@@ -449,7 +460,7 @@ if st.session_state.get("chat_mode") == "screener":
                         "Ticker": ticker,
                         "FA Score": fa["fa_score"],
                         "TA Score": ta["ta_score"],
-                        "Volatility": vol,
+                        "Volatility": f"{vol:.2f}% ({get_volatility_risk_label(vol)})",
                         "Verdict": fa["verdict"]
                     }
             except Exception:
