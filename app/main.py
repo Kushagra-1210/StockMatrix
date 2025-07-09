@@ -216,8 +216,8 @@ st.markdown("""
     box-shadow: none !important;
     }
     div[data-testid="stSelectbox"] {
-    margin-top: -10px !important;
-    margin-bottom: 10px !important;
+    margin-top: -40px !important;
+    margin-bottom: 0px !important;
     padding-top: 0px !important;
     }
     div[data-testid="stSelectbox"] > div:first-child {
@@ -890,6 +890,8 @@ elif st.session_state.get("chat_mode") == "run_analysis":
 elif st.session_state.get("chat_mode") == "report":
     st.subheader("📄 Report Generator")
     report_mod = importlib.import_module("backend.report_generator")
+    
+    st.markdown('<div class="report-selectbox-wrapper">', unsafe_allow_html=True)
 
     # Exchange and stock selection (move outside try block)
     exchange = st.selectbox(
@@ -902,7 +904,9 @@ elif st.session_state.get("chat_mode") == "report":
         tickers = get_top_50_tickers(exchange)
         selected_ticker = st.selectbox("Choose a Stock", tickers, 
                                      key="report_ticker")
-        
+    
+        st.markdown('<div class="report-selectbox-wrapper">', unsafe_allow_html=True)
+
         # Basis selection with clear labels
         st.markdown("**Select Data Basis**")
         basis = st.radio("", ["Quarterly", "Annual"],
