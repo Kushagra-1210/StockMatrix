@@ -3,7 +3,7 @@ import yfinance as yf
 
 st.markdown("""
     <div class="top-banner">
-        🪙<span style="color: #FFFFFF !important; font-weight: 900 !important; font-size: 44px !important;">
+        🪙 <span>StockMatrix</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -23,16 +23,22 @@ st.markdown("""
         padding: 10px 20px;
         font-size: 44px;
         font-weight: 900;
-        border-bottom: 1px solid #0A1F44;
         position: sticky;
         top: 0;
         z-index: 999;
         background: linear-gradient(90deg, #0A1F44 60%, #FFD700 100%);
-        color: #FFFFFF!important; /* White text for max contrast */
-        text-shadow: none !important; /* Remove text shadow */
+        color: #FFFFFF !important;
+        text-shadow: none !important;
         box-shadow: 0 2px 8px rgba(10, 31, 68, 0.12);
         border-radius: 0 0 18px 18px;
         letter-spacing: 1px;
+        border-bottom: 1px solid #0A1F44;
+    }
+    .top-banner span {
+        color: #FFFFFF !important;
+        font-weight: 900 !important;
+        font-size: 44px !important;
+        text-shadow: none !important;
     }
     .curated-footer {
         text-align: right;
