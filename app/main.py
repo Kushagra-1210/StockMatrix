@@ -474,15 +474,11 @@ if st.session_state.get("chat_mode") == "screener":
             progress_bar.empty()
             status_text.empty()
 
-                # Display results
-# Replace this section in your code (around line 550-600 where the table is displayed):
-
-# Display results
         if results:
             st.success(f"✅ {len(results)} stocks matched your criteria.")
             df = pd.DataFrame(results)
             
-            # Enhanced styling function (keep this unchanged)
+            # Enhanced styling function
             def background_color(row):
                 colors = []
                 for val in row:
@@ -511,22 +507,43 @@ if st.session_state.get("chat_mode") == "screener":
                             colors.append('')
                 return colors
             
-            # Apply styling and display with proper centering
+            # Apply styling with proper container width control
             styled_df = df.style\
                 .apply(background_color, axis=0)\
                 .format({'Volatility': "{:.2f}%"})\
                 .set_table_styles([
-                    {'selector': 'table', 'props': [('margin', '0 auto'), ('width', 'auto')]},
-                    {'selector': 'th, td', 'props': [('text-align', 'center')]},
-                    {'selector': 'th', 'props': [('background-color', '#f2f2f2'), ('font-weight', 'bold')]}
+                    {'selector': 'table', 'props': [
+                        ('width', '100%'),
+                        ('max-width', '100%'),
+                        ('table-layout', 'fixed'),
+                        ('margin', '0 auto')
+                    ]},
+                    {'selector': 'th, td', 'props': [
+                        ('text-align', 'center'),
+                        ('padding', '8px'),
+                        ('word-wrap', 'break-word'),
+                        ('overflow', 'hidden'),
+                        ('text-overflow', 'ellipsis')
+                    ]},
+                    {'selector': 'th', 'props': [
+                        ('background-color', '#f2f2f2'),
+                        ('font-weight', 'bold'),
+                        ('font-size', '14px')
+                    ]},
+                    {'selector': 'td', 'props': [
+                        ('font-size', '13px')
+                    ]}
                 ])
             
-            # Center the table using columns
-            col1, col2, col3 = st.columns([1, 2, 1])
-            with col2:
-                st.dataframe(styled_df, use_container_width=False)
+            # Display table with proper width constraints
+            st.dataframe(
+                styled_df, 
+                use_container_width=True,
+                hide_index=True,
+                height=400  # Set max height to prevent overflow
+            )
             
-            # Keep your download button code unchanged
+            # Download button
             csv = df.to_csv(index=False).encode('utf-8')
             st.download_button(
                 "📥 Download Results as CSV",
