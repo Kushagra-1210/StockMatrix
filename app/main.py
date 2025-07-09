@@ -456,7 +456,8 @@ if st.session_state.get("chat_mode") == "screener":
                         "Ticker": ticker,
                         "FA Score": fa["fa_score"],
                         "TA Score": ta["ta_score"],
-                        "Volatility": f"{vol:.2f}% ({get_volatility_risk_label(vol)})",
+                        "Volatility": vol,
+                        "Risk Level": get_volatility_risk_label(vol),
                         "Verdict": fa["verdict"]
                     }
             except Exception:
