@@ -2,10 +2,13 @@ import streamlit as st
 import yfinance as yf
 
 st.markdown("""
-    <style>
-    <div id="stockmatrix-title-wrapper">
-        🪙 <div id="stockmatrix-title">StockMatrix</div>
+    <div class="top-banner">
+        🪙 <span>StockMatrix</span>
     </div>
+    """, unsafe_allow_html=True)
+
+st.markdown("""
+    <style>
     body {
         background: #FAFAFA !important; /* Off-White Neutral */
         min-height: 100vh;
@@ -32,17 +35,9 @@ st.markdown("""
     }
     #stockmatrix-title {
         color: #FFFFFF !important;
-        font-size: 44px !important;
         font-weight: 900 !important;
+        font-size: 44px !important;
         text-shadow: none !important;
-        background: none !important;
-    }
-    #stockmatrix-title-wrapper {
-        background: linear-gradient(90deg, #0A1F44 60%, #FFD700 100%) !important;
-        padding: 10px 20px;
-        border-radius: 0 0 18px 18px;
-        box-shadow: 0 2px 8px rgba(10, 31, 68, 0.12);
-        border-bottom: 1px solid #0A1F44;
     }
     .curated-footer {
         text-align: right;
