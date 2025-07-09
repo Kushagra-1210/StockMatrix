@@ -224,16 +224,18 @@ st.markdown("""
     div[data-testid="stSelectbox"] > div:first-child:only-child {
     margin-top: -20px !important;
     }
+    /* Fix spacing ONLY inside Run Analysis section */
+    .ra-selectbox-wrapper div[data-testid="stSelectbox"] {
+        margin-top: -40px !important;
+        margin-bottom: 0px !important;
+        padding-top: 0px !important;
+    }
+
     /* Fix spacing ONLY inside report section */
     .report-selectbox-wrapper div[data-testid="stSelectbox"] {
         margin-top: 8px !important;
         margin-bottom: 16px !important;
         padding-top: 0px !important;
-    }
-        /* Fix spacing ONLY inside Run Analysis section */
-    .ra-selectbox-wrapper div[data-testid="stSelectbox"] {
-        margin-top: -40px !important;
-        margin-bottom: 0px !important;
     }
 
 
