@@ -193,9 +193,9 @@ st.markdown("""
     }
 
     .stSelectbox div[data-baseweb="select"] > div {
-    background: #F0F0F0 !important;   /* Light gray for dropdown */
-    color: #1A1A1A !important;
-    border-radius: 12px !important;
+        background: #F0F0F0 !important;   /* Light gray for dropdown */
+        color: #1A1A1A !important;
+        border-radius: 12px !important;
     }
 
     /* Remove selectbox focus/active border and shadow */
@@ -210,15 +210,19 @@ st.markdown("""
     }
     /* --- Remove background & spacing from radio buttons --- */
     div[data-testid="stSelectbox"] > div:first-child {
-    background: transparent !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    box-shadow: none !important;
+        background: transparent !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+    }
+    .ra-selectbox-wrapper h4 {
+        margin-bottom: 2px !important;
+        margin-top: 4px !important;
     }
     .ra-selectbox-wrapper div[data-testid="stRadio"] {
-    margin-top: 4px !important;
-    margin-bottom: 8px !important;
-    padding: 0 !important;
+        margin-top: 4px !important;
+        margin-bottom: 8px !important;
+        padding: 0 !important;
     }
     /* Fix spacing ONLY inside Run Analysis section */
     .ra-selectbox-wrapper div[data-testid="stSelectbox"] {
@@ -672,11 +676,10 @@ elif st.session_state.get("chat_mode") == "run_analysis":
     st.subheader("🧪 Run Analysis Module")
     
     st.markdown('<div class="ra-selectbox-wrapper">', unsafe_allow_html=True)# Basis selection at the top (applies to all analyses)
-    st.markdown("**Select Data Basis**", unsafe_allow_html=True)
-    
+    st.markdown("#### Select Data Basis")
     basis = st.radio(label="", options=["Quarterly", "Annual"], horizontal=True, key="run_analysis_basis")
 
-    st.markdown("1. Choose an Exchange", unsafe_allow_html=True)
+    st.markdown("#### 1. Choose an Exchange")
     exchange = st.selectbox("", 
                             ["NSE", "HKEX", "NYSE", "LSE", "TSE"], 
                             key="run_analysis_exchange")
