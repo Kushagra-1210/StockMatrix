@@ -209,25 +209,20 @@ st.markdown("""
         outline: none !important;
     }
     /* --- Remove background & spacing from radio buttons --- */
-    div[data-testid="stRadio"] {
-    background: transparent !important;
-    padding: 0 !important;
-    margin-top: 2px !important;
-    margin-bottom: 8px !important;
-    box-shadow: none !important;
-    }
     div[data-testid="stSelectbox"] > div:first-child {
     background: transparent !important;
     padding: 0 !important;
     margin: 0 !important;
     box-shadow: none !important;
     }
-    div[data-testid="stSelectbox"] > div:first-child:only-child {
-    margin-top: -20px !important;
+    .ra-selectbox-wrapper div[data-testid="stRadio"] {
+    margin-top: 4px !important;
+    margin-bottom: 8px !important;
+    padding: 0 !important;
     }
     /* Fix spacing ONLY inside Run Analysis section */
     .ra-selectbox-wrapper div[data-testid="stSelectbox"] {
-        margin-top: -20px !important;
+        margin-top: -8px !important;
         margin-bottom: 10px !important;
         padding-top: 0px !important;
     }
@@ -676,9 +671,9 @@ elif st.session_state.get("chat_mode") == "insight_generation":
 elif st.session_state.get("chat_mode") == "run_analysis":
     st.subheader("🧪 Run Analysis Module")
     
-    # Basis selection at the top (applies to all analyses)
+    st.markdown('<div class="ra-selectbox-wrapper">', unsafe_allow_html=True)# Basis selection at the top (applies to all analyses)
     st.markdown("**Select Data Basis**", unsafe_allow_html=True)
-    st.markdown('<div class="ra-selectbox-wrapper">', unsafe_allow_html=True)
+    
     basis = st.radio(label="", options=["Quarterly", "Annual"], horizontal=True, key="run_analysis_basis")
 
     st.markdown("1. Choose an Exchange", unsafe_allow_html=True)
