@@ -212,7 +212,8 @@ st.markdown("""
     div[data-testid="stRadio"] {
     background: transparent !important;
     padding: 0 !important;
-    margin-top: -10px !important;
+    margin-top: 2px !important;
+    margin-bottom: 8px !important;
     box-shadow: none !important;
     }
     div[data-testid="stSelectbox"] > div:first-child {
@@ -226,8 +227,8 @@ st.markdown("""
     }
     /* Fix spacing ONLY inside Run Analysis section */
     .ra-selectbox-wrapper div[data-testid="stSelectbox"] {
-        margin-top: -40px !important;
-        margin-bottom: 20px !important;
+        margin-top: -20px !important;
+        margin-bottom: 10px !important;
         padding-top: 0px !important;
     }
 
