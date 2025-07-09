@@ -515,7 +515,7 @@ if st.session_state.get("chat_mode") == "screener":
             # Apply styling with improved performance
             styled_df = df.style.apply(background_color, axis=0)\
                               .format({'Volatility': "{:.2f}%"})\
-                              .set_properties(**{'text-align': 'center'})
+                              .set_properties(**{'text-align': 'left'})
             
             # Optimized display
             st.markdown(
