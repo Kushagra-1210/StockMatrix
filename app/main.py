@@ -483,6 +483,7 @@ if st.session_state.get("chat_mode") == "screener":
     # Display results
     if results:
         st.success(f"✅ {len(results)} stocks matched your criteria.")
+        st.markdown(f'<p style="color:black;">✅ {len(results)} stocks matched your criteria.</p>', unsafe_allow_html=True)
         df = pd.DataFrame(results)
         
         # Enhanced styling function
