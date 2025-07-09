@@ -482,13 +482,8 @@ if st.session_state.get("chat_mode") == "screener":
 
     # Display results
     if results:
-        # Hide default success message        
-        # Manually add black text in the same position
-        st.markdown(
-            f'<div style="color: black; margin-top: -40px; margin-bottom: 20px;">'
-            f'✅ {len(results)} stocks matched your criteria.</div>',
-            unsafe_allow_html=True
-        )
+
+        st.markdown(f"<p style='color: black;'>✅ {len(results)} stocks matched your criteria.</p>", unsafe_allow_html=True)
 
         df = pd.DataFrame(results)
         
