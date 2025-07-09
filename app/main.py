@@ -521,18 +521,16 @@ if st.session_state.get("chat_mode") == "screener":
             # Step 1: Inject scoped CSS for Screener Table only
             st.markdown("""
                 <style>
-                .screener-table table {
-                    width: 100% !important;
-                    border-collapse: collapse;
+                .screener-table-container {
+                    display: flex;
+                    justify-content: flex-start !important;
+                    width: 100%;
+                }
+
+                .screener-table-container table {
                     margin-left: 0 !important;
-                }
-                .screener-table th, .screener-table td {
-                    text-align: center !important;
-                    padding: 8px !important;
-                    white-space: nowrap !important;
-                }
-                .screener-table th {
-                    background-color: #f2f2f2 !important;
+                    margin-right: auto !important;
+                    width: auto !important;
                 }
                 </style>
             """, unsafe_allow_html=True)
