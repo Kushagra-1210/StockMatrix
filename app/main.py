@@ -518,8 +518,11 @@ if st.session_state.get("chat_mode") == "screener":
                               .set_properties(**{'text-align': 'center'})
             
             # Optimized display
-            st.markdown(styled_df.to_html(), unsafe_allow_html=True)
-            
+            st.markdown(
+                f"<div style='text-align: left'>{styled_df.to_html()}</div>", 
+                unsafe_allow_html=True
+            )
+                        
             # Add download button
             csv = df.to_csv(index=False).encode('utf-8')
             st.download_button(
