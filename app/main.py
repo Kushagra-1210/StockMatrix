@@ -240,7 +240,7 @@ st.markdown("""
 
     </style>
     <div class="top-banner">
-        🪙<span style='color:#FFFFFF; font-weight:900; font-size:44px;'>StockMatrix</span>
+        🪙<span style='color:#FFFFFF !important; font-weight:900; font-size:44px; text-shadow: 0 2px 6px rgba(0,0,0,0.5);'>StockMatrix</span>
     </div>
 """, unsafe_allow_html=True)
 
