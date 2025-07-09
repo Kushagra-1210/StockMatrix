@@ -482,9 +482,10 @@ if st.session_state.get("chat_mode") == "screener":
 
     # Display results
     if results:
+        # Apply custom CSS to make success text black
         st.markdown("""
             <style>
-                div[data-testid="stNotification"] p {
+                .st-emotion-cache-1pbsqtx {
                     color: black !important;
                 }
             </style>
