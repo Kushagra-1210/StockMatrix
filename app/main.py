@@ -216,8 +216,8 @@ st.markdown("""
     box-shadow: none !important;
     }
     div[data-testid="stSelectbox"] {
-    margin-top: -40px !important;
-    margin-bottom: 0px !important;
+    margin-top: -10px !important;
+    margin-bottom: 10px !important;
     padding-top: 0px !important;
     }
     div[data-testid="stSelectbox"] > div:first-child {
