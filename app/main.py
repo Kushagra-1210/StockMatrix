@@ -238,10 +238,9 @@ st.markdown("""
         padding-top: 0px !important;
     }
 
-
     </style>
     <div class="top-banner">
-        🪙<span style='color:#FFD700; font-weight:900; font-size:44px;'>StockMatrix</span>
+        🪙<span style='color:#FFFFFF; font-weight:900; font-size:44px;'>StockMatrix</span>
     </div>
 """, unsafe_allow_html=True)
 
