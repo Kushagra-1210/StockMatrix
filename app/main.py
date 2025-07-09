@@ -226,8 +226,8 @@ st.markdown("""
     }
     /* Fix spacing ONLY inside Run Analysis section */
     .ra-selectbox-wrapper div[data-testid="stSelectbox"] {
-        margin-top: -90px !important;
-        margin-bottom: 100px !important;
+        margin-top: -40px !important;
+        margin-bottom: 20px !important;
         padding-top: 0px !important;
     }
 
@@ -680,7 +680,7 @@ elif st.session_state.get("chat_mode") == "run_analysis":
     st.markdown('<div class="ra-selectbox-wrapper">', unsafe_allow_html=True)
     basis = st.radio(label="", options=["Quarterly", "Annual"], horizontal=True, key="run_analysis_basis")
 
-    st.markdown("#### 1. Choose an Exchange", unsafe_allow_html=True)
+    st.markdown("1. Choose an Exchange", unsafe_allow_html=True)
     exchange = st.selectbox("", 
                             ["NSE", "HKEX", "NYSE", "LSE", "TSE"], 
                             key="run_analysis_exchange")
@@ -692,7 +692,7 @@ elif st.session_state.get("chat_mode") == "run_analysis":
         st.session_state["run_analysis_ticker"] = tickers[0] if tickers else None
         st.session_state.last_exchange = exchange
 
-    st.markdown("#### 2. Choose a Stock", unsafe_allow_html=True)
+    st.markdown("2. Choose a Stock", unsafe_allow_html=True)
     selected_ticker = st.selectbox("", tickers, 
                                    key="run_analysis_ticker")
     st.markdown('</div>', unsafe_allow_html=True)
