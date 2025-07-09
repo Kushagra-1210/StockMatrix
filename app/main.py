@@ -474,76 +474,65 @@ if st.session_state.get("chat_mode") == "screener":
             progress_bar.empty()
             status_text.empty()
 
+# Replace the entire dataframe display section with this custom HTML approach:
+
         if results:
             st.success(f"✅ {len(results)} stocks matched your criteria.")
             df = pd.DataFrame(results)
             
-            # Enhanced styling function
-            def background_color(row):
-                colors = []
-                for val in row:
-                    if isinstance(val, (int, float)):
-                        if row.name == 'FA Score':
-                            intensity = min(255, int(255 * (val/100)))
-                            colors.append(f'background-color: rgba(0, 255, 0, {intensity/255})')
-                        elif row.name == 'TA Score':
-                            intensity = min(255, int(255 * (val/100)))
-                            colors.append(f'background-color: rgba(0, 0, 255, {intensity/255})')
-                        elif row.name == 'Volatility':
-                            volatility = float(str(val).replace('%',''))
-                            intensity = min(255, int(255 * (1 - volatility/100)))
-                            colors.append(f'background-color: rgba(255, 0, 0, {intensity/255})')
-                        else:
-                            colors.append('')
-                    else:
-                        if row.name == 'Verdict':
-                            if 'Undervalued' in val:
-                                colors.append('background-color: #90EE90')
-                            elif 'Fair' in val:
-                                colors.append('background-color: #ADD8E6')
-                            else:
-                                colors.append('')
-                        else:
-                            colors.append('')
-                return colors
+            # Create custom HTML table
+            html_table = """
+            <div style="width: 100%; margin: 0; padding: 0; overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; background: #1a1a1a; margin: 0; padding: 0;">
+                    <thead>
+                        <tr style="background: #f2f2f2;">
+                            <th style="padding: 12px; text-align: center; font-weight: bold; border: 1px solid #ddd;">Ticker</th>
+                            <th style="padding: 12px; text-align: center; font-weight: bold; border: 1px solid #ddd;">FA Score</th>
+                            <th style="padding: 12px; text-align: center; font-weight: bold; border: 1px solid #ddd;">TA Score</th>
+                            <th style="padding: 12px; text-align: center; font-weight: bold; border: 1px solid #ddd;">Volatility</th>
+                            <th style="padding: 12px; text-align: center; font-weight: bold; border: 1px solid #ddd;">Verdict</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            """
             
-            # Apply styling with proper container width control
-            styled_df = df.style\
-                .apply(background_color, axis=0)\
-                .format({'Volatility': "{:.2f}%"})\
-                .set_table_styles([
-                    {'selector': 'table', 'props': [
-                        ('width', '100%'),
-                        ('max-width', '100%'),
-                        ('table-layout', 'fixed'),
-                        ('margin', '0 auto')
-                    ]},
-                    {'selector': 'th, td', 'props': [
-                        ('text-align', 'center'),
-                        ('padding', '8px'),
-                        ('word-wrap', 'break-word'),
-                        ('overflow', 'hidden'),
-                        ('text-overflow', 'ellipsis')
-                    ]},
-                    {'selector': 'th', 'props': [
-                        ('background-color', '#f2f2f2'),
-                        ('font-weight', 'bold'),
-                        ('font-size', '14px')
-                    ]},
-                    {'selector': 'td', 'props': [
-                        ('font-size', '13px')
-                    ]}
-                ])
+            # Add rows with custom styling
+            for _, row in df.iterrows():
+                # Color coding for FA Score
+                fa_intensity = min(255, int(255 * (row['FA Score']/100)))
+                fa_color = f'rgba(0, 255, 0, {fa_intensity/255})'
+                
+                # Color coding for TA Score
+                ta_intensity = min(255, int(255 * (row['TA Score']/100)))
+                ta_color = f'rgba(0, 0, 255, {ta_intensity/255})'
+                
+                # Color coding for Volatility
+                vol_intensity = min(255, int(255 * (1 - row['Volatility']/100)))
+                vol_color = f'rgba(255, 0, 0, {vol_intensity/255})'
+                
+                # Color coding for Verdict
+                verdict_color = '#90EE90' if 'Undervalued' in row['Verdict'] else '#ADD8E6' if 'Fair' in row['Verdict'] else 'transparent'
+                
+                html_table += f"""
+                        <tr>
+                            <td style="padding: 10px; text-align: center; border: 1px solid #ddd; background: #1a1a1a; color: white;">{row['Ticker']}</td>
+                            <td style="padding: 10px; text-align: center; border: 1px solid #ddd; background: {fa_color}; color: black;">{row['FA Score']}</td>
+                            <td style="padding: 10px; text-align: center; border: 1px solid #ddd; background: {ta_color}; color: white;">{row['TA Score']}</td>
+                            <td style="padding: 10px; text-align: center; border: 1px solid #ddd; background: {vol_color}; color: white;">{row['Volatility']:.2f}%</td>
+                            <td style="padding: 10px; text-align: center; border: 1px solid #ddd; background: {verdict_color}; color: black;">{row['Verdict']}</td>
+                        </tr>
+                """
             
-            # Display table with proper width constraints
-            st.dataframe(
-                styled_df, 
-                use_container_width=True,
-                hide_index=True,
-                height=400  # Set max height to prevent overflow
-            )
+            html_table += """
+                    </tbody>
+                </table>
+            </div>
+            """
             
-            # Download button
+            # Display the custom HTML table
+            st.markdown(html_table, unsafe_allow_html=True)
+            
+            # Download button (keep as is)
             csv = df.to_csv(index=False).encode('utf-8')
             st.download_button(
                 "📥 Download Results as CSV",
