@@ -474,12 +474,12 @@ if st.session_state.get("chat_mode") == "screener":
             progress_bar.empty()
             status_text.empty()
 
-        # Display results
+                # Display results
         if results:
             st.success(f"✅ {len(results)} stocks matched your criteria.")
             df = pd.DataFrame(results)
             
-            # Enhanced styling function
+            # Enhanced styling function (keep this unchanged)
             def background_color(row):
                 colors = []
                 for val in row:
@@ -508,46 +508,53 @@ if st.session_state.get("chat_mode") == "screener":
                             colors.append('')
                 return colors
             
-            # Add CSS styling at the top of your script (right after your existing CSS)
+            # Add this CSS at the top of your script (right after your existing CSS)
             st.markdown("""
             <style>
-            .centered-table-container {
+            .screener-table-container {
+                width: 100%;
                 display: flex;
                 justify-content: center;
-                width: 100%;
-                margin: 0 auto;
             }
-            .centered-table-container table {
+            .screener-table {
                 margin: 0 auto;
                 border-collapse: collapse;
                 width: auto !important;
             }
-            .centered-table-container th, 
-            .centered-table-container td {
+            .screener-table th, 
+            .screener-table td {
                 text-align: center !important;
                 padding: 8px 12px !important;
+                border: 1px solid #ddd !important;
+            }
+            .screener-table th {
+                background-color: #f2f2f2 !important;
+                font-weight: bold !important;
             }
             </style>
             """, unsafe_allow_html=True)
 
-            # Apply styling
+            # Apply styling and display
             styled_df = df.style\
                 .apply(background_color, axis=0)\
                 .format({'Volatility': "{:.2f}%"})\
-                .set_properties(**{
-                    'text-align': 'center',
-                    'margin': '0 auto'
-                })
+                .set_table_styles([{
+                    'selector': 'table',
+                    'props': [
+                        ('margin', '0 auto'),
+                        ('border-collapse', 'collapse')
+                    ]
+                }])
             
-            # Display the table in a centered container
+            # Display the table
             st.markdown(
-                '<div class="centered-table-container">' + 
-                styled_df.to_html() + 
+                '<div class="screener-table-container">' + 
+                styled_df.to_html(classes='screener-table') + 
                 '</div>', 
                 unsafe_allow_html=True
             )
             
-            # Download button (unchanged)
+            # Keep your download button code unchanged
             csv = df.to_csv(index=False).encode('utf-8')
             st.download_button(
                 "📥 Download Results as CSV",
@@ -555,7 +562,7 @@ if st.session_state.get("chat_mode") == "screener":
                 file_name=f"{exchange}_screener_results.csv",
                 mime="text/csv"
             )
-
+            
 elif st.session_state.get("chat_mode") == "stock_leaderboard":
     if st.button("← Back to Main Menu"):
         st.session_state.chat_mode = None
