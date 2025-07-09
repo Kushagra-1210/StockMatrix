@@ -216,7 +216,7 @@ st.markdown("""
     box-shadow: none !important;
     }
     div[data-testid="stSelectbox"] {
-    margin-top: -10px !important;
+    margin-top: -20px !important;
     margin-bottom: 0px !important;
     padding-top: 0px !important;
     }
