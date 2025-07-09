@@ -428,11 +428,7 @@ if st.session_state.get("chat_mode") == "screener":
     with col2:
         min_ta = st.slider("Minimum TA Score", 0, 100, 50)
     with col3:
-        max_vol = st.slider(
-            "Volatility Threshold (Annualized %)", 
-            0, 100, 50, 
-            help="This sets the max allowable annualized volatility. Lower = more stable stocks."
-        )
+        max_vol = st.slider("Volatility Threshold (Annualized %)", 0, 100, 50)
 
         def get_volatility_risk_label(vol):
             if vol < 2:
