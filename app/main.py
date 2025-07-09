@@ -475,6 +475,9 @@ if st.session_state.get("chat_mode") == "screener":
             status_text.empty()
 
                 # Display results
+# Replace this section in your code (around line 550-600 where the table is displayed):
+
+# Display results
         if results:
             st.success(f"✅ {len(results)} stocks matched your criteria.")
             df = pd.DataFrame(results)
@@ -508,51 +511,20 @@ if st.session_state.get("chat_mode") == "screener":
                             colors.append('')
                 return colors
             
-            # Add this CSS at the top of your script (right after your existing CSS)
-            st.markdown("""
-            <style>
-            .screener-table-container {
-                width: 100%;
-                display: flex;
-                justify-content: center;
-            }
-            .screener-table {
-                margin: 0 auto;
-                border-collapse: collapse;
-                width: auto !important;
-            }
-            .screener-table th, 
-            .screener-table td {
-                text-align: center !important;
-                padding: 8px 12px !important;
-                border: 1px solid #ddd !important;
-            }
-            .screener-table th {
-                background-color: #f2f2f2 !important;
-                font-weight: bold !important;
-            }
-            </style>
-            """, unsafe_allow_html=True)
-
-            # Apply styling and display
+            # Apply styling and display with proper centering
             styled_df = df.style\
                 .apply(background_color, axis=0)\
                 .format({'Volatility': "{:.2f}%"})\
-                .set_table_styles([{
-                    'selector': 'table',
-                    'props': [
-                        ('margin', '0 auto'),
-                        ('border-collapse', 'collapse')
-                    ]
-                }])
+                .set_table_styles([
+                    {'selector': 'table', 'props': [('margin', '0 auto'), ('width', 'auto')]},
+                    {'selector': 'th, td', 'props': [('text-align', 'center')]},
+                    {'selector': 'th', 'props': [('background-color', '#f2f2f2'), ('font-weight', 'bold')]}
+                ])
             
-            # Display the table
-            st.markdown(
-                '<div class="screener-table-container">' + 
-                styled_df.to_html(classes='screener-table') + 
-                '</div>', 
-                unsafe_allow_html=True
-            )
+            # Center the table using columns
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                st.dataframe(styled_df, use_container_width=False)
             
             # Keep your download button code unchanged
             csv = df.to_csv(index=False).encode('utf-8')
@@ -562,7 +534,6 @@ if st.session_state.get("chat_mode") == "screener":
                 file_name=f"{exchange}_screener_results.csv",
                 mime="text/csv"
             )
-            
 elif st.session_state.get("chat_mode") == "stock_leaderboard":
     if st.button("← Back to Main Menu"):
         st.session_state.chat_mode = None
