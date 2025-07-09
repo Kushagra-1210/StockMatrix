@@ -2,6 +2,12 @@ import streamlit as st
 import yfinance as yf
 
 st.markdown("""
+    <div class="top-banner">
+        🪙<span style="color: #FFFFFF !important; font-weight: 900 !important; font-size: 44px !important;">
+    </div>
+    """, unsafe_allow_html=True)
+
+st.markdown("""
     <style>
     body {
         background: #FAFAFA !important; /* Off-White Neutral */
@@ -23,7 +29,7 @@ st.markdown("""
         z-index: 999;
         background: linear-gradient(90deg, #0A1F44 60%, #FFD700 100%);
         color: #FFFFFF!important; /* White text for max contrast */
-        text-shadow: 0 2px 12px #0A1F44, 0 0 8px #FFD700, 0 1px 0 #fff;
+        text-shadow: none !important; /* Remove text shadow */
         box-shadow: 0 2px 8px rgba(10, 31, 68, 0.12);
         border-radius: 0 0 18px 18px;
         letter-spacing: 1px;
@@ -237,11 +243,6 @@ st.markdown("""
         margin-bottom: 16px !important;
         padding-top: 0px !important;
     }
-
-    </style>
-    <div class="top-banner">
-        🪙<span style="color:#FFFFFF !important; font-weight:900; font-size:44px; text-shadow: none !important;">StockMatrix</span>
-    </div>
 """, unsafe_allow_html=True)
 
 st.markdown("<div class='curated-footer' style='color: #000000;'>Curated and powered by Kushagra Bansal</div>", unsafe_allow_html=True)
