@@ -482,16 +482,15 @@ if st.session_state.get("chat_mode") == "screener":
 
     # Display results
     if results:
-        # Apply custom CSS to make success text black
-        st.markdown("""
-            <style>
-                .st-emotion-cache-1pbsqtx {
-                    color: black !important;
-                }
-            </style>
-        """, unsafe_allow_html=True)
+        # Hide default success message
+        st.success("", icon="✅")
         
-        st.success(f"✅ {len(results)} stocks matched your criteria.")
+        # Manually add black text in the same position
+        st.markdown(
+            f'<div style="color: black; margin-top: -40px; margin-bottom: 20px;">'
+            f'✅ {len(results)} stocks matched your criteria.</div>',
+            unsafe_allow_html=True
+        )
 
         df = pd.DataFrame(results)
         
