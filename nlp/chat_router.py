@@ -70,7 +70,7 @@ def handle_chat_command(command: str, ticker: str = None):
         return (
             "⚠️ Sorry, I can only help with:\n\n"
             "- Run Analysis (RA)\n"
-            "- Screener Engine (SE)\n"
+            "- Insight Generation(IG)\n"
             "- Generate Report (GR)\n\n"
             "Please type one of these to continue.",
             None,
