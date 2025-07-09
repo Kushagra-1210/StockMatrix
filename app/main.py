@@ -515,34 +515,11 @@ if st.session_state.get("chat_mode") == "screener":
             # Apply styling with improved performance
             styled_df = df.style.apply(background_color, axis=0)\
                               .format({'Volatility': "{:.2f}%"})\
-                              .set_properties(**{'text-align': 'left'})
+                              .set_properties(**{'text-align': 'center'})
             
             # Optimized display
-            st.markdown(
-                f"""
-                <style>
-                .screener-table-wrapper {{
-                    text-align: left;
-                    width: 100%;
-                }}
-                .screener-table-wrapper table {{
-                    width: 100% !important;
-                    table-layout: fixed;
-                    border-collapse: collapse;
-                }}
-                .screener-table-wrapper th, .screener-table-wrapper td {{
-                    word-wrap: break-word;
-                    padding: 8px;
-                    text-align: center;
-                }}
-                </style>
-                <div class="screener-table-wrapper">
-                    {styled_df.to_html()}
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-
+            st.write(styled_df.to_html(), unsafe_allow_html=True)
+            
                         
             # Add download button
             csv = df.to_csv(index=False).encode('utf-8')
