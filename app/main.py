@@ -226,8 +226,8 @@ st.markdown("""
     }
     /* Fix spacing ONLY inside Run Analysis section */
     .ra-selectbox-wrapper div[data-testid="stSelectbox"] {
-        margin-top: -50px !important;
-        margin-bottom: 0px !important;
+        margin-top: -10px !important;
+        margin-bottom: 20px !important;
         padding-top: 0px !important;
     }
 
