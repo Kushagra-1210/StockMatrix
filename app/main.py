@@ -215,11 +215,6 @@ st.markdown("""
     margin-top: -10px !important;
     box-shadow: none !important;
     }
-    div[data-testid="stSelectbox"] {
-    margin-top: -40px !important;
-    margin-bottom: 0px !important;
-    padding-top: 0px !important;
-    }
     div[data-testid="stSelectbox"] > div:first-child {
     background: transparent !important;
     padding: 0 !important;
@@ -229,6 +224,18 @@ st.markdown("""
     div[data-testid="stSelectbox"] > div:first-child:only-child {
     margin-top: -20px !important;
     }
+    /* Fix spacing ONLY inside report section */
+    .report-selectbox-wrapper div[data-testid="stSelectbox"] {
+        margin-top: 8px !important;
+        margin-bottom: 16px !important;
+        padding-top: 0px !important;
+    }
+        /* Fix spacing ONLY inside Run Analysis section */
+    .ra-selectbox-wrapper div[data-testid="stSelectbox"] {
+        margin-top: -40px !important;
+        margin-bottom: 0px !important;
+    }
+
 
     </style>
     <div class="top-banner">
@@ -668,11 +675,10 @@ elif st.session_state.get("chat_mode") == "run_analysis":
     
     # Basis selection at the top (applies to all analyses)
     st.markdown("**Select Data Basis**", unsafe_allow_html=True)
-    st.markdown("<div style='margin-top: -20px'></div>", unsafe_allow_html=True)
+    st.markdown('<div class="ra-selectbox-wrapper">', unsafe_allow_html=True)
     basis = st.radio(label="", options=["Quarterly", "Annual"], horizontal=True, key="run_analysis_basis")
 
     st.markdown("#### 1. Choose an Exchange", unsafe_allow_html=True)
-    st.markdown("<div style='margin-top: -15px'></div>", unsafe_allow_html=True)
     exchange = st.selectbox("", 
                             ["NSE", "HKEX", "NYSE", "LSE", "TSE"], 
                             key="run_analysis_exchange")
@@ -685,9 +691,9 @@ elif st.session_state.get("chat_mode") == "run_analysis":
         st.session_state.last_exchange = exchange
 
     st.markdown("#### 2. Choose a Stock", unsafe_allow_html=True)
-    st.markdown("<div style='margin-top: -15px'></div>", unsafe_allow_html=True)
     selected_ticker = st.selectbox("", tickers, 
                                    key="run_analysis_ticker")
+    st.markdown('</div>', unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
     with col1:
