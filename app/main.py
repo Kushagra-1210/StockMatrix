@@ -518,8 +518,28 @@ if st.session_state.get("chat_mode") == "screener":
                               .set_properties(**{'text-align': 'center'})
             
             # Optimized display
+            # Inject strong CSS override to kill center alignment
+            st.markdown("""
+                <style>
+                table {
+                    width: 100% !important;
+                    margin-left: 0 !important;
+                    margin-right: auto !important;
+                    table-layout: fixed !important;
+                }
+                th, td {
+                    text-align: center !important;
+                    padding: 6px 8px !important;
+                    word-break: break-word !important;
+                }
+                thead {
+                    background-color: #f2f2f2;
+                }
+                </style>
+            """, unsafe_allow_html=True)
+
+            # Render with st.write to avoid markdown alignment issues
             st.write(styled_df.to_html(), unsafe_allow_html=True)
-            
                         
             # Add download button
             csv = df.to_csv(index=False).encode('utf-8')
