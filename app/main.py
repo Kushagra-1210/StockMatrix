@@ -520,24 +520,21 @@ if st.session_state.get("chat_mode") == "screener":
             # Optimized display
             # Step 1: Inject scoped CSS for Screener Table only
             st.markdown("""
-                <style>
-                .screener-table-container {
-                    display: flex;
-                    justify-content: flex-start !important;
-                    width: 100%;
-                }
-
-                .screener-table-container table {
-                    margin-left: 0 !important;
-                    margin-right: auto !important;
-                    width: auto !important;
-                }
-                </style>
+            <style>
+            .centered-table {
+                display: flex;
+                justify-content: center;
+                width: 100%;
+            }
+            .centered-table table {
+                margin: 0 auto;
+            }
+            </style>
             """, unsafe_allow_html=True)
-
-            # Step 2: Render the styled_df HTML inside scoped wrapper
+                
+            # Display the styled table in the centered container
             st.markdown(
-                f'<div class="screener-table">{styled_df.to_html()}</div>',
+                f'<div class="centered-table">{styled_df.to_html()}</div>',
                 unsafe_allow_html=True
             )
                         
