@@ -215,6 +215,11 @@ st.markdown("""
     margin-top: -10px !important;
     box-shadow: none !important;
     }
+    div[data-testid="stSelectbox"] {
+    margin-top: -10px !important;
+    margin-bottom: 0px !important;
+    padding-top: 0px !important;
+    }
     div[data-testid="stSelectbox"] > div:first-child {
     background: transparent !important;
     padding: 0 !important;
