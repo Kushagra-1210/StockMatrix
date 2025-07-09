@@ -518,28 +518,30 @@ if st.session_state.get("chat_mode") == "screener":
                               .set_properties(**{'text-align': 'center'})
             
             # Optimized display
-            # Inject strong CSS override to kill center alignment
+            # Step 1: Inject scoped CSS for Screener Table only
             st.markdown("""
                 <style>
-                table {
+                .screener-table table {
                     width: 100% !important;
+                    border-collapse: collapse;
                     margin-left: 0 !important;
-                    margin-right: auto !important;
-                    table-layout: fixed !important;
                 }
-                th, td {
+                .screener-table th, .screener-table td {
                     text-align: center !important;
-                    padding: 6px 8px !important;
-                    word-break: break-word !important;
+                    padding: 8px !important;
+                    white-space: nowrap !important;
                 }
-                thead {
-                    background-color: #f2f2f2;
+                .screener-table th {
+                    background-color: #f2f2f2 !important;
                 }
                 </style>
             """, unsafe_allow_html=True)
 
-            # Render with st.write to avoid markdown alignment issues
-            st.write(styled_df.to_html(), unsafe_allow_html=True)
+            # Step 2: Render the styled_df HTML inside scoped wrapper
+            st.markdown(
+                f'<div class="screener-table">{styled_df.to_html()}</div>',
+                unsafe_allow_html=True
+            )
                         
             # Add download button
             csv = df.to_csv(index=False).encode('utf-8')
