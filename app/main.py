@@ -66,12 +66,14 @@ st.markdown("""
     section[data-testid="stChatInput"],
     .stChatInputContainer,
     div[data-testid="stChatInput"] {
-        background: #F0F0F0 !important;            /* Light grey bar */
+        background: #F0F0F0 !important;            /* Light grey outer container */
         border-radius: 20px !important;
         padding: 6px !important;
         border: none !important;
         box-shadow: none !important;
         margin-bottom: 24px !important;
+        display: flex !important;
+        align-items: center !important;
     }
     section[data-testid="stChatInput"] input,
     .stChatInputContainer input,
