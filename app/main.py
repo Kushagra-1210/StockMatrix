@@ -78,7 +78,7 @@ st.markdown("""
     .stChatInputContainer input,
     div[data-testid="stChatInput"] input {
         background: #FFFFFF !important;
-        color: #1A1A1A !important;
+        color: #FFFFFF !important;
         border: none !important;
         font-weight: 500 !important;
         font-size: 18px !important;
