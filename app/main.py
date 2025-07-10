@@ -67,11 +67,11 @@ st.markdown("""
     section[data-testid="stChatInput"],
     .stChatInputContainer,
     div[data-testid="stChatInput"] {
-        background: #FFFFFF !important; /* White for input bar */
-        color: #1A1A1A !important;
+        background: #FFFFFF !important;       /* Make entire bar white */
+        color: #000000 !important;            /* Black text inside */
         border-radius: 16px !important;
-        border: 2px solid #0A1F44 !important;
-        box-shadow: 0 2px 12px 0 rgba(10, 31, 68, 0.10) !important;
+        border: 2px solid #FFFFFF !important; /* Optional: remove border contrast */
+        box-shadow: none !important;          /* Optional: remove shadow */
         margin-bottom: 24px !important;
     }
     section[data-testid="stChatInput"] input,
