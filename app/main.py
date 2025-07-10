@@ -1,6 +1,5 @@
 import streamlit as st
 import yfinance as yf
-
 st.markdown("""
     <div class="top-banner">
         🪙<span id="stockmatrix-title">StockMatrix</div>
@@ -78,7 +77,7 @@ st.markdown("""
     .stChatInputContainer input,
     div[data-testid="stChatInput"] input {
         background: #FFFFFF !important;
-        color: #FFFFFF !important;
+        color: #1A1A1A !important;
         border: none !important;
         font-weight: 500 !important;
         font-size: 18px !important;
@@ -284,10 +283,10 @@ import plotly.graph_objs as go
 from datetime import datetime
 import importlib
 
-
 import logging
 logging.basicConfig(level=logging.DEBUG)
 st.set_option('client.showErrorDetails', True)
+
 
 from backend import technical_analysis as ta_mod
 from backend import fundamental_analysis as fa_mod
