@@ -75,6 +75,10 @@ st.markdown("""
         display: flex !important;
         align-items: center !important;
     }
+    section[data-testid="stChatInput"] {
+        background-color: #F0F0F0 !important;
+    }
+    
     section[data-testid="stChatInput"] input,
     .stChatInputContainer input,
     div[data-testid="stChatInput"] input {
@@ -276,6 +280,13 @@ st.markdown("""
         text-shadow: none !important;
         display: inline;
     }
+    /* 🔧 Force background of full chat zone (message + input area) */
+    div[data-testid="stChatMessageGroup"] {
+        background-color: #F0F0F0 !important;
+        padding: 16px !important;
+        border-top: 2px solid #E0E0E0;
+    }
+
     </style>
 """, unsafe_allow_html=True)
 
