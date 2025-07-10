@@ -233,19 +233,24 @@ st.markdown("""
         box-shadow: none !important;
     }
     .ra-selectbox-wrapper h4 {
-        margin-bottom: 2px !important;
-        margin-top: 4px !important;
+        margin-bottom: 4px !important;
+        margin-top: 2px !important;
     }
     .ra-selectbox-wrapper div[data-testid="stRadio"] {
-        margin-top: 4px !important;
-        margin-bottom: 8px !important;
+        margin-top: 0px !important;
+        margin-bottom: 4px !important;
         padding: 0 !important;
     }
+    
     /* Fix spacing ONLY inside Run Analysis section */
     .ra-selectbox-wrapper div[data-testid="stSelectbox"] {
-        margin-top: -8px !important;
-        margin-bottom: 10px !important;
+        margin-top: 0px !important;
+        margin-bottom: 6px !important;
         padding-top: 0px !important;
+    }
+    .ra-selectbox-wrapper > div {
+    margin: 0px !important;
+    padding: 0px !important;
     }
 
     /* Fix spacing ONLY inside report section */
