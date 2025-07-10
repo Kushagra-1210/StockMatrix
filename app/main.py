@@ -675,7 +675,7 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
 
 elif st.session_state.get("chat_mode") == "insight_generation":
     if st.session_state.show_insight_buttons:
-        st.markdown("🔍#### Insight Generation ")
+        st.subheader("🔍 Insight Generation ")
         col1, col2 = st.columns(2)
         
         with col1:
