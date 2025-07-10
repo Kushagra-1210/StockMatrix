@@ -149,6 +149,15 @@ st.markdown("""
         color: #888888 !important;
         opacity: 1 !important;
     }
+    /* Force black/dark font for all Streamlit alert messages */
+    .stAlert {
+        color: #1A1A1A !important;
+    }
+
+    /* Also ensure inner divs don’t override it */
+    .stAlert > div {
+        color: #1A1A1A !important;
+    }
 
     /* Links */
     a {
