@@ -142,6 +142,10 @@ st.markdown("""
         box-shadow: 0 2px 8px rgba(10, 31, 68, 0.10) !important;
         transition: background 0.2s, color 0.2s !important;
     }
+    section[data-testid="stChatInput"] *:focus {
+        outline: none !important;
+        box-shadow: none !important;
+    }
 
     /* Button hover state */
     .stButton > button:hover, .stDownloadButton > button:hover {
