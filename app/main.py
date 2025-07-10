@@ -675,7 +675,7 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
 
 elif st.session_state.get("chat_mode") == "insight_generation":
     if st.session_state.show_insight_buttons:
-        st.markdown("#### Insight Generation ")
+        st.markdown("####🔍 Insight Generation ")
         col1, col2 = st.columns(2)
         
         with col1:
@@ -691,7 +691,7 @@ elif st.session_state.get("chat_mode") == "insight_generation":
                 st.rerun()
 
 elif st.session_state.get("chat_mode") == "run_analysis":
-    st.subheader("🧪 Run Analysis Module")
+    st.subheader("⚙️ Run Analysis Module")
     
     st.markdown('<div class="ra-selectbox-wrapper">', unsafe_allow_html=True)# Basis selection at the top (applies to all analyses)
     st.markdown("Select Data Basis")
