@@ -66,32 +66,33 @@ st.markdown("""
     section[data-testid="stChatInput"],
     .stChatInputContainer,
     div[data-testid="stChatInput"] {
-        background: #FFFFFF !important;       /* Make entire bar white */
-        color: #000000 !important;            /* Black text inside */
+        background: #FFFFFF !important;          /* Full chat bar is white */
+        border: 2px solid #FFFFFF !important;
         border-radius: 16px !important;
-        border: 2px solid #FFFFFF !important; /* Optional: remove border contrast */
-        box-shadow: none !important;          /* Optional: remove shadow */
         margin-bottom: 24px !important;
-    }
+        padding: 4px !important;
+        box-shadow: none !important;
+    }   
     section[data-testid="stChatInput"] input,
     .stChatInputContainer input,
     div[data-testid="stChatInput"] input {
-        background: #FFFFFF !important;
-        color: #1A1A1A !important;
+        background: #1E1E25 !important;          /* Dark input box */
+        color: #FFFFFF !important;               /* White typing text */
         border: none !important;
-        font-weight: 500 !important;
         font-size: 18px !important;
+        font-weight: 500 !important;
+        border-radius: 12px !important;
+        padding: 8px 12px !important;
     }
     section[data-testid="stChatInput"] button,
     .stChatInputContainer button,
     div[data-testid="stChatInput"] button {
-        background: linear-gradient(90deg, #FFD700 60%, #C9B037 100%) !important;
-        color: #0A1F44 !important;
-        border-radius: 8px !important;
+        background: #FFFFFF !important;          /* White send button */
+        color: #0A1F44 !important;               /* Navy arrow */
+        border-radius: 12px !important;
+        border: none !important;
         font-weight: bold !important;
-        border: 2px solid #FFD700 !important;
-        box-shadow: 0 2px 8px 0 rgba(10, 31, 68, 0.10) !important;
-        transition: background 0.2s, color 0.2s !important;
+        box-shadow: none !important;
     }
     section[data-testid="stChatInput"] button:hover,
     .stChatInputContainer button:hover,
