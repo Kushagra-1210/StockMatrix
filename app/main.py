@@ -3,7 +3,7 @@ import yfinance as yf
 
 st.markdown("""
     <div class="top-banner">
-        🪙 <span>StockMatrix</span>
+        🪙 <div id="stockmatrix-title">StockMatrix</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -32,12 +32,6 @@ st.markdown("""
         border-radius: 0 0 18px 18px;
         letter-spacing: 1px;
         border-bottom: 1px solid #0A1F44;
-    }
-    #stockmatrix-title {
-        color: #FFFFFF !important;
-        font-weight: 900 !important;
-        font-size: 44px !important;
-        text-shadow: none !important;
     }
     .curated-footer {
         text-align: right;
@@ -248,6 +242,13 @@ st.markdown("""
         margin-bottom: 16px !important;
         padding-top: 0px !important;
     }
+    #stockmatrix-title {
+    color: #FFFFFF !important;
+    font-size: 44px !important;
+    font-weight: 900 !important;
+    text-shadow: none !important;
+    }
+    </style>
 """, unsafe_allow_html=True)
 
 st.markdown("<div class='curated-footer' style='color: #000000;'>Curated and powered by Kushagra Bansal</div>", unsafe_allow_html=True)
@@ -269,7 +270,6 @@ import importlib
 import logging
 logging.basicConfig(level=logging.DEBUG)
 st.set_option('client.showErrorDetails', True)
-
 
 from backend import technical_analysis as ta_mod
 from backend import fundamental_analysis as fa_mod
