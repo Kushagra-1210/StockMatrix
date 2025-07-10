@@ -66,13 +66,13 @@ st.markdown("""
     section[data-testid="stChatInput"],
     .stChatInputContainer,
     div[data-testid="stChatInput"] {
-        background: #FFFFFF !important;          /* Full chat bar is white */
-        border: 2px solid #FFFFFF !important;
-        border-radius: 16px !important;
-        margin-bottom: 24px !important;
-        padding: 4px !important;
+        background: #F0F0F0 !important;            /* Light grey bar */
+        border-radius: 20px !important;
+        padding: 6px !important;
+        border: none !important;
         box-shadow: none !important;
-    }   
+        margin-bottom: 24px !important;
+    }
     section[data-testid="stChatInput"] input,
     .stChatInputContainer input,
     div[data-testid="stChatInput"] input {
@@ -83,6 +83,10 @@ st.markdown("""
         font-weight: 500 !important;
         border-radius: 12px !important;
         padding: 8px 12px !important;
+    }
+    section[data-testid="stChatInput"] input::placeholder {
+        color: #CCCCCC !important;
+        opacity: 0.8;
     }
     section[data-testid="stChatInput"] button,
     .stChatInputContainer button,
