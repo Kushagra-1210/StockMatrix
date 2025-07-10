@@ -694,10 +694,10 @@ elif st.session_state.get("chat_mode") == "run_analysis":
     st.subheader("🧪 Run Analysis Module")
     
     st.markdown('<div class="ra-selectbox-wrapper">', unsafe_allow_html=True)# Basis selection at the top (applies to all analyses)
-    st.markdown("#### Select Data Basis")
+    st.markdown("Select Data Basis")
     basis = st.radio(label="", options=["Quarterly", "Annual"], horizontal=True, key="run_analysis_basis")
 
-    st.markdown("#### 1. Choose an Exchange")
+    st.markdown("1. Choose an Exchange")
     exchange = st.selectbox("", 
                             ["NSE", "HKEX", "NYSE", "LSE", "TSE"], 
                             key="run_analysis_exchange")
