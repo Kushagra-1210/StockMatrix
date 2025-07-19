@@ -33,3 +33,10 @@ var/
 
 # Ignore Streamlit internal
 .streamlit/
+
+# Environment variables
+.env
+
+# Python cache
+__pycache__/
+*.pyc
