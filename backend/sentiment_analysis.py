@@ -125,9 +125,9 @@ def analyze_sentiment(ticker: str, basis: str = "annual"):
         avg_score = total_score / len(top_5)
         sentiment_score = round((avg_score + 1) * 5, 2)
 
-        if sentiment_score >= 6.5:
+        if sentiment_score >= 7.0:
             label = "Positive"
-        elif sentiment_score >= 4:
+        elif sentiment_score >= 4.0:
             label = "Neutral"
         else:
             label = "Negative"
