@@ -621,50 +621,58 @@ if st.session_state.get("chat_mode") == "screener":
             file_name=f"{exchange}_screener_results.csv",
             mime="text/csv"
         )
+# =============================================================================
+# START OF REPLACEMENT BLOCK: STOCK LEADERBOARD
+# =============================================================================
 elif st.session_state.get("chat_mode") == "stock_leaderboard":
     if st.button("← Back to Main Menu"):
         st.session_state.chat_mode = None
         st.rerun()
 
-    st.subheader("Stock Leaderboard")
+    st.subheader("🏆 Stock Leaderboard")
 
-    # Analysis period first
-    basis = st.radio("Select Analysis Period", ["Quarterly", "Annual"], 
-                    horizontal=True, key="leaderboard_basis")
-    
-    # Then stock exchange
-    exchange = st.selectbox(
-        "Select Stock Exchange",
-        ["NSE", "NYSE", "TSE", "LSE", "HKEX"],
-        key="leaderboard_exchange"
-    )   
-    
-    # Data computation with proper initialization
-# REMOVE the manual data list building and replace with:
-    if st.button("🔄 Compute/Refresh Data"):
+    # --- CONTROLS SECTION FOR THE LEADERBOARD ---
+    with st.expander("🎛️ Customize Leaderboard Scoring Model"):
+        st.markdown("Adjust the weights for each analysis category. **They must add up to 100%.**")
+
+        if 'user_weights' not in st.session_state:
+            st.session_state.user_weights = {"fa": 35, "ta": 35, "sentiment": 20, "news": 10}
+
+        weights = st.session_state.user_weights
+        # Use unique keys for leaderboard sliders to prevent conflicts with other pages
+        weights["fa"] = st.slider("Fundamental Analysis (%)", 0, 100, weights["fa"], key="leaderboard_fa_slider")
+        weights["ta"] = st.slider("Technical Analysis (%)", 0, 100, weights["ta"], key="leaderboard_ta_slider")
+        weights["sentiment"] = st.slider("Sentiment Analysis (%)", 0, 100, weights["sentiment"], key="leaderboard_sentiment_slider")
+        weights["news"] = st.slider("News & Risk Analysis (%)", 0, 100, weights["news"], key="leaderboard_news_slider")
+
+    st.markdown("---")
+
+    basis = st.radio("Select Analysis Period", ["Quarterly", "Annual"], horizontal=True, key="leaderboard_basis")
+    exchange = st.selectbox("Select Stock Exchange", ["NSE", "NYSE", "TSE", "LSE", "HKEX"], key="leaderboard_exchange")
+
+    # --- STANDARDIZED AND ROBUST BUTTON LOGIC ---
+    total_weight_leaderboard = sum(st.session_state.user_weights.values())
+    is_leaderboard_disabled = (total_weight_leaderboard != 100)
+
+    if st.button("🔄 Compute/Refresh Data", disabled=is_leaderboard_disabled):
         progress_bar = st.progress(0)
         status_text = st.empty()
-        
-        # ...
+
         def process_leaderboard_ticker(ticker, i, total):
             status_text.text(f"Processing {i+1}/{total}")
-            progress_bar.progress((i+1)/total)
+            progress_bar.progress((i + 1) / total)
             try:
-                # Fetch the analyses
                 ta = get_technical_analysis(ticker, basis.lower())
                 fa = get_fundamental_analysis(ticker, basis.lower())
                 sentiment = get_sentiment_analysis(ticker, basis.lower())
-                news_risk = get_news_risk_analysis(ticker, basis.lower()) # You were missing this
+                news_risk = get_news_risk_analysis(ticker, basis.lower())
                 vol = calculate_volatility(ticker)
 
-                # Get user weights or use default
-                user_weights = st.session_state.get('user_weights', {"fa": 35, "ta": 35, "sentiment": 20, "news": 10})
-
-                # Calculate score using the weights
+                user_weights = st.session_state.user_weights
                 final_score = round(
-                    (user_weights["fa"] / 100) * fa["fa_score"] +
-                    (user_weights["ta"] / 100) * ta["ta_score"] +
-                    (user_weights["sentiment"] / 100) * sentiment["score"] * 10 +
+                    (user_weights["fa"] / 100) * fa.get("fa_score", 0) +
+                    (user_weights["ta"] / 100) * ta.get("ta_score", 0) +
+                    (user_weights["sentiment"] / 100) * sentiment.get("score", 0) * 10 +
                     (user_weights["news"] / 100) * news_risk.get("risk_score", 50), 2
                 )
 
@@ -682,38 +690,37 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
             tickers = get_top_50_tickers(exchange)
-            processed = list(filter(None, [process_leaderboard_ticker(t, i, len(tickers)) 
-                            for i, t in enumerate(tickers)]))
+            processed = list(filter(None, [process_leaderboard_ticker(t, i, len(tickers)) for i, t in enumerate(tickers)]))
             st.session_state.leaderboard_df = pd.DataFrame(processed)
 
-    # Display section with proper null checks
+    if is_leaderboard_disabled:
+        st.error(f"Compute button is disabled. Total weight must be 100%, but is currently {total_weight_leaderboard}%.")
+
+    # --- DISPLAY SECTION (NO CHANGES NEEDED HERE) ---
     if "leaderboard_df" in st.session_state:
         df = st.session_state.leaderboard_df
-        
-        # Check if df is None or empty
         if df is None or df.empty:
             st.warning("No data available. Please compute scores first.")
         else:
             st.markdown("### Leaderboard Categories")
             with st.expander("Top 5 Strong Buys"):
                 st.dataframe(df.nlargest(5, "Final Score"))
-
             with st.expander("Top 5 Bullish (TA Score)"):
                 st.dataframe(df.nlargest(5, "TA Score"))
-
             with st.expander("Top 5 High Volatility"):
                 st.dataframe(df.nlargest(5, "Volatility"))
-
             with st.expander("Top 5 Undervalued (FA Score)"):
                 st.dataframe(df.nlargest(5, "FA Score"))
-
             with st.expander("Top 5 Low Risk (Volatility)"):
                 st.dataframe(df.nsmallest(5, "Volatility"))
-
             with st.expander("Top 5 Negative Sentiment"):
                 st.dataframe(df.nsmallest(5, "Sentiment"))
     else:
         st.warning("Leaderboard data not initialized. Please compute scores.")
+
+# =============================================================================
+# END OF REPLACEMENT BLOCK
+# =============================================================================
 
 elif st.session_state.get("chat_mode") == "insight_generation":
     if st.session_state.show_insight_buttons:
@@ -732,65 +739,49 @@ elif st.session_state.get("chat_mode") == "insight_generation":
                 st.session_state.show_insight_buttons = False
                 st.rerun()
 
+# =============================================================================
+# START OF REPLACEMENT BLOCK 1: RUN ANALYSIS
+# =============================================================================
 elif st.session_state.get("chat_mode") == "run_analysis":
     st.subheader("⚙️ Run Analysis Module")
-    
-    st.markdown('<div class="ra-selectbox-wrapper">', unsafe_allow_html=True)# Basis selection at the top (applies to all analyses)
+
+    st.markdown('<div class="ra-selectbox-wrapper">', unsafe_allow_html=True)
     st.markdown("Select Data Basis")
     basis = st.radio(label="", options=["Quarterly", "Annual"], horizontal=True, key="run_analysis_basis")
 
     st.markdown("1. Choose an Exchange")
-    exchange = st.selectbox("", 
-                            ["NSE", "HKEX", "NYSE", "LSE", "TSE"], 
-                            key="run_analysis_exchange")
+    exchange = st.selectbox("", ["NSE", "HKEX", "NYSE", "LSE", "TSE"], key="run_analysis_exchange")
 
     tickers = get_top_50_tickers(exchange)
 
-    # Reset selected_ticker when exchange changes
     if "last_exchange" not in st.session_state or st.session_state.last_exchange != exchange:
         st.session_state["run_analysis_ticker"] = tickers[0] if tickers else None
         st.session_state.last_exchange = exchange
 
     st.markdown("2. Choose a Stock", unsafe_allow_html=True)
-    selected_ticker = st.selectbox("", tickers, 
-                                   key="run_analysis_ticker")
+    selected_ticker = st.selectbox("", tickers, key="run_analysis_ticker")
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Insert this block in app/main.py within the "run_analysis" section
-
     st.markdown("---")
-    with st.expander("🎛️ Customize Scoring Model (Optional)"):
+    with st.expander("🎛️ Customize Scoring Model"):
         st.markdown("Adjust the weights for each analysis category. **They must add up to 100%.**")
-        
-        # Initialize weights in session state if they don't exist
+
         if 'user_weights' not in st.session_state:
-            st.session_state.user_weights = {
-                "fa": 35,
-                "ta": 35,
-                "sentiment": 20,
-                "news": 10
-            }
+            st.session_state.user_weights = {"fa": 35, "ta": 35, "sentiment": 20, "news": 10}
 
         weights = st.session_state.user_weights
-        
-        weights["fa"] = st.slider("Fundamental Analysis (%)", 0, 100, weights["fa"])
-        weights["ta"] = st.slider("Technical Analysis (%)", 0, 100, weights["ta"])
-        weights["sentiment"] = st.slider("Sentiment Analysis (%)", 0, 100, weights["sentiment"])
-        weights["news"] = st.slider("News & Risk Analysis (%)", 0, 100, weights["news"])
+        weights["fa"] = st.slider("Fundamental Analysis (%)", 0, 100, weights["fa"], key="analysis_fa_slider")
+        weights["ta"] = st.slider("Technical Analysis (%)", 0, 100, weights["ta"], key="analysis_ta_slider")
+        weights["sentiment"] = st.slider("Sentiment Analysis (%)", 0, 100, weights["sentiment"], key="analysis_sentiment_slider")
+        weights["news"] = st.slider("News & Risk Analysis (%)", 0, 100, weights["news"], key="analysis_news_slider")
 
-        total_weight = sum(weights.values())
-        if total_weight != 100:
-            st.error(f"Total weight must be 100%. Current total: {total_weight}%")
-        else:
-            st.success("Weights are balanced at 100%.")
     st.markdown("---")
 
     col1, col2 = st.columns(2)
     with col1:
-        auto_refresh = st.checkbox("🔄 Auto-refresh every 30 seconds", 
-                                 key="auto_refresh_checkbox")
+        auto_refresh = st.checkbox("🔄 Auto-refresh every 30 seconds", key="auto_refresh_checkbox")
 
-        if st.button("Stock Price", key="run_analysis_price_btn") or st.session_state.get("auto_refreshing"):
+        if st.button("Stock Price", key="run_analysis_price_btn") or (st.session_state.get("auto_refresh_checkbox") and st.session_state.get("auto_refreshing")):
             st.session_state.auto_refreshing = auto_refresh
             try:
                 stock = yf.Ticker(selected_ticker)
@@ -802,215 +793,80 @@ elif st.session_state.get("chat_mode") == "run_analysis":
 
                 st.subheader(f"{info.get('shortName', selected_ticker)} ({selected_ticker})")
                 st.markdown(f"""
-                - **Current Price**: {current_price} {currency}  
-                - **Market Cap**: {market_cap:,}  
-                - **Volume**: {volume:,}  
+                - **Current Price**: {current_price} {currency}
+                - **Market Cap**: {market_cap:,}
+                - **Volume**: {volume:,}
                 - **As of**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                 """)
 
                 hist = get_stock_history(selected_ticker, period="6mo")
                 fig = go.Figure()
                 fig.add_trace(go.Scatter(x=hist.index, y=hist["Close"], name="Close Price"))
-                fig.update_layout(title="Price Trend (6 Months)", 
-                                xaxis_title="Date", 
-                                yaxis_title=f"Price ({currency})")
+                fig.update_layout(title="Price Trend (6 Months)", xaxis_title="Date", yaxis_title=f"Price ({currency})")
                 st.plotly_chart(fig)
 
                 if auto_refresh:
                     time.sleep(30)
-                    st.experimental_rerun()
+                    st.rerun()
 
             except Exception as e:
                 st.error(f"Error fetching stock data: {str(e)}")
 
     with col2:
-        analysis_type = st.radio("Select Analysis Type", 
-                               ["Technical", "Fundamental", "Both"], 
-                               key="analysis_type")
+        analysis_type = st.radio("Select Analysis Type", ["Technical", "Fundamental", "Both"], key="analysis_type")
 
-        if st.button("Run Analysis", key="run_analysis_btn"):
-            with st.spinner(f"🔍 Running {basis.lower()} analysis..."):
+        total_weight = sum(st.session_state.user_weights.values())
+        is_disabled = (total_weight != 100)
+
+        if st.button("Run Analysis", key="run_analysis_btn", disabled=is_disabled):
+            with st.spinner(f"🔍 Running {basis.lower()} analysis for {selected_ticker}..."):
                 try:
-                    # Refresh options
-                    refresh_tech = st.checkbox("🔄 Refresh Technical Analysis", 
-                                             key="refresh_technical")
-                    refresh_fund = st.checkbox("🔄 Refresh Fundamental Analysis", 
-                                             key="refresh_fundamental")
-                    refresh_sent = st.checkbox("🔄 Refresh Sentiment Analysis", 
-                                             key="refresh_sentiment")
-                    refresh_news = st.checkbox("🔄 Refresh News & Risk Analysis", 
-                                             key="refresh_news")
+                    ta = get_technical_analysis(selected_ticker, basis=basis.lower())
+                    fa = get_fundamental_analysis(selected_ticker, basis=basis.lower())
+                    sentiment = get_sentiment_analysis(selected_ticker, basis=basis.lower())
+                    news_risk = get_news_risk_analysis(selected_ticker, basis=basis.lower())
 
-                    # Get analysis data with basis parameter
-                    ta = get_technical_analysis(selected_ticker, basis=basis.lower()) if not refresh_tech else ta_mod.analyze_technical_indicators(selected_ticker, basis=basis.lower())
-                    fa = get_fundamental_analysis(selected_ticker, basis=basis.lower()) if not refresh_fund else fa_mod.analyze_fundamentals(selected_ticker, basis=basis.lower())
-                    sentiment = get_sentiment_analysis(selected_ticker, basis=basis.lower()) if not refresh_sent else sentiment_mod.analyze_sentiment(selected_ticker, basis=basis.lower())
-                    news_risk = get_news_risk_analysis(selected_ticker, basis=basis.lower()) if not refresh_news else news_mod.fetch_news_risk(selected_ticker, basis=basis.lower())
-
-                    # Display results
                     if analysis_type == "Technical":
                         st.subheader(f"🧪 Technical Analysis Report ({basis})")
-                        if "error" in ta:
-                            st.error(ta["error"])
-                        else:
-                            st.markdown(f"""
-                            - **Current Price**: {ta['current_price']}  
-                            - **RSI (14)**: {ta['rsi']}  
-                            - **SMA-20**: {ta['sma_20']}  
-                            - **EMA-20**: {ta['ema_20']}  
-                            - **TA Score**: {ta['ta_score']}/100  
-                            - **Verdict**: **{ta['verdict']}**
-                            """)
-                            st.markdown('<p style="font-size: 10px; color: grey;">Source: Yahoo Finance (historical data)</p>', unsafe_allow_html=True)
-                            if "ta_breakdown" in ta:
-                                st.markdown("##### 🔍 Technical Score Breakdown")
-                                for factor, value in ta["ta_breakdown"].items():
-                                    st.markdown(f"- **{factor}**: {value}")
+                        if "error" in ta: st.error(ta["error"])
+                        else: display_technical_analysis(ta)
 
                     elif analysis_type == "Fundamental":
                         st.subheader(f"📊 Fundamental Analysis Report ({basis})")
-                        if "error" in fa:
-                            st.error(fa["error"])
-                        else:
-                            fcf = fa.get("fcf", "N/A")
-                            fcf_disp = f"{fcf:,}" if isinstance(fcf, (int, float)) else "N/A"
-                            st.markdown(f"""
-                            - **Market Cap**: {fa['market_cap']:,} ({fa['size']})  
-                            - **EPS**: {fa['eps']}  
-                            - **ROE**: {fa['roe']}%  
-                            - **PE Ratio**: {fa['pe_ratio']}  
-                            - **Debt-to-Equity**: {fa['de_ratio']}  
-                            - **Free Cash Flow**: {fcf_disp}
-                            - **Data As of**: {fa['fiscal_date']}  
-                            - **FA Score**: {fa['fa_score']}/100  
-                            - **Verdict**: **{fa['verdict']}**
-                            """)
-                            st.markdown('<p style="font-size: 10px; color: grey;">Source: Yahoo Finance (via yfinance)</p>', unsafe_allow_html=True)
-                            if "fa_breakdown" in fa:
-                                st.markdown("##### 🔍 Fundamental Score Breakdown")
-                                for factor, value in fa["fa_breakdown"].items():
-                                    st.markdown(f"- **{factor}**: {value}")
+                        if "error" in fa: st.error(fa["error"])
+                        else: display_fundamental_analysis(fa)
 
                     elif analysis_type == "Both":
                         st.subheader(f"📊 Combined Analysis Report ({basis})")
-                        
                         if any(mod is None or (isinstance(mod, dict) and "error" in mod) for mod in [ta, fa]):
                             st.error("❌ One or more critical modules failed. Please try again.")
-
                         else:
-                            # Optional warnings for Sentiment and News
-                            if sentiment is None or (isinstance(sentiment, dict) and "error" in sentiment):
-                                st.warning("⚠️ Sentiment analysis unavailable.")
-                            if news_risk is None or (isinstance(news_risk, dict) and "error" in news_risk):
-                                st.warning("⚠️ News risk analysis couldn't be completed — the API limit has been reached, Try again later!")
-                        
-                            # Technical Analysis Section
-                            st.markdown("### 🧪 Technical Analysis")
-                            st.markdown(f"""
-                            - **Current Price**: {ta['current_price']}  
-                            - **RSI (14)**: {ta['rsi']}  
-                            - **SMA-20**: {ta['sma_20']}  
-                            - **EMA-20**: {ta['ema_20']}  
-                            - **TA Score**: {ta['ta_score']}/100  
-                            - **Verdict**: **{ta['verdict']}**
-                            """)
-                            
-                            # Fundamental Analysis Section
-                            st.markdown("### 📊 Fundamental Analysis")
-                            fcf = fa.get("fcf", "N/A")
-                            fcf_disp = f"{fcf:,}" if isinstance(fcf, (int, float)) else "N/A"
-                            st.markdown(f"""
-                            - **Market Cap**: {fa['market_cap']:,} ({fa['size']})  
-                            - **EPS**: {fa['eps']}  
-                            - **ROE**: {fa['roe']}%  
-                            - **PE Ratio**: {fa['pe_ratio']}  
-                            - **Debt-to-Equity**: {fa['de_ratio']}  
-                            - **Free Cash Flow**: {fcf_disp}
-                            - **Data As of**: {fa['fiscal_date']}  
-                            - **FA Score**: {fa['fa_score']}/100  
-                            - **Verdict**: **{fa['verdict']}**
-                            """)
+                            display_technical_analysis(ta)
+                            display_fundamental_analysis(fa)
+                            display_sentiment_analysis(sentiment)
+                            display_news_risk_analysis(news_risk)
 
-                            # 💬 Sentiment Analysis Section
-                            st.markdown("### 💬 Sentiment Analysis")
-                            st.markdown(f"""
-                            - **Sentiment Score**: {sentiment['score']}/10  
-                            - **Label**: {sentiment['label']}
-                            """)
-
-                            # Display sample headlines if available
-                            if sentiment.get("headlines"):
-                                st.markdown("**📰 Sample Headlines**")
-                                for item in sentiment["headlines"][:2]:  # Top 2
-                                    st.markdown(f"- {item['title']} ({item['label']})")
-
-                            
-                            # News Risk Section
-                            # 🛡️ News & Geopolitical Risk Section
-                            st.markdown("### 🛡️ News & Geopolitical Risk")
-                            st.markdown(f"""
-                            - **Risk Score**: {news_risk.get('risk_score', 'N/A')} / 100  
-                            - **Verdict**: {news_risk.get('verdict', 'N/A')}
-                            """)
-
-                            # Sample Headlines in smaller font
-                            if news_risk.get("news"):
-                                st.markdown("**📰 Sample Headlines**", unsafe_allow_html=True)
-                                for article in news_risk["news"]:
-                                    st.markdown(f"- {article['title']}", unsafe_allow_html=True)
-
-                            # Final Combined Score
-                            # ...
-                            # Final Combined Score (Now with user weights)
-                            user_weights = st.session_state.get('user_weights', {"fa": 35, "ta": 35, "sentiment": 20, "news": 10})
-                            total_weight = sum(user_weights.values())
-
-                            if total_weight == 100:
-                                final_score = round(
-                                    (user_weights["fa"] / 100) * fa["fa_score"] +
-                                    (user_weights["ta"] / 100) * ta["ta_score"] +
-                                    (user_weights["sentiment"] / 100) * sentiment["score"] * 10 +
-                                    (user_weights["news"] / 100) * news_risk.get("risk_score", 50), 2  # Added .get() for safety
-                                )
-                            else:
-                                # Fallback to default if weights are not 100
-                                final_score = round(
-                                    0.35 * fa["fa_score"] +
-                                    0.35 * ta["ta_score"] +
-                                    0.2 * sentiment["score"] * 10 +
-                                    0.1 * news_risk.get("risk_score", 50), 2
-                                )
-
-                            final_verdict = (
-                                "Strong Buy" if final_score >= 80
-                                else "Buy" if final_score >= 65
-                                else "Hold" if final_score >= 50
-                                else "Sell"
+                            user_weights = st.session_state.user_weights
+                            final_score = round(
+                                (user_weights["fa"] / 100) * fa.get("fa_score", 0) +
+                                (user_weights["ta"] / 100) * ta.get("ta_score", 0) +
+                                (user_weights["sentiment"] / 100) * sentiment.get("score", 0) * 10 +
+                                (user_weights["news"] / 100) * news_risk.get("risk_score", 50), 2
                             )
+                            final_verdict = ("Strong Buy" if final_score >= 80 else "Buy" if final_score >= 65 else "Hold" if final_score >= 50 else "Sell")
 
                             st.markdown("### 📌 Final Investment Decision")
-                            # Add a note about the weights used
                             st.caption(f"Calculated with weights: FA {user_weights['fa']}%, TA {user_weights['ta']}%, Sentiment {user_weights['sentiment']}%, News {user_weights['news']}%")
-                            st.markdown(f"""
-                            - **Combined Score**: {final_score}/100  
-                            - **Verdict**: **{final_verdict}**
-                            """)
-                            # ...
-                            final_verdict = (
-                                "Strong Buy" if final_score >= 80
-                                else "Buy" if final_score >= 65
-                                else "Hold" if final_score >= 50
-                                else "Sell"
-                            )
-
-                            st.markdown("### 📌 Final Investment Decision")
-                            st.markdown(f"""
-                            - **Combined Score**: {final_score}/100  
-                            - **Verdict**: **{final_verdict}**
-                            """)
+                            st.markdown(f"- **Combined Score**: {final_score}/100\n- **Verdict**: **{final_verdict}**")
 
                 except Exception as e:
                     st.error(f"Analysis failed: {str(e)}")
+
+        if is_disabled:
+            st.error(f"Analysis button is disabled. Total weight must be 100%, but is currently {total_weight}%.")
+# =============================================================================
+# END OF REPLACEMENT BLOCK 1
+# =============================================================================
 
 
 elif st.session_state.get("chat_mode") == "report":
