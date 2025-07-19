@@ -645,21 +645,37 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
         progress_bar = st.progress(0)
         status_text = st.empty()
         
+        # ...
         def process_leaderboard_ticker(ticker, i, total):
             status_text.text(f"Processing {i+1}/{total}")
             progress_bar.progress((i+1)/total)
             try:
+                # Fetch the analyses
                 ta = get_technical_analysis(ticker, basis.lower())
                 fa = get_fundamental_analysis(ticker, basis.lower())
                 sentiment = get_sentiment_analysis(ticker, basis.lower())
+                news_risk = get_news_risk_analysis(ticker, basis.lower()) # You were missing this
                 vol = calculate_volatility(ticker)
+
+                # Get user weights or use default
+                user_weights = st.session_state.get('user_weights', {"fa": 35, "ta": 35, "sentiment": 20, "news": 10})
+
+                # Calculate score using the weights
+                final_score = round(
+                    (user_weights["fa"] / 100) * fa["fa_score"] +
+                    (user_weights["ta"] / 100) * ta["ta_score"] +
+                    (user_weights["sentiment"] / 100) * sentiment["score"] * 10 +
+                    (user_weights["news"] / 100) * news_risk.get("risk_score", 50), 2
+                )
+
                 return {
                     "Ticker": ticker,
-                    "FA Score": fa["fa_score"],
-                    "TA Score": ta["ta_score"],
-                    "Sentiment": sentiment["score"] * 10,
+                    "FA Score": fa.get("fa_score", 0),
+                    "TA Score": ta.get("ta_score", 0),
+                    "Sentiment": sentiment.get("score", 0) * 10,
+                    "News Risk": news_risk.get("risk_score", 50),
                     "Volatility": vol,
-                    "Final Score": round(0.35*fa["fa_score"] + 0.35*ta["ta_score"] + 0.2*sentiment["score"]*10 + 0.1*(100-vol), 2)
+                    "Final Score": final_score
                 }
             except Exception:
                 return None
@@ -739,6 +755,35 @@ elif st.session_state.get("chat_mode") == "run_analysis":
     selected_ticker = st.selectbox("", tickers, 
                                    key="run_analysis_ticker")
     st.markdown('</div>', unsafe_allow_html=True)
+
+    # Insert this block in app/main.py within the "run_analysis" section
+
+    st.markdown("---")
+    with st.expander("🎛️ Customize Scoring Model (Optional)"):
+        st.markdown("Adjust the weights for each analysis category. **They must add up to 100%.**")
+        
+        # Initialize weights in session state if they don't exist
+        if 'user_weights' not in st.session_state:
+            st.session_state.user_weights = {
+                "fa": 35,
+                "ta": 35,
+                "sentiment": 20,
+                "news": 10
+            }
+
+        weights = st.session_state.user_weights
+        
+        weights["fa"] = st.slider("Fundamental Analysis (%)", 0, 100, weights["fa"])
+        weights["ta"] = st.slider("Technical Analysis (%)", 0, 100, weights["ta"])
+        weights["sentiment"] = st.slider("Sentiment Analysis (%)", 0, 100, weights["sentiment"])
+        weights["news"] = st.slider("News & Risk Analysis (%)", 0, 100, weights["news"])
+
+        total_weight = sum(weights.values())
+        if total_weight != 100:
+            st.error(f"Total weight must be 100%. Current total: {total_weight}%")
+        else:
+            st.success("Weights are balanced at 100%.")
+    st.markdown("---")
 
     col1, col2 = st.columns(2)
     with col1:
@@ -915,12 +960,42 @@ elif st.session_state.get("chat_mode") == "run_analysis":
                                     st.markdown(f"- {article['title']}", unsafe_allow_html=True)
 
                             # Final Combined Score
-                            final_score = round(
-                                0.35 * fa["fa_score"] +
-                                0.35 * ta["ta_score"] +
-                                0.2 * sentiment["score"] * 10 +
-                                0.1 * news_risk["risk_score"], 2
+                            # ...
+                            # Final Combined Score (Now with user weights)
+                            user_weights = st.session_state.get('user_weights', {"fa": 35, "ta": 35, "sentiment": 20, "news": 10})
+                            total_weight = sum(user_weights.values())
+
+                            if total_weight == 100:
+                                final_score = round(
+                                    (user_weights["fa"] / 100) * fa["fa_score"] +
+                                    (user_weights["ta"] / 100) * ta["ta_score"] +
+                                    (user_weights["sentiment"] / 100) * sentiment["score"] * 10 +
+                                    (user_weights["news"] / 100) * news_risk.get("risk_score", 50), 2  # Added .get() for safety
+                                )
+                            else:
+                                # Fallback to default if weights are not 100
+                                final_score = round(
+                                    0.35 * fa["fa_score"] +
+                                    0.35 * ta["ta_score"] +
+                                    0.2 * sentiment["score"] * 10 +
+                                    0.1 * news_risk.get("risk_score", 50), 2
+                                )
+
+                            final_verdict = (
+                                "Strong Buy" if final_score >= 80
+                                else "Buy" if final_score >= 65
+                                else "Hold" if final_score >= 50
+                                else "Sell"
                             )
+
+                            st.markdown("### 📌 Final Investment Decision")
+                            # Add a note about the weights used
+                            st.caption(f"Calculated with weights: FA {user_weights['fa']}%, TA {user_weights['ta']}%, Sentiment {user_weights['sentiment']}%, News {user_weights['news']}%")
+                            st.markdown(f"""
+                            - **Combined Score**: {final_score}/100  
+                            - **Verdict**: **{final_verdict}**
+                            """)
+                            # ...
                             final_verdict = (
                                 "Strong Buy" if final_score >= 80
                                 else "Buy" if final_score >= 65
