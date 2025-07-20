@@ -1,78 +1,40 @@
-from backend.technical_analysis import analyze_technical_indicators
-from backend.fundamental_analysis import analyze_fundamentals
-from backend.sentiment_analysis import analyze_sentiment
-from backend.screener_engine import screen_stocks
-from backend.news_risk_analyzer import fetch_news_risk
-from backend.report_generator import generate_pdf_report, generate_csv_report
-from backend.chat_assistant import get_chat_response
-import yfinance as yf
-from datetime import datetime
+# nlp/chat_router.py
+import re
 
-def handle_chat_command(command: str, ticker: str = None):
-    command_lower = command.lower().strip()
+def handle_chat_command(user_input: str) -> tuple[str, str | None]:
+    """
+    Interprets a user's text command to determine their intent and extract a stock ticker.
+    This function does NOT call any backend modules. Its only job is to parse text.
 
-    # 🎯 Screener Engine
-    if "screener" in command_lower:
-        return "Opening Screener Engine module for you.", None, None
+    Args:
+        user_input: The raw text entered by the user.
 
-    # 📄 Report Generator
-    elif "report" in command_lower and ticker:
-        ta = analyze_technical_indicators(ticker)
-        fa = analyze_fundamentals(ticker)
-        sentiment = analyze_sentiment(ticker)
-        news_risk = fetch_news_risk(ticker)
-
-        final_score = round(
-            0.35 * fa["fa_score"] +
-            0.35 * ta["ta_score"] +
-            0.2 * sentiment["score"] * 10 +
-            0.1 * news_risk["risk_score"], 2
-        )
-        final_verdict = (
-            "Strong Buy" if final_score >= 80
-            else "Buy" if final_score >= 65
-            else "Hold" if final_score >= 50
-            else "Sell"
-        )
-
-        stock = yf.Ticker(ticker)
-        info = stock.info
-        stock_info = {
-            "ticker": ticker,
-            "name": info.get("shortName", ""),
-            "price": info.get("currentPrice", "N/A"),
-            "date": datetime.now().strftime("%Y-%m-%d"),
-        }
-
-        chat_summary = get_chat_response(stock_info, ta, fa, sentiment, news_risk, final_score, final_verdict)
-
-        return chat_summary, None, {
-            "stock_info": stock_info,
-            "ta": ta, "fa": fa,
-            "sentiment": sentiment,
-            "news_risk": news_risk,
-            "final_score": final_score,
-            "final_verdict": final_verdict
-        }
-
-    # 🧪 Analyze Command
-    elif "analyze" in command_lower and ticker:
-        ta = analyze_technical_indicators(ticker)
-        fa = analyze_fundamentals(ticker)
-        sentiment = analyze_sentiment(ticker)
-        summary = f"Analysis complete for {ticker}. TA Score: {ta['ta_score']}, FA Score: {fa['fa_score']}, Sentiment: {sentiment['label']}"
-        return summary, None, {
-            "ta": ta, "fa": fa, "sentiment": sentiment
-        }
-
-    # 💬 ChatGPT-style fallback (for general financial questions)
+    Returns:
+        A tuple containing:
+        - command (str): The identified command (e.g., "run_analysis", "report", "screener").
+        - ticker (str | None): The extracted stock ticker symbol, if any.
+    """
+    text = user_input.lower().strip()
+    
+    # --- Command Recognition using keywords ---
+    # This block maps various user inputs to standardized internal commands.
+    if any(cmd in text for cmd in ["run analysis", "analyze", "ra"]):
+        command = "run_analysis"
+    elif any(cmd in text for cmd in ["generate report", "report", "gr"]):
+        command = "report"
+    elif any(cmd in text for cmd in ["screener", "find stocks", "insight generation", "ig"]):
+        # Consolidating "insight generation" into "screener" for simplicity.
+        # You can show both screener and leaderboard buttons when this command is returned.
+        command = "insight_generation"
+    elif any(cmd in text for cmd in ["leaderboard", "top stocks"]):
+        command = "stock_leaderboard"
     else:
-        return (
-            "⚠️ Sorry, I can only help with:\n\n"
-            "- Run Analysis (RA)\n"
-            "- Insight Generation(IG)\n"
-            "- Generate Report (GR)\n\n"
-            "Please type one of these to continue.",
-            None,
-            None
-        )
+        command = "unknown"
+
+    # --- Ticker Extraction using Regular Expressions ---
+    # This regex looks for a capitalized word of 1-5 letters,
+    # which can optionally be preceded by a '$' sign (e.g., "$AAPL" or "MSFT").
+    ticker_match = re.search(r'\$?([A-Z]{1,5})\b', user_input.upper())
+    ticker = ticker_match.group(1) if ticker_match else None
+    
+    return command, ticker
