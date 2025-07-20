@@ -91,9 +91,9 @@ def get_wacc(stock):
         logger.error(f"Could not calculate WACC for {stock.ticker}: {e}")
         return None
 
-def get_dcf(stock, period="annual"):
+def get_dcf(stock, basis ="annual"):
     """Performs a Discounted Cash Flow (DCF) analysis."""
-    if period == "quarterly":
+    if basis == "quarterly":
         return {"error": "DCF analysis is only available on an annual basis."}
     try:
         wacc = get_wacc(stock)
@@ -277,7 +277,7 @@ def get_beneish_m_score(stock):
         return {"error": "An unexpected error occurred during Beneish calculation."}
 
 
-def analyze_fundamentals(ticker, period="annual"):
+def analyze_fundamentals(ticker, basis ="annual"):
     """Generates a summary of fundamental analysis scores."""
     stock = yf.Ticker(ticker)
     score = 0
@@ -290,7 +290,7 @@ def analyze_fundamentals(ticker, period="annual"):
         
         # Combine all fundamental results
         results = {"Fundamental Score": score}
-        results.update(get_dcf(stock, period))
+        results.update(get_dcf(stock, basis))
         results.update(get_piotroski_score(stock))
         results.update(get_beneish_m_score(stock))
 
