@@ -1,3 +1,4 @@
+# main.py
 import streamlit as st
 import yfinance as yf
 import streamlit.components.v1 as components
@@ -5,16 +6,28 @@ import concurrent.futures
 import time
 import os
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import pandas as pd
-import plotly.graph_objs as go
 from datetime import datetime
-import importlib
-from backend.market_selector import get_top_50_tickers
-from backend.screener_engine import calculate_volatility
-from nlp.chat_router import handle_chat_command
-from backend.fundamental_analysis import get_risk_free_rate
+import logging
+import plotly.graph_objects as go # <--- ADD THIS LINE
 
+# =============================================================================
+# --- CONFIGURATION (MUST BE AT THE TOP) ---
+# =============================================================================
+st.set_page_config(page_title="StockMatrix", layout="centered")
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# --- Backend & NLP Module Imports ---
+from backend import technical_analysis as ta_mod
+from backend import fundamental_analysis as fa_mod
+from backend import sentiment_analysis as sentiment_mod
+from backend import news_risk_analyzer as news_mod
+from backend.market_selector import get_top_50_tickers
+from backend.screener_engine import screen_stocks, calculate_volatility
+from backend.leaderboard_engine import get_leaderboard
+from backend.report_generator import generate_pdf_report, generate_csv_report
+from nlp.chat_router import handle_chat_command
 
 st.set_page_config(page_title="STOCK ANALYSER", layout="centered")
 # --- Custom CSS for Streamlit ---
@@ -800,7 +813,7 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
             with st.expander("Top 5 High Volatility"):
                 st.dataframe(df.nlargest(5, "Volatility"))
             with st.expander("Top 5 Undervalued (FA Score)"):
-                st.dataframe(df.nlargest(5, "FA Score"))
+                st.dataframe(df.nlargest(5, "DCF Score")) # <--- CORRECTED LINE
             with st.expander("Top 5 Low Risk (Volatility)"):
                 st.dataframe(df.nsmallest(5, "Volatility"))
             with st.expander("Top 5 Negative Sentiment"):

@@ -95,7 +95,12 @@ def _calculate_wacc(stock_info: dict, balance_sheet_data: pd.DataFrame, financia
 
         income_before_tax = financials_data.loc['Income Before Tax'].iloc[0]
         income_tax_expense = financials_data.loc['Income Tax Expense'].iloc[0]
-        tax_rate = income_tax_expense / income_before_tax if income_before_tax > 0 else 0.21
+        if income_before_tax > 0:
+            tax_rate = income_tax_expense / income_before_tax
+            # Clamp tax rate to a reasonable range (e.g., 0% to 50%)
+            tax_rate = max(0, min(tax_rate, 0.5))
+        else:
+            tax_rate = 0.21 # Fallback tax rate
 
         market_cap = stock_info.get("marketCap")
         firm_value = market_cap + total_debt
