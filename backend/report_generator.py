@@ -1,146 +1,148 @@
-from fpdf import FPDF
 import io
-import pandas as pd
-import plotly.graph_objs as go
+from fpdf import FPDF
 import plotly.io as pio
-import yfinance as yf
-from datetime import datetime
-import unicodedata
-import re
 
-# ✅ Helper function to remove emojis/special characters
+# --- Helper Function ---
+
 def sanitize(text):
-    if not isinstance(text, str):
-        return str(text)
-    text = unicodedata.normalize("NFKD", text)
-    text = text.encode("ascii", "ignore").decode("ascii")
-    return re.sub(r"[^\x00-\x7F]+", "", text)
+    """
+    Sanitizes text to be compatible with FPDF by replacing special characters.
+    This prevents errors when writing text that contains characters FPDF
+    interprets as formatting, such as parentheses or backslashes.
+    """
+    return text.encode('latin-1', 'replace').decode('latin-1')
+
+# --- Main Report Generation Function ---
 
 def generate_pdf_report(
-    stock_info: dict,
-    technical: dict,
-    fundamental: dict,
-    sentiment: dict,
-    final_score: float,
-    final_verdict: str,
-    news_risk: dict = None
-) -> bytes:
+    ticker,
+    fig, # The Plotly figure object for the stock chart
+    info,
+    news_sentiment,
+    risk_analysis,
+    technical_analysis,
+    fundamental_analysis,
+    dcf_analysis,
+    m_score,
+    piotroski_score
+):
+    """
+    Generates a comprehensive PDF report for a given stock ticker.
+
+    Args:
+        ticker (str): The stock ticker symbol.
+        fig (go.Figure): A Plotly figure object for the stock price chart.
+        info (dict): General company information.
+        news_sentiment (dict): News sentiment analysis results.
+        risk_analysis (dict): News-based risk analysis results.
+        technical_analysis (dict): Technical analysis scores.
+        fundamental_analysis (dict): Fundamental analysis scores.
+        dcf_analysis (dict): Discounted Cash Flow analysis results.
+        m_score (str): Beneish M-Score result.
+        piotroski_score (str): Piotroski F-Score result.
+
+    Returns:
+        bytes: The generated PDF report as a byte string, ready for download.
+    """
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Arial", "B", 16)
-    pdf.cell(0, 10, sanitize(f"Stock Analysis Report: {stock_info.get('ticker', '')}"), 0, 1, "C")
 
-    # Stock Chart
-# Replace your current chart section with this 👇
-# (inside generate_pdf_report)
-    try:
-        stock = yf.Ticker(stock_info["ticker"])
-        hist = stock.history(period="6mo")
+    # --- Header ---
+    pdf.set_font("Arial", 'B', 20)
+    pdf.cell(0, 10, f'Stock Analysis Report: {ticker.upper()}', 0, 1, 'C')
+    pdf.set_font("Arial", '', 10)
+    company_name = info.get('longName', 'N/A')
+    pdf.cell(0, 10, sanitize(company_name), 0, 1, 'C')
+    pdf.ln(5)
 
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=hist.index, y=hist["Close"], name="Close Price"))
+    # --- Stock Chart ---
+    pdf.set_font("Arial", 'B', 14)
+    pdf.cell(0, 10, 'Stock Price Chart', 0, 1, 'L')
 
-        # ✅ Remove white space around chart
-        fig.update_layout(
-            title="Price Trend (6 Months)",
-            xaxis_title="Date",
-            yaxis_title="Price",
-            margin=dict(l=20, r=20, t=30, b=30),  # ⬅️ tighter margins
-            height=250,  # smaller chart height
-            width=600
-        )
+    # Generate the chart image as a bytes object in memory
+    chart_image_bytes = pio.to_image(fig, format="png", width=800, height=300)
 
-                # Export Plotly figure to PNG file directly (no PIL needed)
-        chart_path = "temp_chart.png"
-        pio.write_image(fig, chart_path, format="png", width=600, height=250)
+    # Create an in-memory binary stream from the bytes object
+    in_memory_chart = io.BytesIO(chart_image_bytes)
 
-        # ✅ Insert image into PDF
-        pdf.image(chart_path, x=10, y=pdf.get_y(), w=pdf.w - 20, h=55)
-        pdf.ln(4)
+    # Add the image from the in-memory stream to the PDF
+    # The width (w) is set to the page width minus margins
+    pdf.image(in_memory_chart, x=10, y=pdf.get_y(), w=pdf.w - 20)
+    pdf.ln(80) # Adjust spacing as needed based on the image height
 
-    except Exception as e:
-        pdf.set_font("Arial", "I", 10)
-        pdf.cell(0, 10, sanitize(f"(Chart not available: {str(e)})"), 0, 1)
+    # --- Analysis Sections ---
+    # Using a two-column layout for better space utilization
+    col_width = pdf.w / 2 - 15
 
-    # Summary
-    pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 10, "Summary", 0, 1)
-    pdf.set_font("Arial", "", 12)
-    pdf.multi_cell(0, 8, sanitize(f"""
-    Ticker: {stock_info.get('ticker', '')}
-    Name: {stock_info.get('name', 'N/A')}
-    Analysis Period: {stock_info.get('basis', 'N/A')}
-    Current Price: {stock_info.get('price', 'N/A')}
-    """))
+    # --- Column 1 ---
+    pdf.set_xy(10, pdf.get_y())
 
     # Technical Analysis
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(col_width, 10, 'Technical Analysis', 0, 2, 'L')
+    pdf.set_font("Arial", '', 9)
+    for key, value in technical_analysis.items():
+        pdf.cell(col_width - 20, 5, sanitize(str(key)), 0, 0, 'L')
+        pdf.cell(20, 5, sanitize(str(value)), 0, 1, 'R')
     pdf.ln(5)
-    pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 10, "Technical Analysis", 0, 1)
-    pdf.set_font("Arial", "", 12)
-    for key in ["rsi", "sma_20", "ema_20", "ta_score", "verdict"]:
-        pdf.cell(0, 8, sanitize(f"{key.replace('_', ' ').title()}: {technical.get(key, 'N/A')}"), 0, 1)
+
+    # DCF Analysis
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(col_width, 10, 'DCF Analysis', 0, 2, 'L')
+    pdf.set_font("Arial", '', 9)
+    for key, value in dcf_analysis.items():
+        pdf.cell(col_width - 20, 5, sanitize(str(key)), 0, 0, 'L')
+        pdf.cell(20, 5, sanitize(str(value)), 0, 1, 'R')
+    pdf.ln(5)
+
+    # Financial Health Scores
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(col_width, 10, 'Financial Health Scores', 0, 2, 'L')
+    pdf.set_font("Arial", '', 9)
+    pdf.cell(col_width - 20, 5, 'Beneish M-Score:', 0, 0, 'L')
+    pdf.cell(20, 5, sanitize(m_score), 0, 1, 'R')
+    pdf.cell(col_width - 20, 5, 'Piotroski F-Score:', 0, 0, 'L')
+    pdf.cell(20, 5, sanitize(piotroski_score), 0, 1, 'R')
+    pdf.ln(5)
+
+
+    # --- Column 2 ---
+    pdf.set_xy(pdf.w / 2, pdf.get_y() - 110) # Reset Y to align with top of column 1
 
     # Fundamental Analysis
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(col_width, 10, 'Fundamental Analysis', 0, 2, 'L')
+    pdf.set_font("Arial", '', 9)
+    for key, value in fundamental_analysis.items():
+        pdf.cell(col_width - 20, 5, sanitize(str(key)), 0, 0, 'L')
+        pdf.cell(20, 5, sanitize(str(value)), 0, 1, 'R')
     pdf.ln(5)
-    pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 10, "Fundamental Analysis", 0, 1)
-    pdf.set_font("Arial", "", 12)
-    for key in ["market_cap", "eps", "roe", "pe_ratio", "de_ratio", "fa_score", "verdict"]:
-        pdf.cell(0, 8, sanitize(f"{key.replace('_', ' ').title()}: {fundamental.get(key, 'N/A')}"), 0, 1)
 
-    # Sentiment Analysis
-    if sentiment:
-        pdf.ln(5)
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 10, "Sentiment Analysis", 0, 1)
-        pdf.set_font("Arial", "", 12)
-        pdf.cell(0, 8, sanitize(f"Sentiment Score: {sentiment.get('score', 'N/A')} / 10"), 0, 1)
-        pdf.cell(0, 8, sanitize(f"Label: {sentiment.get('label', 'N/A')}"), 0, 1)
+    # News & Sentiment Analysis
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(col_width, 10, 'News & Sentiment Analysis', 0, 2, 'L')
+    pdf.set_font("Arial", '', 9)
+    for key, value in news_sentiment.items():
+        pdf.cell(col_width - 20, 5, sanitize(str(key)), 0, 0, 'L')
+        pdf.cell(20, 5, sanitize(str(value)), 0, 1, 'R')
+    pdf.ln(5)
 
-        headlines = sentiment.get("headlines", [])
-        if headlines:
-            pdf.set_font("Arial", "I", 11)
-            pdf.cell(0, 10, "Sample Headlines", 0, 1)
-            pdf.set_font("Arial", "", 10)
-            for item in headlines:
-                if pdf.get_y() > 260:
-                    pdf.add_page()
-                title = sanitize(item.get("title", ""))
-                label = sanitize(item.get("label", ""))
-                pdf.multi_cell(0, 6, f"- {title} ({label})")
+    # Risk Analysis
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(col_width, 10, 'News-Based Risk Analysis', 0, 2, 'L')
+    pdf.set_font("Arial", '', 9)
+    for key, value in risk_analysis.items():
+        # Using multi_cell for potentially longer risk descriptions
+        pdf.multi_cell(col_width, 5, f"{sanitize(str(key))}: {sanitize(str(value))}", 0, 'L')
+    pdf.ln(5)
 
-    # News & Geopolitical Risk
-    if news_risk:
-        pdf.ln(5)
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 10, "News & Geopolitical Risk", 0, 1)
-        pdf.set_font("Arial", "", 12)
-        pdf.cell(0, 8, sanitize(f"Risk Score: {news_risk.get('risk_score', 'N/A')} / 100"), 0, 1)
-        pdf.cell(0, 8, sanitize(f"Verdict: {news_risk.get('verdict', 'N/A')}"), 0, 1)
 
-        news = news_risk.get("news", [])
-        if news:
-            pdf.set_font("Arial", "I", 11)
-            pdf.cell(0, 10, "Sample Headlines", 0, 1)
-            pdf.set_font("Arial", "", 10)
-            for item in news:
-                if pdf.get_y() > 260:
-                    pdf.add_page()
-                title = sanitize(item.get("title", ""))
-                pdf.multi_cell(0, 6, f"- {title}")
+    # --- Footer ---
+    pdf.set_y(-15)
+    pdf.set_font('Arial', 'I', 8)
+    pdf.cell(0, 10, 'Page %s' % pdf.page_no(), 0, 0, 'C')
+    pdf.cell(0, 10, 'Generated by StockMatrix - For informational purposes only.', 0, 0, 'R')
 
-    # Final Score
-    pdf.ln(10)
-    pdf.set_font("Arial", "B", 14)
-    pdf.cell(0, 10, "Final Investment Decision", 0, 1)
-    pdf.set_font("Arial", "", 12)
-    pdf.cell(0, 8, sanitize(f"Combined Score: {final_score} / 100"), 0, 1)
-    pdf.cell(0, 8, sanitize(f"Verdict: {final_verdict}"), 0, 1)
-
+    # Return the PDF content as a byte string
+    # 'S' destination returns the document as a string. latin-1 is needed for bytes output.
     return pdf.output(dest='S').encode('latin-1')
-
-# CSV Report
-def generate_csv_report(data: list) -> bytes:
-    df = pd.DataFrame(data)
-    return df.to_csv(index=False).encode('utf-8')

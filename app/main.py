@@ -9,12 +9,49 @@ import sys
 import pandas as pd
 from datetime import datetime
 import logging
-import plotly.graph_objects as go # <--- ADD THIS LINE
+import importlib
+
 
 # =============================================================================
 # --- CONFIGURATION (MUST BE AT THE TOP) ---
 # =============================================================================
 st.set_page_config(page_title="StockMatrix", layout="centered")
+### ADD THIS ENTIRE BLOCK ###
+import plotly.graph_objects as go
+def initialize_session_state():
+    """Initializes all required keys in the session state (our whiteboard)."""
+    # These are the "sections" of our whiteboard.
+    STATE_KEYS = {
+        "ticker": "AAPL",
+        "stock_data": None,
+        "stock_info": None,
+        "price_chart": None,
+        "technicals": None,
+        "fundamentals": None,
+        "dcf": None,
+        "piotroski": None,
+        "beneish": None,
+        "sentiment": None,
+        "risk": None,
+        "pdf_report": None,
+    }
+    for key, value in STATE_KEYS.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
+    # State for the chat assistant (it also uses the whiteboard!)
+    if "messages" not in st.session_state:
+        st.session_state.messages = [{"role": "assistant", "content": "Hi! Ask me to analyze a stock or compare stocks."}]
+
+# Call the function immediately to set everything up
+initialize_session_state()
+
+def reset_analysis_data():
+    """This is our 'eraser' for when the user types a new stock ticker."""
+    st.session_state.stock_data = None
+    st.session_state.stock_info = None
+    # ... reset all other keys ...
+    
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -29,7 +66,6 @@ from backend.leaderboard_engine import get_leaderboard
 from backend.report_generator import generate_pdf_report, generate_csv_report
 from nlp.chat_router import handle_chat_command
 
-st.set_page_config(page_title="STOCK ANALYSER", layout="centered")
 # --- Custom CSS for Streamlit ---
 st.markdown("""
     <div class="top-banner">
@@ -328,14 +364,7 @@ st.markdown("<div class='curated-footer' style='color: #000000;'>Curated and pow
 import logging
 logging.basicConfig(level=logging.DEBUG)
 st.set_option('client.showErrorDetails', True)
-
-
-
-from backend import technical_analysis as ta_mod
-from backend import fundamental_analysis as fa_mod
-from backend import sentiment_analysis as sentiment_mod
-from backend import news_risk_analyzer as news_mod
-
+# =============================================================================
 # --- Cached Helper Functions ---
 @st.cache_data(ttl=3600)
 def get_technical_analysis(ticker, basis: str = "annual"):
@@ -375,70 +404,6 @@ def cached_get_risk_free_rate():
 # --- DISPLAY HELPER FUNCTIONS ---
 # =============================================================================
 
-def display_fundamental_analysis(fa_data):
-    """Presents the DCF analysis results in a clean UI component."""
-    with st.expander("📊 Fundamental Analysis (DCF Valuation)", expanded=True):
-        if "error" in fa_data:
-            st.error(f"Analysis Failed: {fa_data['error']}")
-            return
-        st.metric(
-            label="Intrinsic Value per Share (DCF)",
-            value=f"${fa_data.get('dcf_intrinsic_value', 0):.2f}",
-            delta=f"{fa_data.get('upside_potential', 0):.2f}% vs Current Price"
-        )
-        st.write(f"**Verdict:** `{fa_data.get('verdict', 'N/A')}`")
-        col1, col2 = st.columns(2)
-        with col1:
-            st.text(f"Current Price: ${fa_data.get('current_price', 0):.2f}")
-            st.text(f"DCF Score: {fa_data.get('dcf_score', 0)}/100")
-        with col2:
-            market_cap = fa_data.get('market_cap')
-            st.text(f"Market Cap: ${market_cap:,.0f}" if market_cap else "N/A")
-            st.text(f"Sector: {fa_data.get('sector', 'N/A')}")
-
-def display_technical_analysis(ta_data):
-    """Presents the technical analysis results."""
-    with st.expander("🧪 Technical Analysis", expanded=True):
-        if "error" in ta_data:
-            st.error(f"Analysis Failed: {ta_data['error']}")
-            return
-        st.metric(label="Technical Score", value=f"{ta_data.get('ta_score', 0)}/100")
-        st.write(f"**Verdict:** `{ta_data.get('verdict', 'N/A')}`")
-        col1, col2 = st.columns(2)
-        with col1:
-            st.text(f"RSI (14): {ta_data.get('rsi', 'N/A')}")
-            st.text(f"SMA (20): {ta_data.get('sma_20', 'N/A')}")
-        with col2:
-            st.text(f"EMA (20): {ta_data.get('ema_20', 'N/A')}")
-            st.text(f"Current Price: ${ta_data.get('current_price', 'N/A')}")
-
-def display_sentiment_analysis(sentiment_data):
-    """Presents the sentiment analysis results."""
-    with st.expander("💬 Sentiment Analysis", expanded=False):
-        if "error" in sentiment_data:
-            st.error(f"Analysis Failed: {sentiment_data['error']}")
-            return
-        st.metric(label="Sentiment Score", value=f"{sentiment_data.get('score', 0):.2f} / 10")
-        st.write(f"**Label:** `{sentiment_data.get('label', 'N/A')}`")
-        headlines = sentiment_data.get("headlines", [])
-        if headlines:
-            st.markdown("**Recent Headlines:**")
-            for item in headlines:
-                st.markdown(f"- {item.get('title', '')}")
-
-def display_news_risk_analysis(news_data):
-    """Presents the news & geopolitical risk results."""
-    with st.expander("🛡️ News & Geopolitical Risk", expanded=False):
-        if "error" in news_data:
-            st.error(f"Analysis Failed: {news_data['error']}")
-            return
-        st.metric(label="Safety Score", value=f"{news_data.get('risk_score', 0)} / 100")
-        st.write(f"**Verdict:** `{news_data.get('verdict', 'N/A')}`")
-        news_items = news_data.get("news", [])
-        if news_items:
-            st.markdown("**High-Risk Headlines Detected:**")
-            for item in news_items:
-                st.markdown(f"- {item.get('title', '')}")
 
 # =============================================================================
 # --- MAIN APP LOGIC STARTS HERE ---
@@ -928,50 +893,94 @@ elif st.session_state.get("chat_mode") == "run_analysis":
         total_weight = sum(st.session_state.user_weights.values())
         is_disabled = (total_weight != 100)
 
+## REPLACE WITH THIS NEW LOGIC
+
         if st.button("Run Analysis", key="run_analysis_btn", disabled=is_disabled):
             with st.spinner(f"🔍 Running {basis.lower()} analysis for {selected_ticker}..."):
                 try:
-                    ta = get_technical_analysis(selected_ticker, basis=basis.lower())
-                    fa = get_fundamental_analysis(selected_ticker, basis=basis.lower())
-                    sentiment = get_sentiment_analysis(selected_ticker, basis=basis.lower())
-                    news_risk = get_news_risk_analysis(selected_ticker, basis=basis.lower())
+                    # --- ACTION: Fetch data and SAVE to the whiteboard ---
+                    st.session_state.technicals = get_technical_analysis(selected_ticker, basis=basis.lower())
+                    st.session_state.fundamentals = get_fundamental_analysis(selected_ticker, basis=basis.lower())
+                    st.session_state.sentiment = get_sentiment_analysis(selected_ticker, basis=basis.lower())
+                    st.session_state.risk = get_news_risk_analysis(selected_ticker, basis=basis.lower())
 
-                    if analysis_type == "Technical":
-                        st.subheader(f"🧪 Technical Analysis Report ({basis})")
-                        if "error" in ta: st.error(ta["error"])
-                        else: display_technical_analysis(ta)
+                    # Also store the final score and verdict in the whiteboard
+                    if "error" not in st.session_state.fundamentals and "error" not in st.session_state.technicals:
+                        user_weights = st.session_state.user_weights
+                        final_score = round(
+                            (user_weights["fa"] / 100) * st.session_state.fundamentals.get("dcf_score", 0) +
+                            (user_weights["ta"] / 100) * st.session_state.technicals.get("ta_score", 0) +
+                            (user_weights["sentiment"] / 100) * st.session_state.sentiment.get("score", 0) * 10 +
+                            (user_weights["news"] / 100) * st.session_state.risk.get("risk_score", 50), 2
+                        )
+                        final_verdict = ("Strong Buy" if final_score >= 80 else "Buy" if final_score >= 65 else "Hold" if final_score >= 50 else "Sell")
 
-                    elif analysis_type == "Fundamental":
-                        st.subheader(f"📊 Fundamental Analysis Report ({basis})")
-                        if "error" in fa: st.error(fa["error"])
-                        else: display_fundamental_analysis(fa)
-
-                    elif analysis_type == "Both":
-
-                        display_technical_analysis(ta)
-                        display_fundamental_analysis(fa)
-                        display_sentiment_analysis(sentiment)
-                        display_news_risk_analysis(news_risk)
-
-                        if "error" not in fa and "error" not in ta:
-                            user_weights = st.session_state.user_weights
-                            final_score = round(
-                                (user_weights["fa"] / 100) * fa.get("dcf_score", 0) +
-                                (user_weights["ta"] / 100) * ta.get("ta_score", 0) +
-                                (user_weights["sentiment"] / 100) * sentiment.get("score", 0) * 10 +
-                                (user_weights["news"] / 100) * news_risk.get("risk_score", 50), 2
-                            )
-                            final_verdict = ("Strong Buy" if final_score >= 80 else "Buy" if final_score >= 65 else "Hold" if final_score >= 50 else "Sell")
-
-                            st.markdown("### 📌 Final Investment Decision")
-                            st.caption(f"Calculated with weights: FA {user_weights['fa']}%, TA {user_weights['ta']}%, Sentiment {user_weights['sentiment']}%, News {user_weights['news']}%")
-                            st.markdown(f"- **Combined Score**: {final_score}/100\n- **Verdict**: **{final_verdict}**")
+                        st.session_state.final_score = final_score
+                        st.session_state.final_verdict = final_verdict
+                        st.session_state.final_weights = user_weights
 
                 except Exception as e:
                     st.error(f"Analysis failed: {str(e)}")
+        ## ADD THIS NEW DISPLAY SECTION
 
-        if is_disabled:
-            st.error(f"Analysis button is disabled. Total weight must be 100%, but is currently {total_weight}%.")
+        st.divider()
+
+        # --- DISPLAY LOGIC: This section reads from the whiteboard (st.session_state) ---
+
+        if st.session_state.technicals:
+            with st.expander("🧪 Technical Analysis", expanded=True):
+                data = st.session_state.technicals
+                if "error" in data:
+                    st.error(f"Analysis Failed: {data['error']}")
+                else:
+                    st.metric(label="Technical Score", value=f"{data.get('ta_score', 0)}/100")
+                    st.write(f"**Verdict:** `{data.get('verdict', 'N/A')}`")
+                    # ... you can add more details here if you want ...
+
+        if st.session_state.fundamentals:
+            with st.expander("📊 Fundamental Analysis (DCF Valuation)", expanded=True):
+                data = st.session_state.fundamentals
+                if "error" in data:
+                    st.error(f"Analysis Failed: {data['error']}")
+                else:
+                    st.metric(
+                        label="Intrinsic Value per Share (DCF)",
+                        value=f"${data.get('dcf_intrinsic_value', 0):.2f}",
+                        delta=f"{data.get('upside_potential', 0):.2f}% vs Current Price"
+                    )
+                    st.write(f"**Verdict:** `{data.get('verdict', 'N/A')}`")
+
+        # Add similar display blocks for sentiment and risk
+        if st.session_state.sentiment:
+            with st.expander("💬 Sentiment Analysis", expanded=True):
+                data = st.session_state.sentiment
+                if "error" in data:
+                    st.error(f"Analysis Failed: {data['error']}")
+                else:
+                    st.metric(label="Sentiment Score", value=f"{data.get('score', 0) * 10:.1f}/100")
+                    st.markdown(f"**Label:** `{data.get('label', 'N/A')}`")
+                    st.markdown("**Sample Headlines Used in Analysis:**")
+                    for headline in data.get("labeled_headlines", [])[:3]:
+                        st.markdown(f"- {headline}")
+
+        if st.session_state.risk:
+            with st.expander("🛡️ News & Geopolitical Risk", expanded=True):
+                data = st.session_state.risk
+                if "error" in data:
+                    st.error(f"Analysis Failed: {data['error']}")
+                else:
+                    st.metric(label="Risk Score", value=f"{data.get('risk_score', 0):.1f}/100")
+                    st.markdown(f"**Verdict:** `{data.get('verdict', 'N/A')}`")
+                    st.markdown("**Recent Risk Headlines:**")
+                    for headline in data.get("headlines", [])[:3]:
+                        st.markdown(f"- {headline}")
+
+        # Display the final investment decision
+        if "final_score" in st.session_state and st.session_state.final_score is not None:
+            st.markdown("### 📌 Final Investment Decision")
+            weights = st.session_state.final_weights
+            st.caption(f"Calculated with weights: FA {weights['fa']}%, TA {weights['ta']}%, Sentiment {weights['sentiment']}%, News {weights['news']}%")
+            st.markdown(f"- **Combined Score**: {st.session_state.final_score}/100\n- **Verdict**: **{st.session_state.final_verdict}**")
 # =============================================================================
 # END OF REPLACEMENT BLOCK 1
 # =============================================================================
@@ -1033,7 +1042,7 @@ elif st.session_state.get("chat_mode") == "report":
 
                     # Calculate final score
                     final_score = round(
-                        0.35 * fa["fa_score"] +
+                        0.35 * fa.get("dcf_score", 0) + 
                         0.35 * ta["ta_score"] +
                         0.2 * sentiment["score"] * 10 +
                         0.1 * news_risk["risk_score"], 2
