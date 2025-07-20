@@ -1,12 +1,12 @@
 # backend/leaderboard_engine.py
 import pandas as pd
 import logging
-from backend.technical_analysis import analyze_technical_indicators
-from backend.fundamental_analysis import analyze_fundamentals
-from backend.sentiment_analysis import analyze_sentiment
-from backend.news_risk_analyzer import fetch_news_risk
-from backend.market_selector import get_top_50_tickers
-from backend.screener_engine import calculate_volatility
+from .technical_analysis import analyze_technical_indicators
+from .fundamental_analysis import analyze_fundamentals
+from .sentiment_analysis import analyze_sentiment
+from .news_risk_analyzer import fetch_news_risk
+from .market_selector import get_top_50_tickers
+from .screener_engine import calculate_volatility
 
 # In backend/leaderboard_engine.py
 

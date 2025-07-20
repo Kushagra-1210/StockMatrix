@@ -2,8 +2,8 @@
 import yfinance as yf
 import numpy as np
 import logging
-from backend.fundamental_analysis import analyze_fundamentals
-from backend.technical_analysis import analyze_technical_indicators
+from .fundamental_analysis import analyze_fundamentals
+from .technical_analysis import analyze_technical_indicators
 
 # In backend/screener_engine.py
 
