@@ -8,13 +8,27 @@ from backend.news_risk_analyzer import fetch_news_risk
 from backend.market_selector import get_top_50_tickers
 from backend.screener_engine import calculate_volatility
 
+# In backend/leaderboard_engine.py
+
+# Add the same helper function here
+def _parse_percentage(pct_string):
+    """Converts a percentage string like '25.50%' to a float 25.50."""
+    if isinstance(pct_string, str):
+        return float(pct_string.strip().replace('%', ''))
+    return pct_string
+
+def _parse_piotroski(piotroski_string):
+    """Converts a Piotroski string like '7/9' to a number 7."""
+    if isinstance(piotroski_string, str):
+        return int(piotroski_string.split('/')[0])
+    return 0
+
 def get_leaderboard(exchange, category):
     tickers = get_top_50_tickers(exchange)
     results = []
 
     for ticker in tickers:
         try:
-            # --- Analysis (basis is now fixed to annual for DCF) ---
             fa = analyze_fundamentals(ticker, basis="annual")
             ta = analyze_technical_indicators(ticker, basis="annual")
             sent = analyze_sentiment(ticker, basis="annual")
@@ -25,29 +39,33 @@ def get_leaderboard(exchange, category):
                 logging.warning(f"Skipping {ticker} for leaderboard due to analysis error.")
                 continue
 
-            # --- UPDATED SCORING LOGIC ---
+            # --- NEW, MORE ROBUST SCORING LOGIC ---
+            # Convert raw values to normalized scores (0-100)
+            upside_pct = _parse_percentage(fa.get("Upside", "0%"))
+            # Cap upside at 200% for scoring to avoid extreme outliers
+            upside_score = min(upside_pct, 200) / 2
+
+            piotroski_raw = _parse_piotroski(fa.get("Piotroski F-Score", "0/9"))
+            piotroski_score = (piotroski_raw / 9) * 100 # Convert 9-point scale to 100-point scale
+
+            # Combine fundamental scores (60% DCF Upside, 40% Piotroski Health)
+            fundamental_score = 0.6 * upside_score + 0.4 * piotroski_score
+
             final_score = (
-                0.35 * fa["dcf_score"] +  # Using the new DCF-derived score
-                0.35 * ta["ta_score"] +
-                0.2 * sent["score"] * 10 +
-                0.1 * news["risk_score"]
+                0.40 * fundamental_score +
+                0.30 * ta.get("ta_score", 0) +
+                0.20 * sent.get("score", 0) * 10 +
+                0.10 * (100 - news.get("risk_score", 50)) # Invert risk score
             )
             data = {
                 "Ticker": ticker,
-                "Upside (%)": fa["upside_potential"],
-                "DCF Score": fa["dcf_score"], # Changed from FA Score
-                "TA Score": ta["ta_score"],
-                "Sentiment": sent["score"] * 10,
-                "News Risk": news["risk_score"],
-                "Volatility": vol,
-                "Market Cap": fa.get("market_cap"),
+                "Upside (%)": fa.get("Upside", "N/A"),
+                "TA Score": ta.get("ta_score", 0),
+                "Piotroski Score": fa.get("Piotroski F-Score", "N/A"),
                 "Final Score": round(final_score, 2)
             }
             results.append(data)
 
-        except KeyError as e:
-            logging.error(f"Leaderboard data structure error for {ticker}: Missing key {e}. Skipping.")
-            continue
         except Exception as e:
             logging.critical(f"Unexpected error for {ticker} in leaderboard: {e}", exc_info=True)
             continue
@@ -61,16 +79,11 @@ def get_leaderboard(exchange, category):
     if category == "Top 5 Strong Buys":
         return df.sort_values("Final Score", ascending=False).head(5)
     elif category == "Top 5 Undervalued Stocks":
-        # Now filters based on the DCF score, which represents undervaluation strength
-        return df[df["DCF Score"] >= 70].sort_values("DCF Score", ascending=False).head(5)
-    # ... (other categories remain the same)
-    elif category == "Top 5 Bullish Momentum":
-        return df[df["TA Score"] >= 60].sort_values("TA Score", ascending=False).head(5)
-    elif category == "Top 5 Low Risk":
-        return df.sort_values("Volatility").head(5)
-    elif category == "Top 5 High Volatility":
-        return df.sort_values("Volatility", ascending=False).head(5)
-    elif category == "Top 5 Negative Sentiment":
-        return df.sort_values("Sentiment").head(5)
+        df['upside_numeric'] = df['Upside (%)'].apply(_parse_percentage)
+        return df.sort_values("upside_numeric", ascending=False).head(5)
+    elif category == "Top 5 Financially Strong":
+        df['piotroski_numeric'] = df['Piotroski Score'].apply(_parse_piotroski)
+        return df.sort_values("piotroski_numeric", ascending=False).head(5)
+    # ... other categories can be updated similarly ...
     
-    return pd.DataFrame()
+    return df.sort_values("Final Score", ascending=False)

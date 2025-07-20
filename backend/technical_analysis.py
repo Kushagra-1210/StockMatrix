@@ -79,15 +79,19 @@ def analyze_technical_indicators(ticker: str, basis: str = "annual") -> dict:
         if not pd.isna(rsi):
             total_weight += 25
             rsi_score = 0
-        # A more gradual scoring for RSI
-        if rsi > 70:
-            rsi_score = 25 - min((rsi - 70) * 1, 20)  # Penalize for being extremely overbought
-        elif rsi < 30:
-            rsi_score = min((30 - rsi) * 1, 20)      # Reward for being oversold
-        else:
-            rsi_score = 15  # Neutral
+            # A more gradual scoring for RSI
+            if rsi > 70:
+                # Penalize for being extremely overbought. Score decreases from a neutral 12.5
+                rsi_score = 12.5 - min((rsi - 70) * 0.5, 12.5) 
+            elif rsi < 30:
+                # Reward for being oversold. Score increases from a neutral 12.5
+                rsi_score = 12.5 + min((30 - rsi) * 0.5, 12.5)
+            else:
+                # Neutral RSI is average
+                rsi_score = 12.5
+            
             score += rsi_score
-            ta_breakdown["RSI Momentum"] = f"{rsi_score}/25"
+            ta_breakdown["RSI Momentum"] = f"{rsi_score:.1f}/25"
 
         # Momentum - MACD (25%)
         if not pd.isna(macd_line_latest) and not pd.isna(macd_signal_latest):

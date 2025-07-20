@@ -56,15 +56,18 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # --- Backend & NLP Module Imports ---
-from backend import technical_analysis as ta_mod
-from backend import fundamental_analysis as fa_mod
-from backend import sentiment_analysis as sentiment_mod
-from backend import news_risk_analyzer as news_mod
-from backend.market_selector import get_top_50_tickers
-from backend.screener_engine import screen_stocks, calculate_volatility
-from backend.leaderboard_engine import get_leaderboard
-from backend.report_generator import generate_pdf_report, generate_csv_report
+from backend import (
+    technical_analysis as ta_mod,
+    fundamental_analysis as fa_mod,
+    sentiment_analysis as sentiment_mod,
+    news_risk_analyzer as news_mod,
+    leaderboard_engine,
+    screener_engine,
+    report_generator,
+    market_selector
+)
 from nlp.chat_router import handle_chat_command
+from backend.report_generator import generate_pdf_report, generate_csv_report
 
 # --- Custom CSS for Streamlit ---
 st.markdown("""
@@ -398,7 +401,8 @@ def cached_get_risk_free_rate():
     This is a Streamlit-aware function in main.py.
     It calls the backend function and caches the result.
     """
-    return get_risk_free_rate()
+    # CORRECT: Calls the 'get_risk_free_rate' function from the 'fa_mod' module
+    return fa_mod.get_risk_free_rate()
 
 # =============================================================================
 # --- DISPLAY HELPER FUNCTIONS ---
@@ -551,144 +555,79 @@ if st.session_state.get("chat_mode") == "screener":
     with col3:
         max_vol = st.slider("Volatility Threshold (Annualized %)", 0, 100, 50)
 
-        def get_volatility_risk_label(vol):
-            if vol < 2:
-                return "🟢 Low"
-            elif vol < 5:
-                return "🟡 Medium"
-            else:
-                return "🔴 High"
 
-        def process_ticker(ticker):
-            try:
-                # Get all analyses in parallel
-                fa = get_fundamental_analysis(ticker, basis=basis.lower())
-                ta = get_technical_analysis(ticker, basis=basis.lower())
-                vol = calculate_volatility(ticker)
-                
-                # Check if meets all criteria
-                if ("error" not in fa and 
-                    "error" not in ta and 
-                    vol is not None and
-                    fa["upside_potential"] >= min_upside and # <-- ADD THIS LINE
-                    ta["ta_score"] >= min_ta and 
-                    vol <= max_vol):
-                    return {
-                        "Ticker": ticker,
-                        "Upside (%)": fa["upside_potential"], # <-- ADD THIS LINE
-                        "TA Score": ta["ta_score"],
-                        "Volatility": vol,
-                        "Risk Level": get_volatility_risk_label(vol),
-                        "Verdict": fa["verdict"]
-                    }
-            except Exception:
-                st.warning(f"Skipped {ticker}: Error in processing")
-                return None
+# In main.py, inside the "screener" block
 
-        # Process all tickers in parallel
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            results = []
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-            
-            tickers = get_top_50_tickers(exchange)
-            # Process in batches for better progress tracking
-            for i, result in enumerate(executor.map(process_ticker, tickers)):
-                if result:  # Only append valid results
-                    results.append(result)
-                progress = (i + 1) / len(tickers)
-                progress_bar.progress(progress)
-                status_text.text(f"Processed {i+1}/{len(tickers)} tickers")
-            
-            progress_bar.empty()
-            status_text.empty()
+# ... (after the sliders)
 
-                    # Display results
-    # Replace this section in your code (around line 550-600 where the table is displayed):
+    if st.button("🔍 Find Stocks", key="screener_button"):
+        tickers = get_top_50_tickers(exchange)
+        with st.spinner(f"Screening stocks on {exchange}..."):
+            # --- FIX: ADDED THE MISSING CALL TO THE SCREENER ENGINE ---
+            results = screener_engine.screen_stocks(
+                tickers=tickers,
+                min_upside=min_upside,
+                min_ta=min_ta,
+                max_volatility=max_vol
+            )
+            # Store results in session state to persist
+            st.session_state.screener_results = results
+    else:
+        # Ensure results from previous runs are still displayed
+        results = st.session_state.get("screener_results", [])
 
-    # Display results
-    # Replace the table display section (around line 550-600) with this:
 
     # Display results
     if results:
-
-        st.markdown(f"<p style='color: black;'>✅ {len(results)} stocks matched your criteria.</p>", unsafe_allow_html=True)
-
+        st.markdown(f"#### ✅ {len(results)} stocks matched your criteria.")
         df = pd.DataFrame(results)
-        
-        # Enhanced styling function
-        def background_color(row):
-            colors = []
-            for val in row:
-                if isinstance(val, (int, float)):
-                    if row.name == 'FA Score':
-                        intensity = min(255, int(255 * (val/100)))
-                        colors.append(f'background-color: rgba(0, 255, 0, {intensity/255})')
-                    elif row.name == 'TA Score':
-                        intensity = min(255, int(255 * (val/100)))
-                        colors.append(f'background-color: rgba(0, 0, 255, {intensity/255})')
-                    elif row.name == 'Volatility':
-                        volatility = float(str(val).replace('%',''))
-                        intensity = min(255, int(255 * (1 - volatility/100)))
-                        colors.append(f'background-color: rgba(255, 0, 0, {intensity/255})')
-                    else:
-                        colors.append('')
-                else:
-                    if row.name == 'Verdict':
-                        if 'Undervalued' in val:
-                            colors.append('background-color: #90EE90')
-                        elif 'Fair' in val:
-                            colors.append('background-color: #ADD8E6')
-                        else:
-                            colors.append('')
-                    else:
-                        colors.append('')
-            return colors
-        
-        # Apply styling with proper container width control
-        styled_df = df.style\
-            .apply(background_color, axis=0)\
-            .format({'Volatility': "{:.2f}%"})\
-            .set_table_styles([
-                {'selector': 'table', 'props': [
-                    ('width', '100%'),
-                    ('max-width', '100%'),
-                    ('table-layout', 'fixed'),
-                    ('margin', '0 auto')
-                ]},
-                {'selector': 'th, td', 'props': [
-                    ('text-align', 'center'),
-                    ('padding', '8px'),
-                    ('word-wrap', 'break-word'),
-                    ('overflow', 'hidden'),
-                    ('text-overflow', 'ellipsis')
-                ]},
-                {'selector': 'th', 'props': [
-                    ('background-color', '#f2f2f2'),
-                    ('font-weight', 'bold'),
-                    ('font-size', '14px')
-                ]},
-                {'selector': 'td', 'props': [
-                    ('font-size', '13px')
-                ]}
-            ])
-        
-        # Display table with proper width constraints
+
+        # --- FIX: CORRECTED THE STYLING FUNCTION ---
+        def highlight_cells(row):
+            # Default style
+            styles = ['' for _ in row]
+            # Highlight Upside
+            try:
+                upside_val = float(str(row['Upside (%)']).replace('%', ''))
+                if upside_val >= 50:
+                    styles[1] = 'background-color: #d4edda; color: #155724;' # Green
+                elif upside_val >= 20:
+                    styles[1] = 'background-color: #fff3cd; color: #856404;' # Yellow
+            except (ValueError, TypeError):
+                pass # Ignore if not a number
+
+            # Highlight TA Score
+            try:
+                ta_score = row['TA Score']
+                if ta_score >= 70:
+                    styles[2] = 'background-color: #d4edda; color: #155724;' # Green
+            except (ValueError, TypeError):
+                pass
+
+            # Highlight Volatility (lower is better)
+            try:
+                vol_val = row['Volatility (%)']
+                if vol_val > 75:
+                    styles[3] = 'background-color: #f8d7da; color: #721c24;' # Red
+            except (ValueError, TypeError):
+                pass
+
+            return styles
+
+        # Apply the styling
+        styled_df = df.style.apply(highlight_cells, axis=1).format({
+            "Upside (%)": "{:.2f}%",
+            "TA Score": "{:.2f}",
+            "Volatility (%)": "{:.2f}%"
+        })
+
         st.dataframe(
-            styled_df, 
+            styled_df,
             use_container_width=True,
             hide_index=True,
-            height=400  # Set max height to prevent overflow
+            height=min(len(df) * 40 + 40, 600) # Dynamic height
         )
-        
-        # Download button
-        csv = df.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            "📥 Download Results as CSV",
-            data=csv,
-            file_name=f"{exchange}_screener_results.csv",
-            mime="text/csv"
-        )
+
 # =============================================================================
 # START OF REPLACEMENT BLOCK: STOCK LEADERBOARD
 # =============================================================================
@@ -722,70 +661,20 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
     total_weight_leaderboard = sum(st.session_state.user_weights.values())
     is_leaderboard_disabled = (total_weight_leaderboard != 100)
 
+    # In main.py, under the "stock_leaderboard" section
+
     if st.button("🔄 Compute/Refresh Data", disabled=is_leaderboard_disabled):
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-
-        def process_leaderboard_ticker(ticker, i, total):
-            status_text.text(f"Processing {i+1}/{total}")
-            progress_bar.progress((i + 1) / total)
-            try:
-                ta = get_technical_analysis(ticker, basis.lower())
-                fa = get_fundamental_analysis(ticker, basis.lower())
-                sentiment = get_sentiment_analysis(ticker, basis.lower())
-                news_risk = get_news_risk_analysis(ticker, basis.lower())
-                vol = calculate_volatility(ticker)
-
-                user_weights = st.session_state.user_weights
-                final_score = round(
-                    (user_weights["fa"] / 100) * fa.get("dcf_score", 0) + # <-- ADD THIS
-                    (user_weights["ta"] / 100) * ta.get("ta_score", 0) +
-                    (user_weights["sentiment"] / 100) * sentiment.get("score", 0) * 10 +
-                    (user_weights["news"] / 100) * news_risk.get("risk_score", 50), 2
-                )
-
-                return {
-                    "Ticker": ticker,
-                    "DCF Score": fa.get("dcf_score", 0), # <-- ADD THIS
-                    "TA Score": ta.get("ta_score", 0),
-                    "Sentiment": sentiment.get("score", 0) * 10,
-                    "News Risk": news_risk.get("risk_score", 50),
-                    "Volatility": vol,
-                    "Final Score": final_score
-                }
-            except Exception:
-                return None
-
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            tickers = get_top_50_tickers(exchange)
-            processed = list(filter(None, [process_leaderboard_ticker(t, i, len(tickers)) for i, t in enumerate(tickers)]))
-            st.session_state.leaderboard_df = pd.DataFrame(processed)
-
-    if is_leaderboard_disabled:
-        st.error(f"Compute button is disabled. Total weight must be 100%, but is currently {total_weight_leaderboard}%.")
-
-    # --- DISPLAY SECTION (NO CHANGES NEEDED HERE) ---
-    if "leaderboard_df" in st.session_state:
-        df = st.session_state.leaderboard_df
-        if df is None or df.empty:
-            st.warning("No data available. Please compute scores first.")
-        else:
-            st.markdown("### Leaderboard Categories")
-            with st.expander("Top 5 Strong Buys"):
-                st.dataframe(df.nlargest(5, "Final Score"))
-            with st.expander("Top 5 Bullish (TA Score)"):
-                st.dataframe(df.nlargest(5, "TA Score"))
-            with st.expander("Top 5 High Volatility"):
-                st.dataframe(df.nlargest(5, "Volatility"))
-            with st.expander("Top 5 Undervalued (FA Score)"):
-                st.dataframe(df.nlargest(5, "DCF Score")) # <--- CORRECTED LINE
-            with st.expander("Top 5 Low Risk (Volatility)"):
-                st.dataframe(df.nsmallest(5, "Volatility"))
-            with st.expander("Top 5 Negative Sentiment"):
-                st.dataframe(df.nsmallest(5, "Sentiment"))
-    else:
-        st.warning("Leaderboard data not initialized. Please compute scores.")
-
+        with st.spinner(f"Computing leaderboard for {exchange}..."):
+            # Call the backend function that does all the work
+            df = leaderboard_engine.get_leaderboard(exchange, category="All") # Fetch all data
+            if df is not None and not df.empty:
+                st.session_state.leaderboard_df = df
+            else:
+                st.session_state.leaderboard_df = None # Clear old data on error
+                st.success("Leaderboard data refreshed successfully!")
+    if 'leaderboard_df' in st.session_state and st.session_state.leaderboard_df is not None:
+        st.markdown("###  Leaderboard Results")
+        st.dataframe(st.session_state.leaderboard_df, use_container_width=True, hide_index=True)
 # =============================================================================
 # END OF REPLACEMENT BLOCK
 # =============================================================================
@@ -896,6 +785,7 @@ elif st.session_state.get("chat_mode") == "run_analysis":
 ## REPLACE WITH THIS NEW LOGIC
 
         if st.button("Run Analysis", key="run_analysis_btn", disabled=is_disabled):
+            reset_analysis_data()
             with st.spinner(f"🔍 Running {basis.lower()} analysis for {selected_ticker}..."):
                 try:
                     # --- ACTION: Fetch data and SAVE to the whiteboard ---
@@ -986,117 +876,75 @@ elif st.session_state.get("chat_mode") == "run_analysis":
 # =============================================================================
 
 
+# In app/main.py, inside the report generation section
+
 elif st.session_state.get("chat_mode") == "report":
     st.subheader("📄 Report Generator")
-    report_mod = importlib.import_module("backend.report_generator")
     
+    # --- UI Controls for Report ---
     st.markdown('<div class="report-selectbox-wrapper">', unsafe_allow_html=True)
+    exchange = st.selectbox("Select Exchange", ["NSE", "HKEX", "NYSE", "LSE", "TSE"], key="report_exchange")
+    tickers = get_top_50_tickers(exchange)
+    selected_ticker = st.selectbox("Choose a Stock", tickers, key="report_ticker")
+    basis = st.radio("Select Data Basis", ["Quarterly", "Annual"], horizontal=True, key="report_basis")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    # Exchange and stock selection (move outside try block)
-    exchange = st.selectbox(
-        "Select Exchange", 
-        ["NSE", "HKEX", "NYSE", "LSE", "TSE"], 
-        key="report_exchange"
-    )
+    if st.button("Generate Report", key="generate_report_btn"):
+        with st.spinner(f"📊 Generating {basis.lower()} report for {selected_ticker}..."):
+            try:
+                # --- 1. Fetch ALL analysis data ---
+                # We reuse the cached functions to get data instantly if already analyzed
+                ta = get_technical_analysis(selected_ticker, basis=basis.lower())
+                fa = get_fundamental_analysis(selected_ticker, basis=basis.lower())
+                sentiment = get_sentiment_analysis(selected_ticker, basis=basis.lower())
+                news_risk = get_news_risk_analysis(selected_ticker, basis=basis.lower())
 
-    try:
-        tickers = get_top_50_tickers(exchange)
-        selected_ticker = st.selectbox("Choose a Stock", tickers, 
-                                     key="report_ticker")
-    
-        st.markdown('<div class="report-selectbox-wrapper">', unsafe_allow_html=True)
+                # Check for errors in any module
+                errors = [f"{mod}: {data['error']}" for mod, data in [("TA", ta), ("FA", fa), ("Sentiment", sentiment), ("News", news_risk)] if "error" in data]
+                if errors:
+                    st.error("Could not generate report due to analysis errors:\n- " + "\n- ".join(errors))
+                else:
+                    # --- 2. Calculate Final Score & Verdict (using a fixed model for reports) ---
+                    # Note: We are not using the user-customizable weights here for consistency in reports.
+                    piotroski_score = int(fa.get("Piotroski F-Score", "0/9").split('/')[0])
+                    upside_score = float(fa.get("Upside", "0%").replace('%', ''))
+                    
+                    # A simple, fixed scoring model for the report
+                    fundamental_score = (piotroski_score / 9) * 50 + min(upside_score, 100) / 2
+                    final_score = (0.4 * fundamental_score + 
+                                   0.3 * ta["ta_score"] +
+                                   0.2 * sentiment["score"] * 10 +
+                                   0.1 * (100 - news_risk["risk_score"]))
+                    
+                    final_verdict = ("Strong Buy" if final_score >= 80 else "Buy" if final_score >= 65 else "Hold" if final_score >= 50 else "Sell")
 
-        # Basis selection with clear labels
-        st.markdown("**Select Data Basis**")
-        basis = st.radio("", ["Quarterly", "Annual"],
-                        horizontal=True, key="report_basis",
-                        help="Quarterly: Last 3 months data | Annual: Last 12 months data")
-
-        if st.button("Generate Report", key="generate_report_btn"):
-            with st.spinner(f"📊 Generating {basis.lower()} report..."):
-                try:
-                    # Get all analysis data with proper basis parameter
-                    ta = get_technical_analysis(selected_ticker, basis=basis.lower())
-                    fa = get_fundamental_analysis(selected_ticker, basis=basis.lower())
-                    sentiment = get_sentiment_analysis(selected_ticker, basis=basis.lower())
-                    news_risk = get_news_risk_analysis(selected_ticker, basis=basis.lower())
-
-                    # Error handling for each module
-                    errors = []
-                    if "error" in ta: errors.append(f"Technical: {ta['error']}")
-                    if "error" in fa: errors.append(f"Fundamental: {fa['error']}")
-                    if "error" in sentiment: errors.append(f"Sentiment: {sentiment['error']}")
-                    if "error" in news_risk: errors.append(f"News Risk: {news_risk['error']}")
-
-                    if errors:
-                        st.error("Analysis Errors:\n- " + "\n- ".join(errors))
-
-                    # Get stock info
+                    # --- 3. Gather Stock Info ---
                     stock_info = {
                         "ticker": selected_ticker,
                         "name": yf.Ticker(selected_ticker).info.get("shortName", ""),
                         "price": yf.Ticker(selected_ticker).info.get("currentPrice", "N/A"),
                         "date": datetime.now().strftime("%Y-%m-%d"),
-                        "basis": basis  # Added basis to report metadata
+                        "basis": basis
                     }
 
-                    # Calculate final score
-                    final_score = round(
-                        0.35 * fa.get("dcf_score", 0) + 
-                        0.35 * ta["ta_score"] +
-                        0.2 * sentiment["score"] * 10 +
-                        0.1 * news_risk["risk_score"], 2
+                    # --- 4. Call the Report Generators ---
+                    pdf_data = generate_pdf_report(
+                        stock_info, ta, fa, sentiment, news_risk, final_score, final_verdict
                     )
                     
-                    # Determine verdict
-                    final_verdict = (
-                        "Strong Buy" if final_score >= 80 else
-                        "Buy" if final_score >= 65 else
-                        "Hold" if final_score >= 50 else "Sell"
-                    )
+                    # Consolidate all data for CSV
+                    csv_report_data = {**stock_info, **ta, **fa, **sentiment, **news_risk, "final_score": final_score, "final_verdict": final_verdict}
+                    csv_data = generate_csv_report([csv_report_data])
 
-                    # Generate reports
-                    try:
-                        pdf = report_mod.generate_pdf_report(
-                            stock_info, ta, fa, sentiment, 
-                            final_score, final_verdict, news_risk
-                        )
-                        
-                        csv = report_mod.generate_csv_report([{
-                            **ta, 
-                            **fa,
-                            "period": basis.lower(),
-                            "sentiment_score": sentiment.get("score", "N/A"),
-                            "sentiment_label": sentiment.get("label", "N/A"),
-                            "news_risk_score": news_risk.get("risk_score", "N/A"),
-                            "news_risk_verdict": news_risk.get("verdict", "N/A"),
-                            "final_score": final_score,
-                            "final_verdict": final_verdict
-                        }])
+                    st.success(f"✅ Report for {selected_ticker} generated successfully!")
+                    
+                    # --- 5. Display Download Buttons ---
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.download_button("📥 Download PDF Report", data=pdf_data, file_name=f"{selected_ticker}_report.pdf", mime="application/pdf")
+                    with col2:
+                        st.download_button("📥 Download CSV Data", data=csv_data, file_name=f"{selected_ticker}_data.csv", mime="text/csv")
 
-                        # Success message and download buttons
-                        st.success(f"✅ {basis} Report Generated Successfully!")
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.download_button(
-                                "📥 Download PDF", 
-                                data=pdf, 
-                                file_name=f"{selected_ticker}_{basis.lower()}_report.pdf", 
-                                mime="application/pdf"
-                            )
-                        with col2:
-                            st.download_button(
-                                "📥 Download CSV", 
-                                data=csv, 
-                                file_name=f"{selected_ticker}_{basis.lower()}_report.csv", 
-                                mime="text/csv"
-                            )
-
-                    except Exception as e:
-                        st.error(f"Report generation failed: {str(e)}")
-
-                except Exception as e:
-                    st.error(f"Analysis failed: {str(e)}")
-    except Exception as e:
-        st.error(f"Error initializing report section: {str(e)}")
-
+            except Exception as e:
+                logging.error(f"Report generation failed for {selected_ticker}: {e}", exc_info=True)
+                st.error(f"An unexpected error occurred during report generation: {str(e)}")
