@@ -19,7 +19,6 @@ FALLBACK_GROWTH_RATE = 0.03
 FALLBACK_WACC = 0.09
 
 # Cached function to avoid fetching the risk-free rate repeatedly
-@yf.cache_data
 def get_risk_free_rate():
     """Fetches the 10-Year US Treasury Yield as a proxy for the risk-free rate."""
     try:

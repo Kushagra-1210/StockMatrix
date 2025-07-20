@@ -13,6 +13,7 @@ import importlib
 from backend.market_selector import get_top_50_tickers
 from backend.screener_engine import calculate_volatility
 from nlp.chat_router import handle_chat_command
+from backend.fundamental_analysis import get_risk_free_rate
 
 
 st.set_page_config(page_title="STOCK ANALYSER", layout="centered")
@@ -349,6 +350,13 @@ def get_yf_info(ticker):
 def get_stock_history(ticker, period="6mo"):
     return yf.Ticker(ticker).history(period=period)
 
+@st.cache_data(ttl=86400) # Cache for one day (86400 seconds)
+def cached_get_risk_free_rate():
+    """
+    This is a Streamlit-aware function in main.py.
+    It calls the backend function and caches the result.
+    """
+    return get_risk_free_rate()
 
 # =============================================================================
 # --- DISPLAY HELPER FUNCTIONS ---
