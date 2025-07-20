@@ -1,71 +1,82 @@
 # backend/technical_analysis.py
 
 import yfinance as yf
-import pandas_ta as ta
+import pandas as pd
 import logging
+
+def _calculate_sma(data: pd.Series, period: int = 20) -> pd.Series:
+    """Calculates the Simple Moving Average (SMA)."""
+    return data.rolling(window=period).mean()
+
+def _calculate_ema(data: pd.Series, period: int = 20) -> pd.Series:
+    """Calculates the Exponential Moving Average (EMA)."""
+    return data.ewm(span=period, adjust=False).mean()
+
+def _calculate_rsi(data: pd.Series, period: int = 14) -> pd.Series:
+    """Calculates the Relative Strength Index (RSI)."""
+    delta = data.diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+    
+    # Handle division by zero
+    if loss.iloc[-1] == 0:
+        return pd.Series([100] * len(data)) # If no losses, RSI is 100
+        
+    rs = gain / loss
+    rsi = 100 - (100 / (1 + rs))
+    return rsi
+
+def _calculate_macd(data: pd.Series, fast_period: int = 12, slow_period: int = 26, signal_period: int = 9):
+    """Calculates the Moving Average Convergence Divergence (MACD)."""
+    fast_ema = data.ewm(span=fast_period, adjust=False).mean()
+    slow_ema = data.ewm(span=slow_period, adjust=False).mean()
+    
+    macd_line = fast_ema - slow_ema
+    signal_line = macd_line.ewm(span=signal_period, adjust=False).mean()
+    return macd_line, signal_line
 
 def analyze_technical_indicators(ticker: str, basis: str = "annual") -> dict:
     """
-    Analyzes technical indicators for a stock using a more robust and clean approach.
-
-    This function will raise an error if the historical data cannot be fetched,
-    allowing the calling function (e.g., screener_engine) to handle the exception.
+    Analyzes technical indicators for a stock using only pandas for calculations.
     """
     if basis.lower() not in ("annual", "quarterly"):
         return {"error": f"Invalid basis '{basis}'. Must be 'annual' or 'quarterly'"}
 
     try:
-        # 1. --- Data Fetching ---
         period = "1y" if basis.lower() == "annual" else "6mo"
         hist = yf.Ticker(ticker).history(period=period)
 
-        if hist.empty:
-            logging.warning(f"No historical data found for {ticker} for the period {period}.")
-            return {"error": "No historical data found for the given period."}
+        if hist.empty or "Close" not in hist:
+            return {"error": "No historical data with 'Close' prices found."}
 
-        # 2. --- Indicator Calculations ---
-        # Use pandas_ta to append all indicators to the dataframe at once.
-        custom_ta_strategy = ta.Strategy(
-            name="StockMatrix TA",
-            description="SMA, EMA, RSI, and MACD",
-            ta=[
-                {"kind": "sma", "length": 20},
-                {"kind": "ema", "length": 20},
-                {"kind": "rsi"},
-                {"kind": "macd"},
-            ]
-        )
-        hist.ta.strategy(custom_ta_strategy)
+        close_prices = hist['Close']
 
-        # Get the most recent row of data with all indicators
-        latest = hist.iloc[-1]
-        
-        # --- Safely get the latest values ---
-        current_price = latest.get('Close')
-        rsi = latest.get('RSI_14')
-        sma_20 = latest.get('SMA_20')
-        ema_20 = latest.get('EMA_20')
-        macd_line = latest.get('MACD_12_26_9')
-        macd_signal = latest.get('MACDs_12_26_9')
+        # --- Indicator Calculations ---
+        # Get the latest (last) value for each indicator
+        rsi = _calculate_rsi(close_prices).iloc[-1]
+        sma_20 = _calculate_sma(close_prices).iloc[-1]
+        ema_20 = _calculate_ema(close_prices).iloc[-1]
+        macd_line, macd_signal = _calculate_macd(close_prices)
+        macd_line_latest = macd_line.iloc[-1]
+        macd_signal_latest = macd_signal.iloc[-1]
+        current_price = close_prices.iloc[-1]
 
-        # 3. --- Scoring ---
+        # --- Scoring ---
         score = 0
         total_weight = 0
         ta_breakdown = {}
 
         # Trend vs Moving Averages (50%)
-        if all(v is not None for v in [current_price, sma_20, ema_20]):
+        if not pd.isna(current_price) and not pd.isna(sma_20) and not pd.isna(ema_20):
             total_weight += 50
             trend_score = 0
-            if current_price > sma_20:
-                trend_score += 25
-            if current_price > ema_20:
-                trend_score += 25
+            if current_price > sma_20: trend_score += 25
+            if current_price > ema_20: trend_score += 25
             score += trend_score
             ta_breakdown["Trend (SMA & EMA)"] = f"{trend_score}/50"
 
         # Momentum - RSI (25%)
-        if rsi is not None:
+        if not pd.isna(rsi):
             total_weight += 25
             rsi_score = 0
             if rsi > 70: rsi_score = 5
@@ -75,10 +86,10 @@ def analyze_technical_indicators(ticker: str, basis: str = "annual") -> dict:
             ta_breakdown["RSI Momentum"] = f"{rsi_score}/25"
 
         # Momentum - MACD (25%)
-        if all(v is not None for v in [macd_line, macd_signal]):
+        if not pd.isna(macd_line_latest) and not pd.isna(macd_signal_latest):
             total_weight += 25
             macd_score = 5
-            if macd_line > macd_signal:
+            if macd_line_latest > macd_signal_latest:
                 macd_score = 25
             score += macd_score
             ta_breakdown["MACD"] = f"{macd_score}/25"
@@ -88,10 +99,10 @@ def analyze_technical_indicators(ticker: str, basis: str = "annual") -> dict:
         verdict = "Bullish" if ta_score >= 65 else "Bearish" if ta_score < 40 else "Neutral"
 
         return {
-            "current_price": round(current_price, 2) if current_price is not None else "N/A",
-            "rsi": round(rsi, 2) if rsi is not None else "N/A",
-            "sma_20": round(sma_20, 2) if sma_20 is not None else "N/A",
-            "ema_20": round(ema_20, 2) if ema_20 is not None else "N/A",
+            "current_price": round(current_price, 2) if not pd.isna(current_price) else "N/A",
+            "rsi": round(rsi, 2) if not pd.isna(rsi) else "N/A",
+            "sma_20": round(sma_20, 2) if not pd.isna(sma_20) else "N/A",
+            "ema_20": round(ema_20, 2) if not pd.isna(ema_20) else "N/A",
             "ta_score": round(ta_score, 2),
             "verdict": verdict,
             "period": basis.title(),
