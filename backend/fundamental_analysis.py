@@ -277,7 +277,7 @@ def get_beneish_m_score(stock):
         return {"error": "An unexpected error occurred during Beneish calculation."}
 
 
-def get_fundamental_analysis(ticker, period="annual"):
+def analyze_fundamentals(ticker, period="annual"):
     """Generates a summary of fundamental analysis scores."""
     stock = yf.Ticker(ticker)
     score = 0
