@@ -1,177 +1,195 @@
+# backend/fundamental_analysis.py
+
 import yfinance as yf
+import pandas as pd
 import numpy as np
+import logging
 from datetime import datetime
 
-def safe_div(numerator, denominator):
+# --- Constants for Financial Models ---
+# Using Fama-French factors for a more robust cost of equity calculation.
+# In a live system, these would be fetched daily from a source like the Kenneth R. French Data Library.
+# Using recent approximate annual factors as placeholders.
+FAMA_FRENCH_FACTORS = {
+    "Mkt-RF": 0.06,  # Market Risk Premium
+    "SMB": 0.02,     # Size Premium (Small Minus Big)
+    "HML": 0.04      # Value Premium (High Minus Low)
+}
+FALLBACK_GROWTH_RATE = 0.03
+FALLBACK_WACC = 0.09
+
+# Cached function to avoid fetching the risk-free rate repeatedly
+@yf.cache_data
+def get_risk_free_rate():
+    """Fetches the 10-Year US Treasury Yield as a proxy for the risk-free rate."""
     try:
-        if denominator in [0, None, np.nan] or numerator is None:
-            return None
-        return numerator / denominator
-    except:
-        return None
+        tnx = yf.Ticker("^TNX")
+        hist = tnx.history(period="1mo")
+        if not hist.empty:
+            return hist['Close'].iloc[-1] / 100
+    except Exception as e:
+        logging.warning(f"Could not fetch risk-free rate. Error: {e}")
+    return 0.04 # Fallback value if API fails
+
+def _get_analyst_growth_estimate(stock_info: dict) -> tuple[float | None, str]:
+    """
+    Prioritizes analyst 5-year growth estimates from yfinance info.
+    Returns the growth rate and a confidence string.
+    """
+    if 'earningsGrowth' in stock_info and stock_info['earningsGrowth']:
+        return stock_info['earningsGrowth'], "Analyst Estimate"
+    if 'revenueGrowth' in stock_info and stock_info['revenueGrowth']:
+        return stock_info['revenueGrowth'], "Analyst Revenue Estimate"
+    return None, "N/A"
+
+def _calculate_historical_growth_rate(cash_flow_data: pd.DataFrame) -> tuple[float, str]:
+    """Calculates historical FCF CAGR as a fallback."""
+    try:
+        fcf = cash_flow_data.loc['Total Cash From Operating Activities'] + cash_flow_data.loc['Capital Expenditures']
+        positive_fcf = fcf[fcf > 0]
+        if len(positive_fcf) < 2:
+            return FALLBACK_GROWTH_RATE, "Fallback (Insufficient History)"
+
+        start_value = positive_fcf.iloc[-1]
+        end_value = positive_fcf.iloc[0]
+        num_years = len(positive_fcf) - 1
+        cagr = (end_value / start_value) ** (1 / num_years) - 1 if num_years > 0 else 0
+        
+        # Cap and floor for realism
+        return max(-0.05, min(cagr, 0.20)), "Historical CAGR"
+    except (KeyError, IndexError):
+        return FALLBACK_GROWTH_RATE, "Fallback (Data Error)"
+
+def _calculate_cost_of_equity(stock_info: dict) -> tuple[float | None, str]:
+    """
+    Calculates Cost of Equity using the Fama-French 3-Factor Model.
+    Re = Rf + Beta * (Mkt-RF) + s * (SMB) + h * (HML)
+    """
+    confidence_report = []
+    
+    risk_free_rate = get_risk_free_rate()
+    beta = stock_info.get("beta")
+    
+    if beta is None:
+        confidence_report.append("Beta: Fallback (Not Available)")
+        beta = 1.0 # Assume market risk if Beta is missing
+    else:
+        confidence_report.append("Beta: Dynamic")
+
+    # For simplicity, size (s) and value (h) factor loadings are assumed to be 1.
+    # A more rigorous model would calculate these via regression analysis.
+    ff = FAMA_FRENCH_FACTORS
+    cost_of_equity = risk_free_rate + (beta * ff["Mkt-RF"]) + (1 * ff["SMB"]) + (1 * ff["HML"])
+    
+    return cost_of_equity, ", ".join(confidence_report)
+
+def _calculate_wacc(stock_info: dict, balance_sheet_data: pd.DataFrame, financials_data: pd.DataFrame) -> tuple[float, str]:
+    """Calculates WACC, now using the Fama-French cost of equity."""
+    cost_of_equity, coe_confidence = _calculate_cost_of_equity(stock_info)
+    if cost_of_equity is None:
+        return FALLBACK_WACC, f"CoE: Fallback, {coe_confidence}"
+
+    try:
+        total_debt = balance_sheet_data.loc['Total Debt'].iloc[0]
+        interest_expense = abs(financials_data.loc['Interest Expense'].iloc[0])
+        cost_of_debt = interest_expense / total_debt if total_debt > 0 else 0
+
+        income_before_tax = financials_data.loc['Income Before Tax'].iloc[0]
+        income_tax_expense = financials_data.loc['Income Tax Expense'].iloc[0]
+        tax_rate = income_tax_expense / income_before_tax if income_before_tax > 0 else 0.21
+
+        market_cap = stock_info.get("marketCap")
+        firm_value = market_cap + total_debt
+        
+        weight_of_equity = market_cap / firm_value
+        weight_of_debt = total_debt / firm_value
+
+        wacc = (weight_of_equity * cost_of_equity) + (weight_of_debt * cost_of_debt * (1 - tax_rate))
+        
+        return wacc if wacc > 0 else FALLBACK_WACC, f"CoE: {coe_confidence}, WACC: Dynamic"
+
+    except (KeyError, IndexError, TypeError, ZeroDivisionError):
+        return FALLBACK_WACC, f"CoE: {coe_confidence}, WACC: Fallback (Data Error)"
+
+def _calculate_dcf_valuation(cash_flow_data: pd.DataFrame, wacc: float, fcf_growth_rate: float, shares_outstanding: int, total_debt: float, cash_and_equivalents: float) -> dict:
+    """Performs the core DCF calculation."""
+    try:
+        last_year_fcf = cash_flow_data.loc['Total Cash From Operating Activities'].iloc[0] + cash_flow_data.loc['Capital Expenditures'].iloc[0]
+
+        future_fcf = [last_year_fcf * ((1 + fcf_growth_rate) ** year) for year in range(1, 6)]
+        
+        terminal_growth_rate = 0.02
+        terminal_value = (future_fcf[-1] * (1 + terminal_growth_rate)) / (wacc - terminal_growth_rate)
+
+        discounted_fcf = [fcf / ((1 + wacc) ** (i + 1)) for i, fcf in enumerate(future_fcf)]
+        discounted_terminal_value = terminal_value / ((1 + wacc) ** 5)
+
+        enterprise_value = sum(discounted_fcf) + discounted_terminal_value
+        equity_value = enterprise_value - total_debt + cash_and_equivalents
+        
+        return {"dcf_intrinsic_value": equity_value / shares_outstanding}
+
+    except (KeyError, IndexError, TypeError, ZeroDivisionError) as e:
+        return {"error": f"DCF calculation failed: {e}"}
+
 
 def analyze_fundamentals(ticker: str, basis: str = "annual") -> dict:
-    if basis.lower() not in ("annual", "quarterly"):
-        return {"error": f"Invalid basis '{basis}'. Must be 'annual' or 'quarterly'"}
-    
-    print(f"FA basis = {basis}")
-    stock = yf.Ticker(ticker)
-    info = stock.info
+    """Analyzes fundamentals using a dynamic, multi-factor DCF model."""
+    if basis.lower() != "annual":
+        return {"error": "DCF analysis requires annual data."}
 
     try:
-        # Use correct financial statements based on basis
-        if basis == "quarterly":
-            fin = stock.quarterly_financials
-            cf = stock.quarterly_cashflow
-            bs = stock.quarterly_balance_sheet
-            period_days = 90
-        else:
-            fin = stock.financials
-            cf = stock.cashflow
-            bs = stock.balance_sheet
-            period_days = 365
+        stock = yf.Ticker(ticker)
+        info = stock.info
+        cf, bs, fin = stock.cashflow, stock.balance_sheet, stock.financials
 
-        # Get most recent period data
-        net_income = fin.loc["Net Income"].iloc[0] if "Net Income" in fin.index else None
-        total_equity = bs.loc["Total Stockholder Equity"].iloc[0] if "Total Stockholder Equity" in bs.index else None
-        total_debt = bs.loc["Total Debt"].iloc[0] if "Total Debt" in bs.index else None
-        revenue = fin.loc["Total Revenue"].iloc[0] if "Total Revenue" in fin.index else None
-        prev_revenue = fin.loc["Total Revenue"].iloc[1] if len(fin.loc["Total Revenue"]) > 1 else None
-        shares = info.get("sharesOutstanding")
+        if any(df.empty for df in [cf, bs, fin]):
+            return {"error": "Annual financial data is not available."}
+
+        # --- DYNAMIC RATE AND CONFIDENCE REPORTING ---
+        confidence_report = {}
+        fcf_growth_rate, growth_source = _get_analyst_growth_estimate(info)
+        if fcf_growth_rate is None:
+            fcf_growth_rate, growth_source = _calculate_historical_growth_rate(cf)
+        confidence_report["Growth Rate Source"] = growth_source
+        
+        wacc, wacc_source = _calculate_wacc(info, bs, fin)
+        confidence_report["WACC Source"] = wacc_source
+
+        # --- Perform DCF Valuation ---
+        dcf_result = _calculate_dcf_valuation(
+            cf, wacc, fcf_growth_rate,
+            info.get("sharesOutstanding"),
+            bs.loc['Total Debt'].iloc[0],
+            bs.loc['Cash And Cash Equivalents'].iloc[0]
+        )
+        if "error" in dcf_result:
+            return dcf_result
+
+        intrinsic_value = dcf_result["dcf_intrinsic_value"]
         current_price = info.get("currentPrice")
 
-        # Calculate period-specific metrics
-        eps = safe_div(net_income, shares)
-        pe_ratio = safe_div(current_price, eps)
-        roe = safe_div(net_income, total_equity)
-        if roe is not None: roe *= 100
-        free_cash_flow = cf.loc["Total Cash From Operating Activities"].iloc[0] - cf.loc["Capital Expenditures"].iloc[0] if "Total Cash From Operating Activities" in cf.index and "Capital Expenditures" in cf.index else None
-        revenue_growth = safe_div((revenue - prev_revenue), prev_revenue) if revenue and prev_revenue else None
-        debt_to_equity = safe_div(total_debt, total_equity)
+        if not current_price:
+            return {"error": "Current stock price not available."}
 
-        # Get static metrics
-        pb_ratio = info.get("priceToBook")
-        market_cap = info.get("marketCap")
-        sector = info.get("sector", "N/A")
-        long_business_summary = info.get("longBusinessSummary", "")
-        governance_score = info.get("governanceEpochDate", None)
-        esg_score = info.get("esgScores", {}).get("totalEsg", None)
-        fiscal_date = info.get("lastFiscalYearEnd", "N/A")
-
-        # Scoring (same weights but now uses period-specific metrics)
-        score = 0
-        total_weight = 0
-
-        # Revenue Growth (15%)
-        if isinstance(revenue_growth, (int, float)):
-            total_weight += 15
-            score += 15 if revenue_growth > 0.15 else 7.5 if revenue_growth > 0.05 else 0
-
-        # Profitability (15%)
-        prof_score = 0
-        prof_subs = 0
-        if isinstance(eps, (int, float)):
-            prof_subs += 1
-            prof_score += 5 if eps > 0 else 0
-        if isinstance(net_income, (int, float)):
-            prof_subs += 1
-            prof_score += 5 if net_income > 0 else 0
-        if isinstance(roe, (int, float)):
-            prof_subs += 1
-            prof_score += 5 if roe > 15 else 2.5 if roe > 5 else 0
-        if prof_subs > 0:
-            total_weight += 15
-            score += (prof_score / (prof_subs * 5)) * 15
-
-        # Debt/Equity Ratio (10%)
-        if isinstance(debt_to_equity, (int, float)):
-            total_weight += 10
-            score += 10 if debt_to_equity < 1 else 5 if debt_to_equity < 2 else 0
-
-        # Cash Flow Health (10%)
-        if isinstance(free_cash_flow, (int, float)):
-            total_weight += 10
-            score += 10 if free_cash_flow > 0 else 0
-
-        # Valuation Ratios (10%)
-        val_score = 0
-        val_subs = 0
-        if isinstance(pe_ratio, (int, float)):
-            val_subs += 1
-            val_score += 5 if 10 <= pe_ratio <= 25 else 2.5 if 5 <= pe_ratio < 10 or 25 < pe_ratio <= 40 else 0
-        if isinstance(pb_ratio, (int, float)):
-            val_subs += 1
-            val_score += 5 if 1 <= pb_ratio <= 5 else 2.5 if pb_ratio < 1 or pb_ratio > 5 else 0
-        if val_subs > 0:
-            total_weight += 10
-            score += (val_score / (val_subs * 5)) * 10
-
-        # Peer Comparison (10%)
-        if sector != "N/A":
-            total_weight += 10
-            score += 5
-
-        # Governance (10%)
-        if governance_score is not None:
-            total_weight += 10
-            score += 10
-
-        # Industry Outlook (10%)
-        if sector != "N/A":
-            total_weight += 10
-            score += 5
-
-        # ESG (5%)
-        if isinstance(esg_score, (int, float)):
-            total_weight += 5
-            score += 5 if esg_score < 30 else 2.5 if esg_score < 50 else 0
-
-        # Company Overview (5%)
-        if long_business_summary and len(long_business_summary) > 100:
-            total_weight += 5
-            score += 5
-
-        # Final FA Score
-        fa_score = round((score / total_weight) * 100, 2) if total_weight > 0 else 0
-        verdict = "Undervalued" if fa_score >= 70 else "Fair" if fa_score >= 50 else "Overvalued"
-
-        size = "Unknown"
-        if isinstance(market_cap, (int, float)):
-            if market_cap >= 1e11: size = "Mega Cap"
-            elif market_cap >= 2e10: size = "Large Cap"
-            elif market_cap >= 2e9: size = "Mid Cap"
-            else: size = "Small Cap"
-
-        if isinstance(fiscal_date, (int, float)):
-            fiscal_date = datetime.fromtimestamp(fiscal_date).strftime('%Y-%m-%d')
+        upside_potential = ((intrinsic_value - current_price) / current_price) * 100
+        verdict = "Undervalued" if upside_potential > 20 else "Fairly Valued" if -10 <= upside_potential <= 20 else "Overvalued"
+        
+        capped_upside = max(-100, min(100, upside_potential))
+        dcf_score = (capped_upside + 100) / 2
 
         return {
-            "eps": round(eps, 2) if eps is not None else "N/A",
-            "roe": round(roe, 2) if isinstance(roe, (int, float)) else "N/A",
-            "pe_ratio": round(pe_ratio, 2) if pe_ratio is not None else "N/A",
-            "pb_ratio": pb_ratio if pb_ratio is not None else "N/A",
-            "de_ratio": round(debt_to_equity, 2) if isinstance(debt_to_equity, (int, float)) else "N/A",
-            "fcf": free_cash_flow if free_cash_flow is not None else "N/A",
-            "fa_score": fa_score,
+            "current_price": round(current_price, 2),
+            "dcf_intrinsic_value": round(intrinsic_value, 2),
+            "upside_potential": round(upside_potential, 2),
             "verdict": verdict,
-            "market_cap": market_cap,
-            "size": size,
-            "sector": sector,
-            "fiscal_date": fiscal_date,
-            "period": basis.title(),
-            "fa_breakdown": {
-                "Revenue Growth": "15" if isinstance(revenue_growth, (int, float)) else "N/A",
-                "Profitability": round((prof_score / (prof_subs * 5)) * 15, 2) if prof_subs > 0 else "N/A",
-                "Debt/Equity Ratio": "10" if isinstance(debt_to_equity, (int, float)) else "N/A",
-                "Cash Flow Health": "10" if isinstance(free_cash_flow, (int, float)) else "N/A",
-                "Valuation Ratios": round((val_score / (val_subs * 5)) * 10, 2) if val_subs > 0 else "N/A",
-                "Peer Comparison": "5" if sector != "N/A" else "N/A",
-                "Management & Governance": "10" if governance_score is not None else "N/A",
-                "Industry Outlook": "5" if sector != "N/A" else "N/A",
-                "ESG Score": "5" if isinstance(esg_score, (int, float)) else "N/A",
-                "Company Overview": "5" if long_business_summary and len(long_business_summary) > 100 else "N/A"
-            }
+            "dcf_score": round(dcf_score, 2),
+            "market_cap": info.get("marketCap"),
+            "sector": info.get("sector", "N/A"),
+            "confidence_report": confidence_report, # The new confidence report
+            "period": "Annual"
         }
 
     except Exception as e:
-        return {"error": f"Fundamental analysis failed: {str(e)}"}
+        logging.error(f"Fundamental analysis failed for {ticker}: {e}", exc_info=True)
+        return {"error": f"An unexpected error occurred during fundamental analysis."}

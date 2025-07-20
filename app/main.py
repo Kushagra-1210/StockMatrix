@@ -1,5 +1,22 @@
 import streamlit as st
 import yfinance as yf
+import streamlit.components.v1 as components
+import concurrent.futures
+import time
+import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import pandas as pd
+import plotly.graph_objs as go
+from datetime import datetime
+import importlib
+from backend.market_selector import get_top_50_tickers
+from backend.screener_engine import calculate_volatility
+from nlp.chat_router import handle_chat_command
+
+
+st.set_page_config(page_title="STOCK ANALYSER", layout="centered")
+# --- Custom CSS for Streamlit ---
 st.markdown("""
     <div class="top-banner">
         🪙<span id="stockmatrix-title">StockMatrix</div>
@@ -293,21 +310,11 @@ st.markdown("""
 st.markdown("<div class='curated-footer' style='color: #000000;'>Curated and powered by Kushagra Bansal</div>", unsafe_allow_html=True)
 
 
-st.set_page_config(page_title="STOCK ANALYSER", layout="centered")
-
-import concurrent.futures
-import time
-import os
-import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-import pandas as pd
-import plotly.graph_objs as go
-from datetime import datetime
-import importlib
 
 import logging
 logging.basicConfig(level=logging.DEBUG)
 st.set_option('client.showErrorDetails', True)
+
 
 
 from backend import technical_analysis as ta_mod
@@ -342,6 +349,81 @@ def get_yf_info(ticker):
 def get_stock_history(ticker, period="6mo"):
     return yf.Ticker(ticker).history(period=period)
 
+
+# =============================================================================
+# --- DISPLAY HELPER FUNCTIONS ---
+# =============================================================================
+
+def display_fundamental_analysis(fa_data):
+    """Presents the DCF analysis results in a clean UI component."""
+    with st.expander("📊 Fundamental Analysis (DCF Valuation)", expanded=True):
+        if "error" in fa_data:
+            st.error(f"Analysis Failed: {fa_data['error']}")
+            return
+        st.metric(
+            label="Intrinsic Value per Share (DCF)",
+            value=f"${fa_data.get('dcf_intrinsic_value', 0):.2f}",
+            delta=f"{fa_data.get('upside_potential', 0):.2f}% vs Current Price"
+        )
+        st.write(f"**Verdict:** `{fa_data.get('verdict', 'N/A')}`")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.text(f"Current Price: ${fa_data.get('current_price', 0):.2f}")
+            st.text(f"DCF Score: {fa_data.get('dcf_score', 0)}/100")
+        with col2:
+            market_cap = fa_data.get('market_cap')
+            st.text(f"Market Cap: ${market_cap:,.0f}" if market_cap else "N/A")
+            st.text(f"Sector: {fa_data.get('sector', 'N/A')}")
+
+def display_technical_analysis(ta_data):
+    """Presents the technical analysis results."""
+    with st.expander("🧪 Technical Analysis", expanded=True):
+        if "error" in ta_data:
+            st.error(f"Analysis Failed: {ta_data['error']}")
+            return
+        st.metric(label="Technical Score", value=f"{ta_data.get('ta_score', 0)}/100")
+        st.write(f"**Verdict:** `{ta_data.get('verdict', 'N/A')}`")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.text(f"RSI (14): {ta_data.get('rsi', 'N/A')}")
+            st.text(f"SMA (20): {ta_data.get('sma_20', 'N/A')}")
+        with col2:
+            st.text(f"EMA (20): {ta_data.get('ema_20', 'N/A')}")
+            st.text(f"Current Price: ${ta_data.get('current_price', 'N/A')}")
+
+def display_sentiment_analysis(sentiment_data):
+    """Presents the sentiment analysis results."""
+    with st.expander("💬 Sentiment Analysis", expanded=False):
+        if "error" in sentiment_data:
+            st.error(f"Analysis Failed: {sentiment_data['error']}")
+            return
+        st.metric(label="Sentiment Score", value=f"{sentiment_data.get('score', 0):.2f} / 10")
+        st.write(f"**Label:** `{sentiment_data.get('label', 'N/A')}`")
+        headlines = sentiment_data.get("headlines", [])
+        if headlines:
+            st.markdown("**Recent Headlines:**")
+            for item in headlines:
+                st.markdown(f"- {item.get('title', '')}")
+
+def display_news_risk_analysis(news_data):
+    """Presents the news & geopolitical risk results."""
+    with st.expander("🛡️ News & Geopolitical Risk", expanded=False):
+        if "error" in news_data:
+            st.error(f"Analysis Failed: {news_data['error']}")
+            return
+        st.metric(label="Safety Score", value=f"{news_data.get('risk_score', 0)} / 100")
+        st.write(f"**Verdict:** `{news_data.get('verdict', 'N/A')}`")
+        news_items = news_data.get("news", [])
+        if news_items:
+            st.markdown("**High-Risk Headlines Detected:**")
+            for item in news_items:
+                st.markdown(f"- {item.get('title', '')}")
+
+# =============================================================================
+# --- MAIN APP LOGIC STARTS HERE ---
+# =============================================================================
+
+# ... (The rest of your main.py file, like session state initialization, etc.)
 # --- Load Static Imports ---
 from backend.market_selector import get_top_50_tickers
 from nlp.chat_router import handle_chat_command
@@ -477,7 +559,7 @@ if st.session_state.get("chat_mode") == "screener":
     
     col1, col2, col3 = st.columns(3)
     with col1:
-        min_fa = st.slider("Minimum FA Score", 0, 100, 50)
+        min_upside = col1.slider("Minimum DCF Upside (%)", -50, 200, 20)
     with col2:
         min_ta = st.slider("Minimum TA Score", 0, 100, 50)
     with col3:
@@ -502,12 +584,12 @@ if st.session_state.get("chat_mode") == "screener":
                 if ("error" not in fa and 
                     "error" not in ta and 
                     vol is not None and
-                    fa["fa_score"] >= min_fa and 
+                    fa["upside_potential"] >= min_upside and # <-- ADD THIS LINE
                     ta["ta_score"] >= min_ta and 
                     vol <= max_vol):
                     return {
                         "Ticker": ticker,
-                        "FA Score": fa["fa_score"],
+                        "Upside (%)": fa["upside_potential"], # <-- ADD THIS LINE
                         "TA Score": ta["ta_score"],
                         "Volatility": vol,
                         "Risk Level": get_volatility_risk_label(vol),
@@ -670,7 +752,7 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
 
                 user_weights = st.session_state.user_weights
                 final_score = round(
-                    (user_weights["fa"] / 100) * fa.get("fa_score", 0) +
+                    (user_weights["fa"] / 100) * fa.get("dcf_score", 0) + # <-- ADD THIS
                     (user_weights["ta"] / 100) * ta.get("ta_score", 0) +
                     (user_weights["sentiment"] / 100) * sentiment.get("score", 0) * 10 +
                     (user_weights["news"] / 100) * news_risk.get("risk_score", 50), 2
@@ -678,7 +760,7 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
 
                 return {
                     "Ticker": ticker,
-                    "FA Score": fa.get("fa_score", 0),
+                    "DCF Score": fa.get("dcf_score", 0), # <-- ADD THIS
                     "TA Score": ta.get("ta_score", 0),
                     "Sentiment": sentiment.get("score", 0) * 10,
                     "News Risk": news_risk.get("risk_score", 50),
@@ -806,8 +888,15 @@ elif st.session_state.get("chat_mode") == "run_analysis":
                 st.plotly_chart(fig)
 
                 if auto_refresh:
-                    time.sleep(30)
-                    st.rerun()
+                    # This code injects an HTML tag to refresh the page every 30 seconds
+                    # without freezing the Python script.
+                    components.html(
+                        """
+                        <meta http-equiv="refresh" content="30">
+                        """,
+                        height=0, # Make the HTML component invisible
+                    )
+                # --------------------
 
             except Exception as e:
                 st.error(f"Error fetching stock data: {str(e)}")
@@ -837,18 +926,16 @@ elif st.session_state.get("chat_mode") == "run_analysis":
                         else: display_fundamental_analysis(fa)
 
                     elif analysis_type == "Both":
-                        st.subheader(f"📊 Combined Analysis Report ({basis})")
-                        if any(mod is None or (isinstance(mod, dict) and "error" in mod) for mod in [ta, fa]):
-                            st.error("❌ One or more critical modules failed. Please try again.")
-                        else:
-                            display_technical_analysis(ta)
-                            display_fundamental_analysis(fa)
-                            display_sentiment_analysis(sentiment)
-                            display_news_risk_analysis(news_risk)
 
+                        display_technical_analysis(ta)
+                        display_fundamental_analysis(fa)
+                        display_sentiment_analysis(sentiment)
+                        display_news_risk_analysis(news_risk)
+
+                        if "error" not in fa and "error" not in ta:
                             user_weights = st.session_state.user_weights
                             final_score = round(
-                                (user_weights["fa"] / 100) * fa.get("fa_score", 0) +
+                                (user_weights["fa"] / 100) * fa.get("dcf_score", 0) +
                                 (user_weights["ta"] / 100) * ta.get("ta_score", 0) +
                                 (user_weights["sentiment"] / 100) * sentiment.get("score", 0) * 10 +
                                 (user_weights["news"] / 100) * news_risk.get("risk_score", 50), 2
