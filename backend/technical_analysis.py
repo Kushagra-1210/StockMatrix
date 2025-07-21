@@ -1,18 +1,15 @@
 # backend/technical_analysis.py
 import yfinance as yf
 import pandas as pd
-import pandas_ta as ta
 import numpy as np
 import logging
 
 logger = logging.getLogger(__name__)
 
 # --- Helper functions to normalize indicator values to a 0-10 scale ---
-
 def _normalize_rsi_stoch(value):
     """Normalizes RSI/Stochastic. Lower values (oversold) get a higher score."""
     if pd.isna(value): return 5 # Neutral score for no data
-    # Invert the scale: 0-30 is bullish (score 10-7), 70-100 is bearish (score 3-0)
     if value < 30:
         return 7 + (30 - value) / 10  # Score between 7 and 10
     if value > 70:
@@ -20,86 +17,136 @@ def _normalize_rsi_stoch(value):
     # Neutral zone
     return 3 + (70 - value) / 10 * 0.1 # Score between 3 and 7
 
-def _normalize_momentum(value):
-    """Normalizes a momentum value that can be positive or negative."""
-    if pd.isna(value): return 5
-    # Assuming momentum values are typically within a certain range, we cap them.
-    # A positive momentum is bullish.
-    score = 5 + (value / 10) # Simple scaling, centered around 5
-    return max(0, min(10, score)) # Ensure score is within 0-10
+def _normalize_momentum(series):
+    """Normalizes a momentum series to a 0-10 scale based on its recent range."""
+    if series.empty or len(series) < 2: return 5
+    # Scale momentum values from the last 50 days to a 0-10 range
+    min_val = series.min()
+    max_val = series.max()
+    if max_val == min_val: return 5 # Avoid division by zero
+    scaled_value = 10 * (series.iloc[-1] - min_val) / (max_val - min_val)
+    return max(0, min(10, scaled_value))
 
 def _normalize_volatility(value, price):
-    """Normalizes volatility indicators like BBW and ATR. Lower volatility is often a setup for a breakout."""
+    """Normalizes volatility indicators. Lower volatility gets a higher score."""
     if pd.isna(value) or price == 0: return 5
     # Express volatility as a percentage of the price
     vol_pct = (value / price) * 100
-    # Lower volatility percentage gets a higher score (e.g., a tight squeeze)
     # A 5% volatility is considered high, gets a low score.
     score = 10 - (vol_pct * 2)
     return max(0, min(10, score))
 
-# --- Main Analysis Function ---
+# --- Self-Contained Indicator Calculation Functions ---
+def _calculate_ema(series, span):
+    """Calculates Exponential Moving Average."""
+    return series.ewm(span=span, adjust=False).mean()
 
+def _calculate_atr(high, low, close, length=14):
+    """Calculates Average True Range."""
+    tr1 = abs(high - low)
+    tr2 = abs(high - close.shift())
+    tr3 = abs(low - close.shift())
+    tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+    return _calculate_ema(tr, span=length)
+
+def _calculate_adx(high, low, close, length=14):
+    """Calculates the Average Directional Index (ADX)."""
+    dm_plus = high.diff()
+    dm_minus = low.diff()
+    dm_plus[(dm_plus < 0) | (dm_plus <= -dm_minus)] = 0.0
+    dm_minus[(dm_minus < 0) | (dm_minus <= dm_plus)] = 0.0
+    
+    tr = _calculate_atr(high, low, close, length)
+    tr[tr == 0] = 0.0001 # Avoid division by zero
+    
+    adx_plus = 100 * _calculate_ema(dm_plus, length) / tr
+    adx_minus = 100 * _calculate_ema(dm_minus, length) / tr
+    
+    adx_sum = adx_plus + adx_minus
+    adx_sum[adx_sum == 0] = 0.0001 # Avoid division by zero
+    
+    adx = 100 * abs(adx_plus - adx_minus) / adx_sum
+    return _calculate_ema(adx, length).iloc[-1]
+
+# --- Main Analysis Function ---
 def analyze_technical_indicators(ticker: str, basis: str = "annual") -> dict:
     """
-    Analyzes technical indicators using a 10-factor model.
-    The timeframe is fixed to 200 days as per the model's requirements.
+    Analyzes technical indicators using a self-contained 10-factor model.
     """
     try:
-        # 1. Collect Input Data
-        hist = yf.Ticker(ticker).history(period="200d")
-        if hist.empty:
-            return {"error": "No historical data found for the ticker."}
+        # Fetch 250 days of data to ensure enough for 200-day SMA
+        hist = yf.Ticker(ticker).history(period="250d")
+        if hist.empty or len(hist) < 200:
+            return {"error": "Not enough historical data for TA."}
 
-        # 2. Calculate All 10 Indicators using pandas_ta
-        custom_strategy = ta.Strategy(
-            name="10-Factor Model",
-            description="SMA, MACD, RSI, STOCH, MOM, ATR, BBANDS, OBV, VO, ADX",
-            ta=[
-                {"kind": "sma", "length": 50},
-                {"kind": "sma", "length": 200},
-                {"kind": "macd", "fast": 12, "slow": 26, "signal": 9},
-                {"kind": "rsi", "length": 14},
-                {"kind": "stoch", "k": 14, "d": 3, "smooth_k": 3},
-                {"kind": "mom", "length": 10},
-                {"kind": "atr", "length": 14},
-                {"kind": "bbands", "length": 20, "std": 2},
-                {"kind": "obv"},
-                {"kind": "vo", "fast": 5, "slow": 10},
-                {"kind": "adx", "length": 14},
-            ]
-        )
-        hist.ta.strategy(custom_strategy)
-
-        # Get the latest values for all indicators
-        latest = hist.iloc[-1]
-        current_price = latest['Close']
-
-        # 3. Score Calculation (0-10 for each)
-        scores = {}
+        # --- Define local variables for convenience ---
+        close = hist['Close']
+        low = hist['Low']
+        high = hist['High']
+        volume = hist['Volume']
         
-        # Trend Indicators
-        scores['SMA'] = 10 if latest['SMA_50'] > latest['SMA_200'] else 0
-        scores['MACD'] = 10 if latest['MACDh_12_26_9'] > 0 else 0
+        # --- Calculate all indicators manually ---
+        # 1. Trend
+        sma50 = close.rolling(window=50).mean().iloc[-1]
+        sma200 = close.rolling(window=200).mean().iloc[-1]
+        
+        # 2. MACD
+        ema12 = _calculate_ema(close, 12)
+        ema26 = _calculate_ema(close, 26)
+        macd_line = ema12 - ema26
+        signal_line = _calculate_ema(macd_line, 9)
+        macd_hist = macd_line - signal_line
 
-        # Momentum Indicators
-        scores['RSI'] = _normalize_rsi_stoch(latest['RSI_14'])
-        scores['Stoch'] = _normalize_rsi_stoch(latest['STOCHk_14_3_3'])
-        scores['Momentum'] = _normalize_momentum(latest['MOM_10'])
+        # 3. RSI
+        delta = close.diff()
+        gain = (delta.where(delta > 0, 0)).ewm(span=14, adjust=False).mean()
+        loss = (-delta.where(delta < 0, 0)).ewm(span=14, adjust=False).mean()
+        loss[loss == 0] = 0.0001 # Avoid division by zero
+        rs = gain / loss
+        rsi = 100 - (100 / (1 + rs))
 
-        # Volatility Indicators
-        scores['ATR'] = _normalize_volatility(latest['ATRr_14'], current_price)
-        scores['BBW'] = _normalize_volatility(latest['BBB_20_2.0'], current_price)
+        # 4. Stochastic Oscillator
+        low14 = low.rolling(14).min()
+        high14 = high.rolling(14).max()
+        stoch_k = 100 * (close - low14) / (high14 - low14)
+        
+        # 5. Momentum
+        momentum = close.diff(10)
 
-        # Volume Indicators
-        # OBV confirming trend (rising OBV is bullish)
-        scores['OBV'] = 10 if hist['OBV'].diff().iloc[-1] > 0 else 0
-        scores['VolumeOsc'] = 5 + latest['VO_5_10'] if not pd.isna(latest['VO_5_10']) else 5
+        # 6. ATR (for volatility scoring)
+        atr = _calculate_atr(high, low, close, 14).iloc[-1]
 
-        # Composite Indicator
-        scores['ADX'] = 10 if latest['ADX_14'] > 25 else 0
+        # 7. Bollinger Band Width
+        sma20 = close.rolling(window=20).mean()
+        std20 = close.rolling(window=20).std()
+        bbw_raw = (4 * std20 / sma20)
+        bbw = bbw_raw.iloc[-1] * 100 # Express as a percentage
 
-        # 4. Final Score & Signal Generation
+        # 8. OBV
+        obv = (np.sign(close.diff()) * volume).cumsum()
+        
+        # 9. Volume Oscillator
+        vol_ma_fast = volume.rolling(window=5).mean()
+        vol_ma_slow = volume.rolling(window=10).mean()
+        vo = vol_ma_fast - vol_ma_slow
+
+        # 10. ADX
+        adx = _calculate_adx(high, low, close, 14)
+
+        # --- Scoring (0-10 for each) ---
+        scores = {}
+        scores['SMA'] = 10 if sma50 > sma200 else 0
+        scores['MACD'] = 10 if macd_hist.iloc[-1] > 0 else 0
+        scores['RSI'] = _normalize_rsi_stoch(rsi.iloc[-1])
+        scores['Stoch'] = _normalize_rsi_stoch(stoch_k.iloc[-1])
+        scores['Momentum'] = _normalize_momentum(momentum.last('50D'))
+        scores['ATR'] = _normalize_volatility(atr, close.iloc[-1])
+        scores['BBW'] = 10 - max(0, min(10, bbw)) # Lower width = higher score
+        scores['OBV'] = 10 if obv.diff().iloc[-1] > 0 else 0
+        scores['VolumeOsc'] = 5 + (vo.iloc[-1] / volume.mean()) * 10 if not pd.isna(vo.iloc[-1]) else 5
+        scores['ADX'] = 10 if adx > 25 else 0
+
+        # --- Final Score & Signal ---
         final_score = np.mean(list(scores.values())) * 10
         
         if final_score >= 80: verdict = "Strong Buy"
@@ -111,10 +158,8 @@ def analyze_technical_indicators(ticker: str, basis: str = "annual") -> dict:
             "ta_score": round(final_score, 2),
             "verdict": verdict,
             "period": "200-Day",
-            # Include the breakdown for transparency
             "ta_breakdown": {k: f"{v:.1f}/10" for k, v in scores.items()}
         }
-
     except Exception as e:
-        logger.error(f"Failed to perform advanced TA for {ticker}: {e}", exc_info=True)
+        logger.error(f"Failed to perform TA for {ticker}: {e}", exc_info=True)
         return {"error": f"Could not perform TA for {ticker}. Error: {e}"}
