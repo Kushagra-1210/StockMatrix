@@ -104,10 +104,14 @@ def get_dcf(stock, basis="annual"):
     """Performs DCF analysis, now with robust data handling."""
     if basis == "quarterly":
         return {"error": "DCF analysis is only available on an annual basis."}
+    # In get_dcf()
     try:
         wacc = get_wacc(stock)
-        if wacc is None:
+        # --- CHANGE THIS CHECK ---
+        if not isinstance(wacc, (int, float)):
              return {"error": "Could not calculate WACC, preventing DCF."}
+
+        cash_flow = _safe_get(stock.cashflow, ['Free Cash Flow'])
 
         cash_flow = _safe_get(stock.cashflow, ['Free Cash Flow'])
         if pd.isna(cash_flow):
