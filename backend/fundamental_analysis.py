@@ -11,15 +11,24 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# --- Data Fetching and Caching for Fama-French Factors ---
-def get_fama_french_factors():
+# --- Helper function to safely access financial data ---
+def _safe_get(df, keys, year=0):
     """
-    Fetches and parses the Fama-French 3 Factors from the Kenneth French data library.
-    It caches the data in a local CSV file to avoid re-downloading for 24 hours.
+    Safely gets a value from a DataFrame by trying multiple possible keys.
+    Returns np.nan if no key is found or if the index is out of bounds.
     """
-    CACHE_FILE = Path("fama_french_cache.csv")
-    CACHE_EXPIRY_SECONDS = 86400  # 24 hours
+    if year >= len(df.columns):
+        return np.nan
+    for key in keys:
+        if key in df.index:
+            return df.loc[key].iloc[year]
+    return np.nan
 
+# --- Fama-French data fetching (no changes needed here) ---
+def get_fama_french_factors():
+    # ... (this function is already robust)
+    CACHE_FILE = Path("fama_french_cache.csv")
+    CACHE_EXPIRY_SECONDS = 86400
     try:
         if CACHE_FILE.exists() and (time.time() - CACHE_FILE.stat().st_mtime) < CACHE_EXPIRY_SECONDS:
             df = pd.read_csv(CACHE_FILE, index_col=0, parse_dates=True)
@@ -36,50 +45,50 @@ def get_fama_french_factors():
             df = df.apply(pd.to_numeric, errors='coerce')
             df.dropna(inplace=True)
             df.to_csv(CACHE_FILE)
-
         last_year_factors = df.last('365D').mean() / 100
-        return {
-            "smb": last_year_factors.get('SMB', 0.0),
-            "hml": last_year_factors.get('HML', 0.0)
-        }
+        return {"smb": last_year_factors.get('SMB', 0.0), "hml": last_year_factors.get('HML', 0.0)}
     except Exception as e:
         logger.error(f"Error fetching Fama-French factors: {e}. Using default values.")
         return {"smb": 0.01, "hml": 0.02}
 
-# --- Core Financial Calculation Functions ---
+# --- REFACTORED Core Financial Calculation Functions ---
 
 def get_wacc(stock):
-    """Calculates the Weighted Average Cost of Capital (WACC) for a stock."""
+    """Calculates WACC, now with robust data handling."""
     try:
+        info = stock.info
+        financials = stock.financials
+        balance_sheet = stock.balance_sheet
+
         # 1. Risk-Free Rate
-        rf_ticker = yf.Ticker("^TNX")
-        rf = rf_ticker.history(period="1d")['Close'].iloc[0] / 100
+        rf = yf.Ticker("^TNX").history(period="1d")['Close'].iloc[0] / 100
 
         # 2. Beta
-        beta = stock.info.get('beta', 1.0)
+        beta = info.get('beta', 1.0)
         if beta is None: beta = 1.0
 
-        # 3. Equity Risk Premium (ERP) & Fama-French Factors
+        # 3. Cost of Equity
         erp = 0.05
         factors = get_fama_french_factors()
         ke = rf + beta * erp + factors["smb"] + factors["hml"]
 
-        # 4. Cost of Debt (Kd)
-        financials = stock.financials
-        balance_sheet = stock.balance_sheet
-        interest_expense = abs(financials.loc['Interest Expense'].iloc[0])
-        total_debt = balance_sheet.loc['Total Debt'].iloc[0]
+        # 4. Cost of Debt (safely accessed)
+        interest_expense = abs(_safe_get(financials, ['Interest Expense']))
+        total_debt = _safe_get(balance_sheet, ['Total Debt'])
+        if pd.isna(interest_expense) or pd.isna(total_debt):
+            return {"error": "Missing Interest Expense or Total Debt for WACC."}
         kd = interest_expense / total_debt if total_debt else 0.03
 
-        # 5. Tax Rate
-        income_statement = stock.income_statement
-        pretax_income = income_statement.loc['Pretax Income'].iloc[0]
-        tax_provision = income_statement.loc['Tax Provision'].iloc[0]
+        # 5. Tax Rate (safely accessed)
+        pretax_income = _safe_get(financials, ['Pretax Income'])
+        tax_provision = _safe_get(financials, ['Tax Provision'])
+        if pd.isna(pretax_income) or pd.isna(tax_provision):
+            return {"error": "Missing income or tax data for WACC."}
         tax_rate = tax_provision / pretax_income if pretax_income > 0 else 0.21
-        tax_rate = max(0.0, min(tax_rate, 0.40)) # Clamp tax rate
+        tax_rate = max(0.0, min(tax_rate, 0.40))
 
         # 6. Market Caps and Weights
-        market_cap = stock.info['marketCap']
+        market_cap = info['marketCap']
         total_capital = market_cap + total_debt
         weight_equity = market_cap / total_capital
         weight_debt = total_debt / total_capital
@@ -89,10 +98,10 @@ def get_wacc(stock):
         return wacc
     except Exception as e:
         logger.error(f"Could not calculate WACC for {stock.ticker}: {e}")
-        return None
+        return None # Return None on failure
 
-def get_dcf(stock, basis ="annual"):
-    """Performs a Discounted Cash Flow (DCF) analysis."""
+def get_dcf(stock, basis="annual"):
+    """Performs DCF analysis, now with robust data handling."""
     if basis == "quarterly":
         return {"error": "DCF analysis is only available on an annual basis."}
     try:
@@ -100,9 +109,11 @@ def get_dcf(stock, basis ="annual"):
         if wacc is None:
              return {"error": "Could not calculate WACC, preventing DCF."}
 
-        cash_flow = stock.cashflow.loc['Free Cash Flow'].iloc[0]
-        growth_rate = 0.025
+        cash_flow = _safe_get(stock.cashflow, ['Free Cash Flow'])
+        if pd.isna(cash_flow):
+            return {"error": "Free Cash Flow data not available for DCF."}
 
+        growth_rate = 0.025
         if wacc <= growth_rate:
             return {"error": f"WACC ({wacc:.2%}) <= growth rate ({growth_rate:.2%}). Unreliable DCF."}
 
@@ -120,223 +131,147 @@ def get_dcf(stock, basis ="annual"):
         return {"error": "Failed to perform DCF analysis due to missing data."}
 
 def get_piotroski_score(stock):
-    """
-    Calculates the Piotroski F-Score, a 9-point scale to determine the
-    financial strength of a company.
-    """
+    """Calculates Piotroski F-Score with robust data handling."""
     try:
         fs = stock.financials
         bs = stock.balance_sheet
         cf = stock.cashflow
 
-        # Need 2 years of data for comparison
         if len(fs.columns) < 2 or len(bs.columns) < 2 or len(cf.columns) < 2:
             return {"error": "Not enough historical data for Piotroski score."}
 
-        # --- Profitability Criteria (4 points) ---
-        # 1. Net Income
-        ni_y1 = fs.loc['Net Income'].iloc[0]
+        # Safe data extraction
+        ni_y1 = _safe_get(fs, ['Net Income'], 0)
+        ni_y2 = _safe_get(fs, ['Net Income'], 1)
+        ocf_y1 = _safe_get(cf, ['Operating Cash Flow', 'Cash Flow from Operations'], 0)
+        assets_y1 = _safe_get(bs, ['Total Assets'], 0)
+        assets_y2 = _safe_get(bs, ['Total Assets'], 1)
+        debt_y1 = _safe_get(bs, ['Long Term Debt'], 0)
+        debt_y2 = _safe_get(bs, ['Long Term Debt'], 1)
+        curr_assets_y1 = _safe_get(bs, ['Current Assets'], 0)
+        curr_liab_y1 = _safe_get(bs, ['Current Liabilities'], 0)
+        curr_assets_y2 = _safe_get(bs, ['Current Assets'], 1)
+        curr_liab_y2 = _safe_get(bs, ['Current Liabilities'], 1)
+        revenue_y1 = _safe_get(fs, ['Total Revenue'], 0)
+        revenue_y2 = _safe_get(fs, ['Total Revenue'], 1)
+        gp_y1 = _safe_get(fs, ['Gross Profit'], 0)
+        gp_y2 = _safe_get(fs, ['Gross Profit'], 1)
+        
+        # Check for missing crucial data
+        if any(pd.isna(v) for v in [ni_y1, ni_y2, ocf_y1, assets_y1, assets_y2, debt_y1, debt_y2,
+                                     curr_assets_y1, curr_liab_y1, curr_assets_y2, curr_liab_y2,
+                                     revenue_y1, revenue_y2, gp_y1, gp_y2]):
+            return {"error": "Missing critical data for Piotroski score (e.g., Net Income, Assets)."}
+
+        # Calculations (with checks for division by zero)
         f_score_ni = 1 if ni_y1 > 0 else 0
-
-        # 2. Operating Cash Flow
-        ocf_y1 = cf.loc['Operating Cash Flow'].iloc[0]
         f_score_ocf = 1 if ocf_y1 > 0 else 0
-
-        # 3. Return on Assets (ROA)
-        assets_y1 = bs.loc['Total Assets'].iloc[0]
-        assets_y2 = bs.loc['Total Assets'].iloc[1]
         avg_assets = (assets_y1 + assets_y2) / 2
         roa_y1 = ni_y1 / avg_assets if avg_assets else 0
-        ni_y2 = fs.loc['Net Income'].iloc[1]
         roa_y2 = ni_y2 / avg_assets if avg_assets else 0
         f_score_roa = 1 if roa_y1 > roa_y2 else 0
-        
-        # 4. Quality of Earnings (OCF vs NI)
         f_score_quality = 1 if ocf_y1 > ni_y1 else 0
-
-        # --- Leverage, Liquidity, and Source of Funds Criteria (3 points) ---
-        # 5. Change in Leverage (Long-term debt)
-        debt_y1 = bs.loc['Long Term Debt'].iloc[0]
-        debt_y2 = bs.loc['Long Term Debt'].iloc[1]
         leverage_y1 = debt_y1 / assets_y1 if assets_y1 else 0
         leverage_y2 = debt_y2 / assets_y2 if assets_y2 else 0
         f_score_lev = 1 if leverage_y1 < leverage_y2 else 0
-
-        # 6. Change in Current Ratio
-        curr_ratio_y1 = bs.loc['Current Assets'].iloc[0] / bs.loc['Current Liabilities'].iloc[0]
-        curr_ratio_y2 = bs.loc['Current Assets'].iloc[1] / bs.loc['Current Liabilities'].iloc[1]
+        curr_ratio_y1 = curr_assets_y1 / curr_liab_y1 if curr_liab_y1 else 0
+        curr_ratio_y2 = curr_assets_y2 / curr_liab_y2 if curr_liab_y2 else 0
         f_score_liq = 1 if curr_ratio_y1 > curr_ratio_y2 else 0
-
-        # 7. Change in Shares Outstanding
-        shares_y1 = stock.info['sharesOutstanding']
-        # Note: yfinance doesn't easily provide historical shares data in financials.
-        # This is a limitation. We will assume no new shares issued.
-        f_score_shares = 1 # Default to 1 (good) due to data limitation
-
-        # --- Operating Efficiency Criteria (2 points) ---
-        # 8. Change in Gross Margin
-        gm_y1 = fs.loc['Gross Profit'].iloc[0] / fs.loc['Total Revenue'].iloc[0]
-        gm_y2 = fs.loc['Gross Profit'].iloc[1] / fs.loc['Total Revenue'].iloc[1]
+        f_score_shares = 1 # Limitation: Assume no share dilution
+        gm_y1 = gp_y1 / revenue_y1 if revenue_y1 else 0
+        gm_y2 = gp_y2 / revenue_y2 if revenue_y2 else 0
         f_score_margin = 1 if gm_y1 > gm_y2 else 0
-
-        # 9. Change in Asset Turnover
-        turnover_y1 = fs.loc['Total Revenue'].iloc[0] / avg_assets
-        turnover_y2 = fs.loc['Total Revenue'].iloc[1] / avg_assets
+        turnover_y1 = revenue_y1 / avg_assets if avg_assets else 0
+        turnover_y2 = revenue_y2 / avg_assets if avg_assets else 0
         f_score_turn = 1 if turnover_y1 > turnover_y2 else 0
         
-        # --- Final Score ---
         total_score = (f_score_ni + f_score_ocf + f_score_roa + f_score_quality +
                        f_score_lev + f_score_liq + f_score_shares +
                        f_score_margin + f_score_turn)
         
         verdict = "Strong" if total_score >= 8 else "Good" if total_score >= 5 else "Weak"
-
         return {"Piotroski F-Score": f"{total_score}/9", "Verdict": verdict}
-    except (KeyError, IndexError) as e:
-        return {"error": f"Missing financial data for Piotroski Score: {e}"}
     except Exception as e:
         logger.error(f"Piotroski calculation failed for {stock.ticker}: {e}")
         return {"error": "An unexpected error occurred during Piotroski calculation."}
 
-# In backend/fundamental_analysis.py
-
-def _safe_get(df, keys, year=0):
-    """
-    Safely gets a value from a DataFrame by trying multiple possible keys.
-    Returns np.nan if no key is found.
-    """
-    for key in keys:
-        if key in df.index:
-            return df.loc[key].iloc[year]
-    return np.nan # Return Not-a-Number if no key is found
-
-
 def get_beneish_m_score(stock):
-    """
-    Calculates the Beneish M-Score. Now updated to handle missing data gracefully.
-    """
+    """Calculates Beneish M-Score, now with robust data handling and validation."""
     try:
         fs = stock.financials
         bs = stock.balance_sheet
         cf = stock.cashflow
 
-        # Need 2 years of data for comparison
         if len(fs.columns) < 2 or len(bs.columns) < 2:
             return {"error": "Not enough historical data for Beneish score."}
-
-        # --- Data Extraction using the _safe_get helper ---
-        # Define possible names for each required line item
-# In backend/fundamental_analysis.py -> get_beneish_m_score()
-        # Define possible names for each required line item
+        
         rec_keys = ['Accounts Receivable']
         sales_keys = ['Total Revenue', 'Revenue']
         cogs_keys = ['Cost Of Revenue', 'Cost of Goods Sold']
         assets_keys = ['Total Assets']
-        # --- EXPAND THIS LIST ---
-        ppe_keys = [
-            'Property Plant And Equipment', 
-            'Net Property, Plant and Equipment', 
-            'Fixed Assets', # Common alternative
-            'Gross Block'   # Often used in Indian financials
-        ]
+        ppe_keys = ['Property Plant And Equipment', 'Net Property, Plant and Equipment', 'Fixed Assets', 'Gross Block']
         dep_keys = ['Depreciation And Amortization', 'Depreciation']
-        # --- AND EXPAND THIS LIST ---
-        sga_keys = [
-            'Selling General And Administration',
-            'Selling General and Administrative Expenses',
-            'Administrative and selling expenses'
-        ]
+        sga_keys = ['Selling General And Administration', 'Selling General and Administrative Expenses', 'Administrative and selling expenses']
         debt_keys = ['Total Debt']
         ni_keys = ['Net Income']
         cfo_keys = ['Operating Cash Flow', 'Cash Flow from Operations']
-        # ... the rest of the function remains the same ...
+        curr_assets_keys = ['Current Assets']
 
-        # Year 1 (t) data
-        rec_y1 = _safe_get(bs, rec_keys, 0)
-        sales_y1 = _safe_get(fs, sales_keys, 0)
-        cogs_y1 = _safe_get(fs, cogs_keys, 0)
-        assets_y1 = _safe_get(bs, assets_keys, 0)
-        ppe_y1 = _safe_get(bs, ppe_keys, 0)
-        dep_y1 = _safe_get(cf, dep_keys, 0)
-        sga_y1 = _safe_get(fs, sga_keys, 0)
-        debt_y1 = _safe_get(bs, debt_keys, 0)
-        ni_y1 = _safe_get(fs, ni_keys, 0)
-        cfo_y1 = _safe_get(cf, cfo_keys, 0)
+        # Extract data safely
+        data_points = [
+            _safe_get(bs, rec_keys, 0), _safe_get(fs, sales_keys, 0), _safe_get(fs, cogs_keys, 0),
+            _safe_get(bs, assets_keys, 0), _safe_get(bs, ppe_keys, 0), _safe_get(cf, dep_keys, 0),
+            _safe_get(fs, sga_keys, 0), _safe_get(bs, debt_keys, 0), _safe_get(fs, ni_keys, 0),
+            _safe_get(cf, cfo_keys, 0), _safe_get(bs, rec_keys, 1), _safe_get(fs, sales_keys, 1),
+            _safe_get(fs, cogs_keys, 1), _safe_get(bs, assets_keys, 1), _safe_get(bs, ppe_keys, 1),
+            _safe_get(cf, dep_keys, 1), _safe_get(fs, sga_keys, 1), _safe_get(bs, debt_keys, 1),
+            _safe_get(bs, curr_assets_keys, 0), _safe_get(bs, curr_assets_keys, 1)
+        ]
 
-        # Year 2 (t-1) data
-        rec_y2 = _safe_get(bs, rec_keys, 1)
-        sales_y2 = _safe_get(fs, sales_keys, 1)
-        cogs_y2 = _safe_get(fs, cogs_keys, 1)
-        assets_y2 = _safe_get(bs, assets_keys, 1)
-        ppe_y2 = _safe_get(bs, ppe_keys, 1)
-        dep_y2 = _safe_get(cf, dep_keys, 1)
-        sga_y2 = _safe_get(fs, sga_keys, 1)
-        debt_y2 = _safe_get(bs, debt_keys, 1)
+        if any(pd.isna(v) for v in data_points):
+             return {"error": "Could not calculate Beneish Score due to missing financial data."}
+        
+        (rec_y1, sales_y1, cogs_y1, assets_y1, ppe_y1, dep_y1, sga_y1, debt_y1, ni_y1, cfo_y1,
+         rec_y2, sales_y2, cogs_y2, assets_y2, ppe_y2, dep_y2, sga_y2, debt_y2,
+         curr_assets_y1, curr_assets_y2) = data_points
 
-        # Check if any crucial data is missing after trying all keys
-        if any(pd.isna(v) for v in [rec_y1, sales_y1, cogs_y1, assets_y1, ppe_y1, dep_y1, sga_y1, debt_y1, ni_y1, cfo_y1]):
-             return {"error": "Could not calculate Beneish Score due to missing financial data (e.g., PPE, SGA)."}
+        # Calculate indices with division-by-zero checks
+        dsri = (rec_y1 / sales_y1) / (rec_y2 / sales_y2) if sales_y1 and sales_y2 else 1.0
+        gm_y1 = (sales_y1 - cogs_y1) / sales_y1 if sales_y1 else 0
+        gm_y2 = (sales_y2 - cogs_y2) / sales_y2 if sales_y2 else 0
+        gmi = gm_y2 / gm_y1 if gm_y1 else 1.0
+        aqi = ((assets_y1 - curr_assets_y1) / assets_y1) / ((assets_y2 - curr_assets_y2) / assets_y2) if assets_y1 and assets_y2 else 1.0
+        sgi = sales_y1 / sales_y2 if sales_y2 else 1.0
+        depi = (dep_y2 / (ppe_y2 + dep_y2) if (ppe_y2 + dep_y2) else 0) / (dep_y1 / (ppe_y1 + dep_y1) if (ppe_y1 + dep_y1) else 1)
+        sgai = (sga_y1 / sales_y1) / (sga_y2 / sales_y2) if sales_y1 and sales_y2 else 1.0
+        lvgi = (debt_y1 / assets_y1) / (debt_y2 / assets_y2) if assets_y1 and assets_y2 and debt_y2 else 1.0
+        tata = (ni_y1 - cfo_y1) / assets_y1 if assets_y1 else 0.0
 
-        # --- The rest of the calculation is the same ---
-        # 1. DSRI (Days Sales in Receivables Index)
-        dsri = (rec_y1 / sales_y1) / (rec_y2 / sales_y2)
-
-# 2. GMI (Gross Margin Index)
-        gm_y1 = (sales_y1 - cogs_y1) / sales_y1
-        gm_y2 = (sales_y2 - cogs_y2) / sales_y2
-        gmi = gm_y2 / gm_y1
-
-        # 3. AQI (Asset Quality Index)
-        non_curr_assets_y1 = assets_y1 - bs.loc['Current Assets'].iloc[0]
-        non_curr_assets_y2 = assets_y2 - bs.loc['Current Assets'].iloc[1]
-        aqi = (non_curr_assets_y1 / assets_y1) / (non_curr_assets_y2 / assets_y2)
-
-        # 4. SGI (Sales Growth Index)
-        sgi = sales_y1 / sales_y2
-
-        # 5. DEPI (Depreciation Index)
-        depi = (dep_y2 / (ppe_y2 + dep_y2)) / (dep_y1 / (ppe_y1 + dep_y1))
-
-        # 6. SGAI (SG&A Index)
-        sgai = (sga_y1 / sales_y1) / (sga_y2 / sales_y2)
-
-        # 7. LVGI (Leverage Index)
-        lvgi = (debt_y1 / assets_y1) / (debt_y2 / assets_y2)
-
-        # 8. TATA (Total Accruals to Total Assets)
-        accruals = ni_y1 - cfo_y1
-        tata = accruals / assets_y1
+        indices = [dsri, gmi, aqi, sgi, depi, sgai, lvgi, tata]
+        if not all(np.isfinite(v) for v in indices):
+            return {"error": "Could not calculate Beneish Score due to invalid intermediate values."}
 
         # Beneish M-Score Formula
-        m_score = (-4.84 + 0.92 * dsri + 0.528 * gmi + 0.404 * aqi +
-                   0.892 * sgi + 0.115 * depi - 0.172 * sgai +
-                   4.679 * tata - 0.327 * lvgi)
-
+        m_score = (-4.84 + 0.92 * dsri + 0.528 * gmi + 0.404 * aqi + 0.892 * sgi +
+                   0.115 * depi - 0.172 * sgai + 4.679 * tata - 0.327 * lvgi)
+        
         verdict = "Potential Manipulator" if m_score > -1.78 else "Unlikely Manipulator"
-
         return {"Beneish M-Score": f"{m_score:.4f}", "Verdict": verdict}
 
     except Exception as e:
         logger.error(f"Beneish calculation failed for {stock.ticker}: {e}", exc_info=True)
         return {"error": "An unexpected error occurred during Beneish calculation."}
 
-def analyze_fundamentals(ticker, basis ="annual"):
+# --- Main Analysis Function ---
+def analyze_fundamentals(ticker, basis="annual"):
     """Generates a summary of fundamental analysis scores."""
     stock = yf.Ticker(ticker)
-    score = 0
+    results = {}
     try:
-        if stock.info.get('trailingPE', 100) < 25: score += 20
-        if stock.info.get('priceToBook', 100) < 3: score += 20
-        if stock.info.get('dividendYield', 0) > 0.02: score += 20
-        if stock.info.get('returnOnEquity', 0) > 0.15: score += 20
-        if stock.info.get('debtToEquity', 100) < 0.5: score += 20
-        
         # Combine all fundamental results
-        results = {"Fundamental Score": score}
         results.update(get_dcf(stock, basis))
         results.update(get_piotroski_score(stock))
         results.update(get_beneish_m_score(stock))
-
         return results
     except Exception as e:
         logger.error(f"Could not get fundamental analysis for {ticker}: {e}")
