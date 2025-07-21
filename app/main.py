@@ -11,6 +11,11 @@ from datetime import datetime
 import logging
 import importlib
 
+logging.basicConfig(
+    stream=sys.stdout,
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 # =============================================================================
 # --- CONFIGURATION (MUST BE AT THE TOP) ---
