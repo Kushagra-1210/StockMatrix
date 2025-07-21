@@ -226,16 +226,30 @@ def get_beneish_m_score(stock):
 
         # --- Data Extraction using the _safe_get helper ---
         # Define possible names for each required line item
+# In backend/fundamental_analysis.py -> get_beneish_m_score()
+        # Define possible names for each required line item
         rec_keys = ['Accounts Receivable']
-        sales_keys = ['Total Revenue']
-        cogs_keys = ['Cost Of Revenue']
+        sales_keys = ['Total Revenue', 'Revenue']
+        cogs_keys = ['Cost Of Revenue', 'Cost of Goods Sold']
         assets_keys = ['Total Assets']
-        ppe_keys = ['Property Plant And Equipment', 'Net Property, Plant and Equipment']
+        # --- EXPAND THIS LIST ---
+        ppe_keys = [
+            'Property Plant And Equipment', 
+            'Net Property, Plant and Equipment', 
+            'Fixed Assets', # Common alternative
+            'Gross Block'   # Often used in Indian financials
+        ]
         dep_keys = ['Depreciation And Amortization', 'Depreciation']
-        sga_keys = ['Selling General And Administration', 'Selling General and Administrative Expenses']
+        # --- AND EXPAND THIS LIST ---
+        sga_keys = [
+            'Selling General And Administration',
+            'Selling General and Administrative Expenses',
+            'Administrative and selling expenses'
+        ]
         debt_keys = ['Total Debt']
         ni_keys = ['Net Income']
         cfo_keys = ['Operating Cash Flow', 'Cash Flow from Operations']
+        # ... the rest of the function remains the same ...
 
         # Year 1 (t) data
         rec_y1 = _safe_get(bs, rec_keys, 0)
