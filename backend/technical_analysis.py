@@ -1,122 +1,120 @@
 # backend/technical_analysis.py
-
 import yfinance as yf
 import pandas as pd
+import pandas_ta as ta
+import numpy as np
 import logging
 
-def _calculate_sma(data: pd.Series, period: int = 20) -> pd.Series:
-    """Calculates the Simple Moving Average (SMA)."""
-    return data.rolling(window=period).mean()
+logger = logging.getLogger(__name__)
 
-def _calculate_ema(data: pd.Series, period: int = 20) -> pd.Series:
-    """Calculates the Exponential Moving Average (EMA)."""
-    return data.ewm(span=period, adjust=False).mean()
+# --- Helper functions to normalize indicator values to a 0-10 scale ---
 
-def _calculate_rsi(data: pd.Series, period: int = 14) -> pd.Series:
-    """Calculates the Relative Strength Index (RSI)."""
-    delta = data.diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-    
-    # Handle division by zero
-    if loss.iloc[-1] == 0:
-        return pd.Series([100] * len(data)) # If no losses, RSI is 100
-        
-    rs = gain / loss
-    rsi = 100 - (100 / (1 + rs))
-    return rsi
+def _normalize_rsi_stoch(value):
+    """Normalizes RSI/Stochastic. Lower values (oversold) get a higher score."""
+    if pd.isna(value): return 5 # Neutral score for no data
+    # Invert the scale: 0-30 is bullish (score 10-7), 70-100 is bearish (score 3-0)
+    if value < 30:
+        return 7 + (30 - value) / 10  # Score between 7 and 10
+    if value > 70:
+        return 3 - (value - 70) / 10  # Score between 0 and 3
+    # Neutral zone
+    return 3 + (70 - value) / 10 * 0.1 # Score between 3 and 7
 
-def _calculate_macd(data: pd.Series, fast_period: int = 12, slow_period: int = 26, signal_period: int = 9):
-    """Calculates the Moving Average Convergence Divergence (MACD)."""
-    fast_ema = data.ewm(span=fast_period, adjust=False).mean()
-    slow_ema = data.ewm(span=slow_period, adjust=False).mean()
-    
-    macd_line = fast_ema - slow_ema
-    signal_line = macd_line.ewm(span=signal_period, adjust=False).mean()
-    return macd_line, signal_line
+def _normalize_momentum(value):
+    """Normalizes a momentum value that can be positive or negative."""
+    if pd.isna(value): return 5
+    # Assuming momentum values are typically within a certain range, we cap them.
+    # A positive momentum is bullish.
+    score = 5 + (value / 10) # Simple scaling, centered around 5
+    return max(0, min(10, score)) # Ensure score is within 0-10
+
+def _normalize_volatility(value, price):
+    """Normalizes volatility indicators like BBW and ATR. Lower volatility is often a setup for a breakout."""
+    if pd.isna(value) or price == 0: return 5
+    # Express volatility as a percentage of the price
+    vol_pct = (value / price) * 100
+    # Lower volatility percentage gets a higher score (e.g., a tight squeeze)
+    # A 5% volatility is considered high, gets a low score.
+    score = 10 - (vol_pct * 2)
+    return max(0, min(10, score))
+
+# --- Main Analysis Function ---
 
 def analyze_technical_indicators(ticker: str, basis: str = "annual") -> dict:
     """
-    Analyzes technical indicators for a stock using only pandas for calculations.
+    Analyzes technical indicators using a 10-factor model.
+    The timeframe is fixed to 200 days as per the model's requirements.
     """
-    if basis.lower() not in ("annual", "quarterly"):
-        return {"error": f"Invalid basis '{basis}'. Must be 'annual' or 'quarterly'"}
-
     try:
-        period = "1y" if basis.lower() == "annual" else "6mo"
-        hist = yf.Ticker(ticker).history(period=period)
+        # 1. Collect Input Data
+        hist = yf.Ticker(ticker).history(period="200d")
+        if hist.empty:
+            return {"error": "No historical data found for the ticker."}
 
-        if hist.empty or "Close" not in hist:
-            return {"error": "No historical data with 'Close' prices found."}
+        # 2. Calculate All 10 Indicators using pandas_ta
+        custom_strategy = ta.Strategy(
+            name="10-Factor Model",
+            description="SMA, MACD, RSI, STOCH, MOM, ATR, BBANDS, OBV, VO, ADX",
+            ta=[
+                {"kind": "sma", "length": 50},
+                {"kind": "sma", "length": 200},
+                {"kind": "macd", "fast": 12, "slow": 26, "signal": 9},
+                {"kind": "rsi", "length": 14},
+                {"kind": "stoch", "k": 14, "d": 3, "smooth_k": 3},
+                {"kind": "mom", "length": 10},
+                {"kind": "atr", "length": 14},
+                {"kind": "bbands", "length": 20, "std": 2},
+                {"kind": "obv"},
+                {"kind": "vo", "fast": 5, "slow": 10},
+                {"kind": "adx", "length": 14},
+            ]
+        )
+        hist.ta.strategy(custom_strategy)
 
-        close_prices = hist['Close']
+        # Get the latest values for all indicators
+        latest = hist.iloc[-1]
+        current_price = latest['Close']
 
-        # --- Indicator Calculations ---
-        # Get the latest (last) value for each indicator
-        rsi = _calculate_rsi(close_prices).iloc[-1]
-        sma_20 = _calculate_sma(close_prices).iloc[-1]
-        ema_20 = _calculate_ema(close_prices).iloc[-1]
-        macd_line, macd_signal = _calculate_macd(close_prices)
-        macd_line_latest = macd_line.iloc[-1]
-        macd_signal_latest = macd_signal.iloc[-1]
-        current_price = close_prices.iloc[-1]
+        # 3. Score Calculation (0-10 for each)
+        scores = {}
+        
+        # Trend Indicators
+        scores['SMA'] = 10 if latest['SMA_50'] > latest['SMA_200'] else 0
+        scores['MACD'] = 10 if latest['MACDh_12_26_9'] > 0 else 0
 
-        # --- Scoring ---
-        score = 0
-        total_weight = 0
-        ta_breakdown = {}
+        # Momentum Indicators
+        scores['RSI'] = _normalize_rsi_stoch(latest['RSI_14'])
+        scores['Stoch'] = _normalize_rsi_stoch(latest['STOCHk_14_3_3'])
+        scores['Momentum'] = _normalize_momentum(latest['MOM_10'])
 
-        # Trend vs Moving Averages (50%)
-        if not pd.isna(current_price) and not pd.isna(sma_20) and not pd.isna(ema_20):
-            total_weight += 50
-            trend_score = 0
-            if current_price > sma_20: trend_score += 25
-            if current_price > ema_20: trend_score += 25
-            score += trend_score
-            ta_breakdown["Trend (SMA & EMA)"] = f"{trend_score}/50"
+        # Volatility Indicators
+        scores['ATR'] = _normalize_volatility(latest['ATRr_14'], current_price)
+        scores['BBW'] = _normalize_volatility(latest['BBB_20_2.0'], current_price)
 
-        # Momentum - RSI (25%)
-        if not pd.isna(rsi):
-            total_weight += 25
-            rsi_score = 0
-            # A more gradual scoring for RSI
-            if rsi > 70:
-                # Penalize for being extremely overbought. Score decreases from a neutral 12.5
-                rsi_score = 12.5 - min((rsi - 70) * 0.5, 12.5) 
-            elif rsi < 30:
-                # Reward for being oversold. Score increases from a neutral 12.5
-                rsi_score = 12.5 + min((30 - rsi) * 0.5, 12.5)
-            else:
-                # Neutral RSI is average
-                rsi_score = 12.5
-            
-            score += rsi_score
-            ta_breakdown["RSI Momentum"] = f"{rsi_score:.1f}/25"
+        # Volume Indicators
+        # OBV confirming trend (rising OBV is bullish)
+        scores['OBV'] = 10 if hist['OBV'].diff().iloc[-1] > 0 else 0
+        scores['VolumeOsc'] = 5 + latest['VO_5_10'] if not pd.isna(latest['VO_5_10']) else 5
 
-        # Momentum - MACD (25%)
-        if not pd.isna(macd_line_latest) and not pd.isna(macd_signal_latest):
-            total_weight += 25
-            macd_score = 5
-            if macd_line_latest > macd_signal_latest:
-                macd_score = 25
-            score += macd_score
-            ta_breakdown["MACD"] = f"{macd_score}/25"
+        # Composite Indicator
+        scores['ADX'] = 10 if latest['ADX_14'] > 25 else 0
 
-        # Final Score & Verdict
-        ta_score = (score / total_weight) * 100 if total_weight > 0 else 0
-        verdict = "Bullish" if ta_score >= 65 else "Bearish" if ta_score < 40 else "Neutral"
+        # 4. Final Score & Signal Generation
+        final_score = np.mean(list(scores.values())) * 10
+        
+        if final_score >= 80: verdict = "Strong Buy"
+        elif final_score >= 60: verdict = "Bullish"
+        elif final_score >= 30: verdict = "Neutral"
+        else: verdict = "Bearish"
 
         return {
-            "current_price": round(current_price, 2) if not pd.isna(current_price) else "N/A",
-            "rsi": round(rsi, 2) if not pd.isna(rsi) else "N/A",
-            "sma_20": round(sma_20, 2) if not pd.isna(sma_20) else "N/A",
-            "ema_20": round(ema_20, 2) if not pd.isna(ema_20) else "N/A",
-            "ta_score": round(ta_score, 2),
+            "ta_score": round(final_score, 2),
             "verdict": verdict,
-            "period": basis.title(),
-            "ta_breakdown": ta_breakdown
+            "period": "200-Day",
+            # Include the breakdown for transparency
+            "ta_breakdown": {k: f"{v:.1f}/10" for k, v in scores.items()}
         }
 
     except Exception as e:
-        logging.error(f"Failed to perform technical analysis for {ticker}: {e}", exc_info=True)
+        logger.error(f"Failed to perform advanced TA for {ticker}: {e}", exc_info=True)
         return {"error": f"Could not perform TA for {ticker}. Error: {e}"}

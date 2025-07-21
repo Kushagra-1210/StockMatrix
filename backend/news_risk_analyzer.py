@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 # --- Configuration for the News API ---
 # Replace with your actual Marketaux API token if you have one.
 # For now, it will use a generic news source.
-MARKETAUX_API_TOKEN = "MARKETAUX_API_KEY" # IMPORTANT: Replace with your key
+MARKETAUX_API_TOKEN = "Ac37Lg8NVwhrL6exOQ6cyH4g4G7i1SvMSyCPpzsK" # IMPORTANT: Replace with your key
 NEWS_API_URL = "https://api.marketaux.com/v1/news/all"
 
 # --- Risk Keyword Dictionary ---

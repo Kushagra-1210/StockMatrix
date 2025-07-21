@@ -198,10 +198,22 @@ def get_piotroski_score(stock):
         logger.error(f"Piotroski calculation failed for {stock.ticker}: {e}")
         return {"error": "An unexpected error occurred during Piotroski calculation."}
 
+# In backend/fundamental_analysis.py
+
+def _safe_get(df, keys, year=0):
+    """
+    Safely gets a value from a DataFrame by trying multiple possible keys.
+    Returns np.nan if no key is found.
+    """
+    for key in keys:
+        if key in df.index:
+            return df.loc[key].iloc[year]
+    return np.nan # Return Not-a-Number if no key is found
+
+
 def get_beneish_m_score(stock):
     """
-    Calculates the Beneish M-Score, an 8-variable model to detect
-    potential earnings manipulation. A score > -1.78 suggests manipulation.
+    Calculates the Beneish M-Score. Now updated to handle missing data gracefully.
     """
     try:
         fs = stock.financials
@@ -212,31 +224,50 @@ def get_beneish_m_score(stock):
         if len(fs.columns) < 2 or len(bs.columns) < 2:
             return {"error": "Not enough historical data for Beneish score."}
 
-        # Year 1 (t) and Year 2 (t-1) data
-        rec_y1 = bs.loc['Accounts Receivable'].iloc[0]
-        sales_y1 = fs.loc['Total Revenue'].iloc[0]
-        cogs_y1 = fs.loc['Cost Of Revenue'].iloc[0]
-        assets_y1 = bs.loc['Total Assets'].iloc[0]
-        ppe_y1 = bs.loc['Property Plant And Equipment'].iloc[0]
-        dep_y1 = cf.loc['Depreciation And Amortization'].iloc[0]
-        sga_y1 = fs.loc['Selling General And Administration'].iloc[0]
-        debt_y1 = bs.loc['Total Debt'].iloc[0]
-        ni_y1 = fs.loc['Net Income'].iloc[0]
-        cfo_y1 = cf.loc['Operating Cash Flow'].iloc[0]
-        
-        rec_y2 = bs.loc['Accounts Receivable'].iloc[1]
-        sales_y2 = fs.loc['Total Revenue'].iloc[1]
-        cogs_y2 = fs.loc['Cost Of Revenue'].iloc[1]
-        assets_y2 = bs.loc['Total Assets'].iloc[1]
-        ppe_y2 = bs.loc['Property Plant And Equipment'].iloc[1]
-        dep_y2 = cf.loc['Depreciation And Amortization'].iloc[1]
-        sga_y2 = fs.loc['Selling General And Administration'].iloc[1]
-        debt_y2 = bs.loc['Total Debt'].iloc[1]
+        # --- Data Extraction using the _safe_get helper ---
+        # Define possible names for each required line item
+        rec_keys = ['Accounts Receivable']
+        sales_keys = ['Total Revenue']
+        cogs_keys = ['Cost Of Revenue']
+        assets_keys = ['Total Assets']
+        ppe_keys = ['Property Plant And Equipment', 'Net Property, Plant and Equipment']
+        dep_keys = ['Depreciation And Amortization', 'Depreciation']
+        sga_keys = ['Selling General And Administration', 'Selling General and Administrative Expenses']
+        debt_keys = ['Total Debt']
+        ni_keys = ['Net Income']
+        cfo_keys = ['Operating Cash Flow', 'Cash Flow from Operations']
 
+        # Year 1 (t) data
+        rec_y1 = _safe_get(bs, rec_keys, 0)
+        sales_y1 = _safe_get(fs, sales_keys, 0)
+        cogs_y1 = _safe_get(fs, cogs_keys, 0)
+        assets_y1 = _safe_get(bs, assets_keys, 0)
+        ppe_y1 = _safe_get(bs, ppe_keys, 0)
+        dep_y1 = _safe_get(cf, dep_keys, 0)
+        sga_y1 = _safe_get(fs, sga_keys, 0)
+        debt_y1 = _safe_get(bs, debt_keys, 0)
+        ni_y1 = _safe_get(fs, ni_keys, 0)
+        cfo_y1 = _safe_get(cf, cfo_keys, 0)
+
+        # Year 2 (t-1) data
+        rec_y2 = _safe_get(bs, rec_keys, 1)
+        sales_y2 = _safe_get(fs, sales_keys, 1)
+        cogs_y2 = _safe_get(fs, cogs_keys, 1)
+        assets_y2 = _safe_get(bs, assets_keys, 1)
+        ppe_y2 = _safe_get(bs, ppe_keys, 1)
+        dep_y2 = _safe_get(cf, dep_keys, 1)
+        sga_y2 = _safe_get(fs, sga_keys, 1)
+        debt_y2 = _safe_get(bs, debt_keys, 1)
+
+        # Check if any crucial data is missing after trying all keys
+        if any(pd.isna(v) for v in [rec_y1, sales_y1, cogs_y1, assets_y1, ppe_y1, dep_y1, sga_y1, debt_y1, ni_y1, cfo_y1]):
+             return {"error": "Could not calculate Beneish Score due to missing financial data (e.g., PPE, SGA)."}
+
+        # --- The rest of the calculation is the same ---
         # 1. DSRI (Days Sales in Receivables Index)
         dsri = (rec_y1 / sales_y1) / (rec_y2 / sales_y2)
 
-        # 2. GMI (Gross Margin Index)
+# 2. GMI (Gross Margin Index)
         gm_y1 = (sales_y1 - cogs_y1) / sales_y1
         gm_y2 = (sales_y2 - cogs_y2) / sales_y2
         gmi = gm_y2 / gm_y1
@@ -270,12 +301,10 @@ def get_beneish_m_score(stock):
         verdict = "Potential Manipulator" if m_score > -1.78 else "Unlikely Manipulator"
 
         return {"Beneish M-Score": f"{m_score:.4f}", "Verdict": verdict}
-    except (KeyError, IndexError) as e:
-        return {"error": f"Missing financial data for Beneish Score: {e}"}
-    except Exception as e:
-        logger.error(f"Beneish calculation failed for {stock.ticker}: {e}")
-        return {"error": "An unexpected error occurred during Beneish calculation."}
 
+    except Exception as e:
+        logger.error(f"Beneish calculation failed for {stock.ticker}: {e}", exc_info=True)
+        return {"error": "An unexpected error occurred during Beneish calculation."}
 
 def analyze_fundamentals(ticker, basis ="annual"):
     """Generates a summary of fundamental analysis scores."""
