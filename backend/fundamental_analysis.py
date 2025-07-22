@@ -11,6 +11,25 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+def _parse_score(score_string: str, max_score: int) -> float:
+    """Helper to parse scores like '7/9' into a 0-10 scale."""
+    try:
+        score, _ = map(int, score_string.split('/'))
+        return (score / max_score) * 10
+    except:
+        return 5.0 # Return neutral score on parsing error
+
+def _parse_upside(upside_string: str) -> float:
+    """Helper to parse upside strings like '25.50%' into a 0-10 scale."""
+    try:
+        upside = float(upside_string.strip('%'))
+        # Scale the score: cap upside at 100% for scoring purposes
+        # 0% upside = 5/10 score. 100% upside = 10/10 score. -50% upside = 0/10 score.
+        score = 5 + (upside / 20)
+        return max(0, min(10, score)) # Clamp score between 0 and 10
+    except:
+        return 5.0 # Return neutral score on parsing error
+
 # --- Helper function to safely access financial data ---
 def _safe_get(df, keys, year=0):
     """
@@ -267,16 +286,52 @@ def get_beneish_m_score(stock):
         return {"error": "An unexpected error occurred during Beneish calculation."}
 
 # --- Main Analysis Function ---
-def analyze_fundamentals(ticker, basis="annual"):
-    """Generates a summary of fundamental analysis scores."""
+def analyze_fundamentals(ticker: str, basis: str = "annual"):
+    """
+    Orchestrates all fundamental analyses, substituting a neutral score for any failures
+    to ensure a final score is always produced.
+    """
     stock = yf.Ticker(ticker)
-    results = {}
-    try:
-        # Combine all fundamental results
-        results.update(get_dcf(stock, basis))
-        results.update(get_piotroski_score(stock))
-        results.update(get_beneish_m_score(stock))
-        return results
-    except Exception as e:
-        logger.error(f"Could not get fundamental analysis for {ticker}: {e}")
-        return {"error": "Fundamental analysis failed to execute."}
+    
+    all_results = {}
+    notes = []
+    scores = {
+        "dcf": 5.0, # Start with neutral scores
+        "piotroski": 5.0,
+        "beneish": 5.0
+    }
+
+    # 1. Run DCF Analysis
+    dcf_result = get_dcf(stock, basis)
+    if "error" in dcf_result:
+        notes.append(f"DCF: {dcf_result['error']}")
+    else:
+        all_results.update(dcf_result)
+        scores['dcf'] = _parse_upside(dcf_result.get("Upside", "0%"))
+
+    # 2. Run Piotroski F-Score Analysis
+    piotroski_result = get_piotroski_score(stock)
+    if "error" in piotroski_result:
+        notes.append(f"Piotroski: {piotroski_result['error']}")
+    else:
+        all_results.update(piotroski_result)
+        scores['piotroski'] = _parse_score(piotroski_result.get("Piotroski F-Score", "5/9"), 9)
+
+    # 3. Run Beneish M-Score Analysis
+    beneish_result = get_beneish_m_score(stock)
+    if "error" in beneish_result:
+        notes.append(f"Beneish: {beneish_result['error']}")
+    else:
+        all_results.update(beneish_result)
+        # For Beneish, a non-manipulator score is good (10), a manipulator score is bad (0)
+        scores['beneish'] = 0 if "Potential Manipulator" in beneish_result.get("Verdict", "") else 10
+
+    # Calculate final weighted score
+    # We can weigh Piotroski higher as it's a direct measure of financial health
+    final_score = (scores['dcf'] * 0.4) + (scores['piotroski'] * 0.4) + (scores['beneish'] * 0.2)
+    
+    # Add final score and notes to the results
+    all_results["FA_Score"] = round(final_score * 10, 2) # Scale to 100
+    all_results["Notes"] = notes if notes else ["All analyses completed successfully."]
+    
+    return all_results
