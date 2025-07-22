@@ -852,7 +852,7 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
     if st.button("🔄 Compute/Refresh Data", disabled=is_leaderboard_disabled):
         with st.spinner(f"Computing leaderboard for {exchange}..."):
             # Call the backend function that does all the work
-            df = leaderboard_engine.get_leaderboard(exchange, category="All") # Fetch all data
+            df = leaderboard_engine.get_leaderboard(exchange) # Fetch all data
             if df is not None and not df.empty:
                 st.session_state.leaderboard_df = df
             else:
