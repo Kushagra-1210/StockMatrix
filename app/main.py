@@ -927,7 +927,7 @@ elif st.session_state.get("chat_mode") == "run_analysis":
         weights = st.session_state.user_weights
         weights["fa"] = st.slider("Fundamental Analysis (%)", 0, 100, weights["fa"], key="analysis_fa_slider", on_change=open_expander)
         weights["ta"] = st.slider("Technical Analysis (%)", 0, 100, weights["ta"], key="analysis_ta_slider", on_change=open_expander)
-        weights["sentiment"] = st.slider("Sentiment Analysis (%)", 0, 100, weights["sentiment"], key="analysis_sentiment_slider", on_change=open_expander)
+        weights["sentiment"] = st.slider("Strategic Perception Analysis (%)", 0, 100, weights["sentiment"], key="analysis_sentiment_slider", on_change=open_expander)
         weights["news"] = st.slider("News & Risk Analysis (%)", 0, 100, weights["news"], key="analysis_news_slider", on_change=open_expander)
 
         # Add a button to allow user to close the expander if they want
@@ -1114,7 +1114,7 @@ elif st.session_state.get("chat_mode") == "run_analysis":
         if "final_score" in st.session_state and st.session_state.final_score is not None:
             st.markdown("### 📌 Final Investment Decision")
             weights = st.session_state.final_weights
-            st.caption(f"Calculated with weights: FA {weights['fa']}%, TA {weights['ta']}%, Sentiment {weights['sentiment']}%, News {weights['news']}%")
+            st.caption(f"Calculated with weights: FA {weights['fa']}%, TA {weights['ta']}%, Strategic Perception {weights['sentiment']}%, News {weights['news']}%")
             st.markdown(f"- **Combined Score**: {st.session_state.final_score}/100\n- **Verdict**: **{st.session_state.final_verdict}**")
 # =============================================================================
 # END OF REPLACEMENT BLOCK 1
