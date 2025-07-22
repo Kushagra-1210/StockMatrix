@@ -1013,7 +1013,11 @@ elif st.session_state.get("chat_mode") == "run_analysis":
 
         # --- DISPLAY LOGIC: This section reads from the whiteboard (st.session_state) ---
 
-        if st.session_state.technicals:
+
+        weights = st.session_state.user_weights
+
+        # Only show Technical Analysis if its weight is not zero
+        if st.session_state.technicals and weights.get("ta", 0) > 0:
             with st.expander("🧪 Technical Analysis", expanded=True):
                 data = st.session_state.technicals
                 if "error" in data:
@@ -1023,9 +1027,8 @@ elif st.session_state.get("chat_mode") == "run_analysis":
                     st.write(f"**Verdict:** `{data.get('verdict', 'N/A')}`")
                     # ... you can add more details here if you want ...
 
-        # In main.py, find the expander for displaying fundamental analysis results
-
-        if st.session_state.fundamentals:
+        # Only show Fundamental Analysis if its weight is not zero
+        if st.session_state.fundamentals and weights.get("fa", 0) > 0:
             with st.expander("📊 Fundamental Analysis", expanded=True):
                 data = st.session_state.fundamentals
 
@@ -1063,8 +1066,8 @@ elif st.session_state.get("chat_mode") == "run_analysis":
                     for note in notes:
                         st.caption(f"📝 {note}")
 
-        # Add similar display blocks for sentiment and risk
-        if st.session_state.perception:
+        # Only show Strategic Perception Analysis if its weight is not zero
+        if st.session_state.perception and weights.get("sentiment", 0) > 0:
             with st.expander("🔎 Strategic Perception Analysis", expanded=True):
                 data = st.session_state.perception
                 # Convert the 20-point score to a 100-point scale
@@ -1094,7 +1097,8 @@ elif st.session_state.get("chat_mode") == "run_analysis":
                     for headline in headlines:
                         st.caption(f"- {headline}")
 
-        if st.session_state.risk:
+        # Only show News & Geopolitical Risk if its weight is not zero
+        if st.session_state.risk and weights.get("news", 0) > 0:
             with st.expander("🛡️ News & Geopolitical Risk", expanded=True):
                 data = st.session_state.risk
                 if "error" in data:
