@@ -482,6 +482,56 @@ st.markdown("""
         margin-top: 0.3rem !important;
         margin-bottom: 0.3rem !important;
     }
+
+    /* --- Tighter vertical spacing for selectboxes, radio, and expanders in ALL modules --- */
+    /* Applies to Run Analysis, Screener, Report, etc. */
+    .ra-selectbox-wrapper div[data-testid="stSelectbox"],
+    .report-selectbox-wrapper div[data-testid="stSelectbox"],
+    div[data-testid="stSelectbox"] {
+        margin-top: 0.05rem !important;
+        margin-bottom: 0.05rem !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+    }
+    .ra-selectbox-wrapper label, .ra-selectbox-wrapper .stMarkdown,
+    .report-selectbox-wrapper label, .report-selectbox-wrapper .stMarkdown,
+    label, .stMarkdown {
+        margin-bottom: 0.05rem !important;
+        margin-top: 0.05rem !important;
+        padding-bottom: 0 !important;
+        padding-top: 0 !important;
+    }
+    /* Tighter for radio buttons */
+    .stRadio, .stRadio > div, .stRadio label {
+        margin-top: 0.05rem !important;
+        margin-bottom: 0.05rem !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+    }
+    /* Tighter for expanders */
+    .stExpander {
+        margin-top: 0.15rem !important;
+        margin-bottom: 0.15rem !important;
+    }
+    /* Tighter for horizontal rules */
+    .stMarkdown hr {
+        margin-top: 0.15rem !important;
+        margin-bottom: 0.15rem !important;
+    }
+    /* Remove extra space from columns inside expanders and main layout */
+    .stExpander [data-testid="column"], [data-testid="column"] {
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+    }
+    /* Tighter for all Streamlit widgets */
+    .stButton, .stSlider, .stDownloadButton, .stCheckbox, .stTextInput, .stTextArea, .stSelectbox, .stRadio {
+        margin-top: 0.05rem !important;
+        margin-bottom: 0.05rem !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
