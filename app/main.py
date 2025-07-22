@@ -128,6 +128,9 @@ st.markdown("""
     .stMarkdown, .stText, .stExpander, .stDataFrame, .stRadio, .stSelectbox, .stButton, .stSlider, .stDownloadButton, .stChatInputContainer, .stChatMessage, .stChatInput, .stTextInput, .stTextArea, .stSelectbox > div, .stSelectbox label, .stRadio label, .stExpanderHeader, .stExpanderContent, .stAlert, .stSubheader, .stHeader, .stCaption, .stTable, .stDataFrame, .stCheckbox label {
         color: #1A1A1A !important;
     }
+    div[data-testid="stCaptionContainer"] {
+        color: #31333F !important; /* Dark grey for readable captions */
+    }
     /* Headline and subheader text */
     .stHeader, .stSubheader, h1, h2, h3, h4, h5, h6 {
         color: #000000 !important;
