@@ -984,7 +984,7 @@ elif st.session_state.get("chat_mode") == "run_analysis":
                     if "error" not in st.session_state.fundamentals and "error" not in st.session_state.technicals:
                         user_weights = st.session_state.user_weights
                         final_score = round(
-                            (user_weights["fa"] / 100) * st.session_state.fundamentals.get("dcf_score", 0) +
+                            (user_weights["fa"] / 100) * st.session_state.fundamentals.get("Fundamental Score", 0) +
                             (user_weights["ta"] / 100) * st.session_state.technicals.get("ta_score", 0) +
                             (user_weights["sentiment"] / 100) * st.session_state.perception.get("score", 0) * 10 +
                             (user_weights["news"] / 100) * st.session_state.risk.get("risk_score", 50), 2
