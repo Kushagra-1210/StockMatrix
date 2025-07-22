@@ -562,8 +562,9 @@ def get_fundamental_analysis(ticker, basis: str = "annual"):
     return fa_mod.analyze_fundamentals(ticker, basis=basis.lower())
 
 @st.cache_data(ttl=1800)
-def get_sentiment_analysis(ticker, basis: str = "annual"):
-    return sentiment_mod.analyze_sentiment(ticker, basis=basis.lower())
+def get_perception_analysis(ticker):
+    # This now calls your new function from the sentiment_analysis.py file
+    return sentiment_mod.analyze_perception(ticker)
 
 @st.cache_data(ttl=1800)
 def get_news_risk_analysis(ticker, basis: str = "annual"):
@@ -975,7 +976,7 @@ elif st.session_state.get("chat_mode") == "run_analysis":
                     # --- ACTION: Fetch data and SAVE to the whiteboard ---
                     st.session_state.technicals = get_technical_analysis(selected_ticker, basis=basis.lower())
                     st.session_state.fundamentals = get_fundamental_analysis(selected_ticker, basis=basis.lower())
-                    st.session_state.sentiment = get_sentiment_analysis(selected_ticker, basis=basis.lower())
+                    st.session_state.perception = get_perception_analysis(selected_ticker)
                     st.session_state.risk = get_news_risk_analysis(selected_ticker, basis=basis.lower())
 
                     # Also store the final score and verdict in the whiteboard
@@ -1052,17 +1053,33 @@ elif st.session_state.get("chat_mode") == "run_analysis":
                         st.caption(f"📝 {note}")
 
         # Add similar display blocks for sentiment and risk
-        if st.session_state.sentiment:
-            with st.expander("💬 Sentiment Analysis", expanded=True):
-                data = st.session_state.sentiment
-                if "error" in data:
-                    st.error(f"Analysis Failed: {data['error']}")
-                else:
-                    st.metric(label="Sentiment Score", value=f"{data.get('score', 0) * 10:.1f}/100")
-                    st.markdown(f"**Label:** `{data.get('label', 'N/A')}`")
-                    st.markdown("**Sample Headlines Used in Analysis:**")
-                    for headline in data.get("labeled_headlines", [])[:3]:
-                        st.markdown(f"- {headline}")
+        if st.session_state.perception:
+            with st.expander("🔎 Strategic Perception Analysis", expanded=True):
+                data = st.session_state.perception
+                
+                st.metric(
+                    label="Overall Perception Score",
+                    value=f"{data.get('strategic_perception_score', 0)} / 20"
+                )
+                st.write(f"**Verdict:** `{data.get('verdict', 'N/A')}`")
+                st.markdown("---")
+
+                col1, col2 = st.columns(2)
+                col1.metric("Market Sentiment Score", f"{data.get('market_sentiment_score', 0):.2f} / 10")
+                col2.metric("Management Quality Score", f"{data.get('management_quality_score', 0):.2f} / 10")
+
+                # Display notes and headlines
+                notes = data.get('management_notes', [])
+                if notes:
+                    st.markdown("**Management Notes:**")
+                    for note in notes:
+                        st.caption(f"📝 {note}")
+
+                headlines = data.get('sample_headlines', [])
+                if headlines:
+                    st.markdown("**Sample Headlines Analyzed:**")
+                    for headline in headlines:
+                        st.caption(f"- {headline}")
 
         if st.session_state.risk:
             with st.expander("🛡️ News & Geopolitical Risk", expanded=True):
@@ -1086,7 +1103,6 @@ elif st.session_state.get("chat_mode") == "run_analysis":
 # END OF REPLACEMENT BLOCK 1
 # =============================================================================
 
-
 # In app/main.py, inside the report generation section
 
 elif st.session_state.get("chat_mode") == "report":
@@ -1107,7 +1123,7 @@ elif st.session_state.get("chat_mode") == "report":
                 # We reuse the cached functions to get data instantly if already analyzed
                 ta = get_technical_analysis(selected_ticker, basis=basis.lower())
                 fa = get_fundamental_analysis(selected_ticker, basis=basis.lower())
-                sentiment = get_sentiment_analysis(selected_ticker, basis=basis.lower())
+                sentiment = get_perception_analysis(selected_ticker)
                 news_risk = get_news_risk_analysis(selected_ticker, basis=basis.lower())
 
                 # Check for errors in any module
