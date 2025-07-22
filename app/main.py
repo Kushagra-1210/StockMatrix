@@ -835,7 +835,7 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
         # Use unique keys for leaderboard sliders to prevent conflicts with other pages
         weights["fa"] = st.slider("Fundamental Analysis (%)", 0, 100, weights["fa"], key="leaderboard_fa_slider")
         weights["ta"] = st.slider("Technical Analysis (%)", 0, 100, weights["ta"], key="leaderboard_ta_slider")
-        weights["sentiment"] = st.slider("Sentiment Analysis (%)", 0, 100, weights["sentiment"], key="leaderboard_sentiment_slider")
+        weights["sentiment"] = st.slider("Strategic Perception Analysis (%)", 0, 100, weights["sentiment"], key="leaderboard_sentiment_slider")
         weights["news"] = st.slider("News & Risk Analysis (%)", 0, 100, weights["news"], key="leaderboard_news_slider")
 
     st.markdown("---")
@@ -860,7 +860,42 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
                 st.success("Leaderboard data refreshed successfully!")
     if 'leaderboard_df' in st.session_state and st.session_state.leaderboard_df is not None:
         st.markdown("###  Leaderboard Results")
-        st.dataframe(st.session_state.leaderboard_df, use_container_width=True, hide_index=True)
+        df = st.session_state.leaderboard_df.copy()
+        # Map weights to columns
+        col_map = {
+            "fa": ["FA Score", "Fundamental Score"],
+            "ta": ["TA Score", "Technical Score"],
+            "sentiment": ["Perception Score", "Strategic Perception Score", "Sentiment Score"],
+            "news": ["Safety Score", "News Score", "Risk Score"]
+        }
+        # Find actual column names present in df for each category
+        def find_col(possibles):
+            for c in possibles:
+                if c in df.columns:
+                    return c
+            return None
+        fa_col = find_col(col_map["fa"])
+        ta_col = find_col(col_map["ta"])
+        sp_col = find_col(col_map["sentiment"])
+        news_col = find_col(col_map["news"])
+        final_col = None
+        for c in ["Final Score", "Combined Score", "Score"]:
+            if c in df.columns:
+                final_col = c
+                break
+        # Build columns to show in order
+        show_cols = ["Ticker"]
+        if weights.get("fa", 0) > 0 and fa_col:
+            show_cols.append(fa_col)
+        if weights.get("ta", 0) > 0 and ta_col:
+            show_cols.append(ta_col)
+        if weights.get("sentiment", 0) > 0 and sp_col:
+            show_cols.append(sp_col)
+        if weights.get("news", 0) > 0 and news_col:
+            show_cols.append(news_col)
+        if final_col:
+            show_cols.append(final_col)
+        st.dataframe(df[show_cols], use_container_width=True, hide_index=True)
 # =============================================================================
 # END OF REPLACEMENT BLOCK
 # =============================================================================
