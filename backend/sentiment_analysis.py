@@ -116,6 +116,7 @@ def analyze_perception(ticker: str):
     else: verdict = "Negative Perception"
         
     return {
+        "score": round(total_score / 2, 2),  # Add a 'score' out of 10 for compatibility
         "strategic_perception_score": round(total_score, 2),
         "verdict": verdict,
         "market_sentiment_score": round(market_score, 2),
