@@ -369,7 +369,7 @@ st.markdown("""
     }
 
     /* --- Ensure all metric text is visible (fix invisible metric text) --- */
-    .stMetric, .stMetricLabel, .stMetricValue, .stMetricDelta, .stMetricContainer, .stMetric > div {
+    .stMetric, .stMetricLabel, .stMetricValue, .stMetricContainer, .stMetric > div {
         color: #1A1A1A !important;
         font-weight: 700 !important;
     }
@@ -380,6 +380,36 @@ st.markdown("""
     /* Ensure subheaders and verdicts are visible */
     .stExpander .stSubheader, .stExpander h2, .stExpander h3, .stExpander h4 {
         color: #1A1A1A !important;
+    }
+
+    /* --- Reduce vertical space between metrics and elements in expanders --- */
+    .stExpander .stMetric {
+        margin-bottom: 0.2rem !important;
+        margin-top: 0.2rem !important;
+        padding-bottom: 0 !important;
+        padding-top: 0 !important;
+    }
+    .stExpander .stMetricLabel, .stExpander .stMetricValue {
+        margin-bottom: 0 !important;
+        margin-top: 0 !important;
+        padding-bottom: 0 !important;
+        padding-top: 0 !important;
+        line-height: 1.1 !important;
+    }
+    .stExpander .stColumn {
+        margin-bottom: 0 !important;
+        margin-top: 0 !important;
+        padding-bottom: 0 !important;
+        padding-top: 0 !important;
+    }
+    .stExpander .stMarkdown, .stExpander .stCaption {
+        margin-top: 0.2rem !important;
+        margin-bottom: 0.2rem !important;
+    }
+    /* Remove extra margin from headings in expanders */
+    .stExpander h4, .stExpander h3, .stExpander h2, .stExpander h1 {
+        margin-top: 0.4rem !important;
+        margin-bottom: 0.4rem !important;
     }
     </style>
 """, unsafe_allow_html=True)
