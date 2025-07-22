@@ -55,7 +55,7 @@ def get_leaderboard(exchange: str):
                 "FA Score": round(fa_score, 2),
                 "TA Score": round(ta_score, 2),
                 "Perception Score": round(perception_score, 2),
-                "Safety Score": round(safety_score, 2),
+                "News Score": round(100 - risk_score, 2),
                 "Final Score": round(final_score, 2)
             }
             results.append(data)
