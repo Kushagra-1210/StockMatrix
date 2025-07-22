@@ -147,29 +147,62 @@ def get_altman_z_score(stock):
         logger.error(f"Altman Z-Score calculation failed for {stock.ticker}: {e}")
         return {"error": "An unexpected error occurred during Altman Z-Score calculation."}
 
+# In backend/fundamental_analysis.py
+
+# --- REPLACE THE PLACEHOLDER BENEISH FUNCTION WITH THIS ---
+
 def get_beneish_m_score(stock):
-    """Calculates Beneish M-Score with robust data handling."""
+    """Calculates the Beneish M-Score for earnings manipulation risk."""
     try:
         fs = stock.financials
         bs = stock.balance_sheet
         cf = stock.cashflow
-        if len(fs.columns) < 2: return {"error": "Not enough data for Beneish score."}
-        
-        # Safe extraction for all components
+        if len(fs.columns) < 2 or len(bs.columns) < 2 or len(cf.columns) < 2:
+            return {"error": "Not enough historical data for Beneish score."}
+
+        # --- Safe Data Extraction for all 8 Beneish Indices ---
         rec_y1 = _safe_get(bs, ['Accounts Receivable'], 0); sales_y1 = _safe_get(fs, ['Total Revenue'], 0)
         rec_y2 = _safe_get(bs, ['Accounts Receivable'], 1); sales_y2 = _safe_get(fs, ['Total Revenue'], 1)
-        # ... and so on for all 8 indices. This is a simplified placeholder.
-        # A full implementation would safely get all required data points.
+        cogs_y1 = _safe_get(fs, ['Cost Of Revenue'], 0); cogs_y2 = _safe_get(fs, ['Cost Of Revenue'], 1)
+        assets_y1 = _safe_get(bs, ['Total Assets'], 0); assets_y2 = _safe_get(bs, ['Total Assets'], 1)
+        curr_assets_y1 = _safe_get(bs, ['Current Assets'], 0); curr_assets_y2 = _safe_get(bs, ['Current Assets'], 1)
+        ppe_y1 = _safe_get(bs, ['Property Plant And Equipment', 'Net Property, Plant and Equipment'], 0)
+        ppe_y2 = _safe_get(bs, ['Property Plant And Equipment', 'Net Property, Plant and Equipment'], 1)
+        dep_y1 = _safe_get(cf, ['Depreciation And Amortization', 'Depreciation'], 0)
+        dep_y2 = _safe_get(cf, ['Depreciation And Amortization', 'Depreciation'], 1)
+        sga_y1 = _safe_get(fs, ['Selling General And Administration'], 0)
+        sga_y2 = _safe_get(fs, ['Selling General And Administration'], 1)
+        debt_y1 = _safe_get(bs, ['Total Debt'], 0); debt_y2 = _safe_get(bs, ['Total Debt'], 1)
+        ni_y1 = _safe_get(fs, ['Net Income'], 0); cfo_y1 = _safe_get(cf, ['Operating Cash Flow'], 0)
         
-        # For brevity, returning a sample success. A full implementation would calculate all 8 indices.
-        return {"Beneish M-Score": -2.5} # Placeholder
+        # Check for missing data
+        data_points = [rec_y1, sales_y1, rec_y2, sales_y2, cogs_y1, cogs_y2, assets_y1, assets_y2,
+                       curr_assets_y1, curr_assets_y2, ppe_y1, ppe_y2, dep_y1, dep_y2,
+                       sga_y1, sga_y2, debt_y1, debt_y2, ni_y1, cfo_y1]
+        if any(pd.isna(v) for v in data_points):
+            return {"error": "Missing critical data for Beneish Score."}
+
+        # --- Calculate 8 Indices with Division-by-Zero checks ---
+        dsri = (rec_y1 / sales_y1) / (rec_y2 / sales_y2) if sales_y1 and sales_y2 else 1.0
+        gm_y1 = (sales_y1 - cogs_y1) / sales_y1 if sales_y1 else 0
+        gm_y2 = (sales_y2 - cogs_y2) / sales_y2 if sales_y2 else 0
+        gmi = gm_y2 / gm_y1 if gm_y1 else 1.0
+        aqi = (1 - ((curr_assets_y1 + ppe_y1) / assets_y1)) / (1 - ((curr_assets_y2 + ppe_y2) / assets_y2)) if assets_y1 and assets_y2 else 1.0
+        sgi = sales_y1 / sales_y2 if sales_y2 else 1.0
+        depi = (dep_y2 / (ppe_y2 + dep_y2) if (ppe_y2 + dep_y2) else 0) / (dep_y1 / (ppe_y1 + dep_y1) if (ppe_y1 + dep_y1) else 1)
+        sgai = (sga_y1 / sales_y1) / (sga_y2 / sales_y2) if sales_y1 and sales_y2 else 1.0
+        lvgi = (debt_y1 / assets_y1) / (debt_y2 / assets_y2) if assets_y1 and assets_y2 and debt_y2 else 1.0
+        tata = (ni_y1 - cfo_y1) / assets_y1 if assets_y1 else 0.0
+
+        # Beneish M-Score Formula
+        m_score = (-4.84 + 0.92 * dsri + 0.528 * gmi + 0.404 * aqi + 0.892 * sgi +
+                   0.115 * depi - 0.172 * sgai + 4.679 * tata - 0.327 * lvgi)
+        
+        return {"Beneish M-Score": m_score}
+
     except Exception as e:
-        return {"error": "Beneish Score calculation failed."}
-
-
-# --- Main Orchestrator Function ---
-
-# In backend/fundamental_analysis.py
+        logger.error(f"Beneish calculation failed for {stock.ticker}: {e}")
+        return {"error": "An unexpected error occurred during Beneish calculation."}
 
 # --- REPLACE your main orchestrator function with this ---
 def analyze_fundamentals(ticker: str, basis: str = "annual"):
