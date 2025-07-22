@@ -411,6 +411,53 @@ st.markdown("""
         margin-top: 0.4rem !important;
         margin-bottom: 0.4rem !important;
     }
+
+    /* --- Aggressively reduce vertical space in expanders for metrics and headings --- */
+    .stExpander .stMetric {
+        margin-bottom: 0.05rem !important;
+        margin-top: 0.05rem !important;
+        padding-bottom: 0 !important;
+        padding-top: 0 !important;
+    }
+    .stExpander .stMetricLabel, .stExpander .stMetricValue {
+        margin-bottom: 0 !important;
+        margin-top: 0 !important;
+        padding-bottom: 0 !important;
+        padding-top: 0 !important;
+        line-height: 1.05 !important;
+    }
+    .stExpander .stColumn {
+        margin-bottom: 0 !important;
+        margin-top: 0 !important;
+        padding-bottom: 0 !important;
+        padding-top: 0 !important;
+    }
+    .stExpander .stMarkdown, .stExpander .stCaption {
+        margin-top: 0.1rem !important;
+        margin-bottom: 0.1rem !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+    }
+    /* Remove extra margin from headings in expanders */
+    .stExpander h1, .stExpander h2, .stExpander h3, .stExpander h4, .stExpander .stSubheader {
+        margin-top: 0.2rem !important;
+        margin-bottom: 0.2rem !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        line-height: 1.1 !important;
+    }
+    /* Remove margin from hr (---) in expanders */
+    .stExpander hr {
+        margin-top: 0.2rem !important;
+        margin-bottom: 0.2rem !important;
+    }
+    /* Remove extra space from columns inside expanders */
+    .stExpander [data-testid="column"] {
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
