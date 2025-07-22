@@ -920,6 +920,7 @@ elif st.session_state.get("chat_mode") == "run_analysis":
 
     st.markdown("---")
 
+
     col1, col2 = st.columns(2)
     with col1:
         auto_refresh = st.checkbox("🔄 Auto-refresh every 30 seconds", key="auto_refresh_checkbox")
@@ -963,12 +964,8 @@ elif st.session_state.get("chat_mode") == "run_analysis":
                 st.error(f"Error fetching stock data: {str(e)}")
 
     with col2:
-        analysis_type = st.radio("Select Analysis Type", ["Technical", "Fundamental", "Both"], key="analysis_type")
-
         total_weight = sum(st.session_state.user_weights.values())
         is_disabled = (total_weight != 100)
-
-## REPLACE WITH THIS NEW LOGIC
 
         if st.button("Run Analysis", key="run_analysis_btn", disabled=is_disabled):
             reset_analysis_data()
@@ -997,8 +994,6 @@ elif st.session_state.get("chat_mode") == "run_analysis":
 
                 except Exception as e:
                     st.error(f"Analysis failed: {str(e)}")
-        ## ADD THIS NEW DISPLAY SECTION
-
         st.divider()
 
         # --- DISPLAY LOGIC: This section reads from the whiteboard (st.session_state) ---
