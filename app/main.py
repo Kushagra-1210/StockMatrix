@@ -128,6 +128,10 @@ st.markdown("""
     .stMarkdown, .stText, .stExpander, .stDataFrame, .stRadio, .stSelectbox, .stButton, .stSlider, .stDownloadButton, .stChatInputContainer, .stChatMessage, .stChatInput, .stTextInput, .stTextArea, .stSelectbox > div, .stSelectbox label, .stRadio label, .stExpanderHeader, .stExpanderContent, .stAlert, .stSubheader, .stHeader, .stCaption, .stTable, .stDataFrame, .stCheckbox label {
         color: #1A1A1A !important;
     }
+    /* Ensure all text inside expanders is visible (fix for all analysis blocks) */
+    .stExpanderContent, .stExpanderContent * {
+        color: #1A1A1A !important;
+    }
     div[data-testid="stCaptionContainer"] {
         color: #31333F !important; /* Dark grey for readable captions */
     }
@@ -364,6 +368,19 @@ st.markdown("""
         border-top: 2px solid #E0E0E0;
     }
 
+    /* --- Ensure all metric text is visible (fix invisible metric text) --- */
+    .stMetric, .stMetricLabel, .stMetricValue, .stMetricDelta, .stMetricContainer, .stMetric > div {
+        color: #1A1A1A !important;
+        font-weight: 700 !important;
+    }
+    /* Also fix for metric blocks inside expanders */
+    .stExpander .stMetric, .stExpander .stMetricLabel, .stExpander .stMetricValue {
+        color: #1A1A1A !important;
+    }
+    /* Ensure subheaders and verdicts are visible */
+    .stExpander .stSubheader, .stExpander h2, .stExpander h3, .stExpander h4 {
+        color: #1A1A1A !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
