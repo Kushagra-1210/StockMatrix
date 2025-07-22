@@ -867,12 +867,18 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
             "ta": ["TA Score", "Technical Score"],
             "sentiment": ["Perception Score", "Strategic Perception Score", "Sentiment Score"],
             # Only allow News Score or Risk Score, never Safety Score
-            "news": ["News Score", "Risk Score"]
+            "news": ["News Score", "Risk Score", "risk_score", "news_score"]
         }
         def find_col(possibles):
+            # Try exact match first
             for c in possibles:
                 if c in df.columns:
                     return c
+            # Try lowercase match for robustness
+            lower_cols = {col.lower(): col for col in df.columns}
+            for c in possibles:
+                if c.lower() in lower_cols:
+                    return lower_cols[c.lower()]
             return None
         fa_col = find_col(col_map["fa"])
         ta_col = find_col(col_map["ta"])
