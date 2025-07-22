@@ -861,14 +861,14 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
     if 'leaderboard_df' in st.session_state and st.session_state.leaderboard_df is not None:
         st.markdown("###  Leaderboard Results")
         df = st.session_state.leaderboard_df.copy()
-        # Map weights to columns
+        # Map weights to columns, ensuring only News-related columns (not Safety Score) are shown
         col_map = {
             "fa": ["FA Score", "Fundamental Score"],
             "ta": ["TA Score", "Technical Score"],
             "sentiment": ["Perception Score", "Strategic Perception Score", "Sentiment Score"],
-            "news": ["Safety Score", "News Score", "Risk Score"]
+            # Only allow News Score or Risk Score, never Safety Score
+            "news": ["News Score", "Risk Score"]
         }
-        # Find actual column names present in df for each category
         def find_col(possibles):
             for c in possibles:
                 if c in df.columns:
@@ -895,6 +895,9 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
             show_cols.append(news_col)
         if final_col:
             show_cols.append(final_col)
+        # Remove any 'Safety Score' column if present
+        if "Safety Score" in show_cols:
+            show_cols.remove("Safety Score")
         st.dataframe(df[show_cols], use_container_width=True, hide_index=True)
 # =============================================================================
 # END OF REPLACEMENT BLOCK
