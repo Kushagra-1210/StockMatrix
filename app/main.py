@@ -3,7 +3,6 @@ import streamlit as st
 import yfinance as yf
 import streamlit.components.v1 as components
 import concurrent.futures
-import time
 import os
 import sys
 import pandas as pd
