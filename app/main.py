@@ -897,8 +897,11 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
             show_cols.append(ta_col)
         if weights.get("sentiment", 0) > 0 and sp_col:
             show_cols.append(sp_col)
-        if weights.get("news", 0) > 0 and news_col:
-            show_cols.append(news_col)
+        if weights.get("news", 0) > 0:
+            if news_col:
+                show_cols.append(news_col)
+            else:
+                st.warning("News score column is missing in the leaderboard data. Please check if the backend is returning a News or Risk Score column.")
         if final_col:
             show_cols.append(final_col)
         # Remove any 'Safety Score' column if present
