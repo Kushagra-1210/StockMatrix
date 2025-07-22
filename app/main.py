@@ -83,12 +83,12 @@ st.markdown("""
 st.markdown("""
     <style>
     body {
-        background: #FAFAFA !important; /* Off-White Neutral */
+        background: #F5F6FA !important; /* Light Grey */
         min-height: 100vh;
         color: #1A1A1A !important; /* Almost Black for main text */
     }
     .stApp {
-        background: #FAFAFA !important;
+        background: #F5F6FA !important; /* Light Grey */
         min-height: 100vh;
         color: #1A1A1A !important;
     }
@@ -207,7 +207,7 @@ st.markdown("""
     }
     /* Expander background and border */
     .stExpander {
-        background: #FAFAFA !important;
+        background: #F5F6FA !important; /* Light Grey for expanders */
         border-radius: 12px !important;
         border: 1px solid #000000 !important;
         margin-bottom: 12px !important;

@@ -1,6 +1,7 @@
 # backend/news_risk_analyzer.py
 import requests
 import logging
+import numpy as np
 from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
