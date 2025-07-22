@@ -458,6 +458,30 @@ st.markdown("""
         padding-top: 0 !important;
         padding-bottom: 0 !important;
     }
+
+    /* Reduce vertical space between selectboxes and expander in Run Analysis */
+    .ra-selectbox-wrapper div[data-testid="stSelectbox"] {
+        margin-top: 0.2rem !important;
+        margin-bottom: 0.2rem !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+    }
+    .ra-selectbox-wrapper label, .ra-selectbox-wrapper .stMarkdown {
+        margin-bottom: 0.1rem !important;
+        margin-top: 0.1rem !important;
+        padding-bottom: 0 !important;
+        padding-top: 0 !important;
+    }
+    /* Reduce space above/below the expander */
+    .stExpander {
+        margin-top: 0.3rem !important;
+        margin-bottom: 0.3rem !important;
+    }
+    /* Reduce space above/below the horizontal rule */
+    .stMarkdown hr {
+        margin-top: 0.3rem !important;
+        margin-bottom: 0.3rem !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
