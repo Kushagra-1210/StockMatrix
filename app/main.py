@@ -831,18 +831,45 @@ elif st.session_state.get("chat_mode") == "run_analysis":
                     st.write(f"**Verdict:** `{data.get('verdict', 'N/A')}`")
                     # ... you can add more details here if you want ...
 
+        # In main.py, find the expander for displaying fundamental analysis results
+
         if st.session_state.fundamentals:
-            with st.expander("📊 Fundamental Analysis (DCF Valuation)", expanded=True):
+            with st.expander("📊 Fundamental Analysis", expanded=True):
                 data = st.session_state.fundamentals
-                if "error" in data:
-                    st.error(f"Analysis Failed: {data['error']}")
-                else:
-                    st.metric(
-                        label="Intrinsic Value per Share (DCF)",
-                        value=f"${data.get('dcf_intrinsic_value', 0):.2f}",
-                        delta=f"{data.get('upside_potential', 0):.2f}% vs Current Price"
-                    )
-                    st.write(f"**Verdict:** `{data.get('verdict', 'N/A')}`")
+
+                # --- NEW DISPLAY LOGIC FOR THE 3-FACTOR MODEL ---
+
+                # 1. Display the Final Score and Verdict
+                final_score = data.get("Fundamental Score")
+                verdict = data.get("Verdict")
+                if final_score is not None:
+                    st.metric(label="Combined Fundamental Score", value=f"{final_score:.2f}/100")
+                    st.subheader(f"Verdict: {verdict}")
+                
+                st.markdown("---")
+
+                # 2. Display the Breakdown of Sub-Scores
+                st.markdown("#### Score Breakdown:")
+                breakdown = data.get("Breakdown", {})
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Piotroski F-Score", breakdown.get('Piotroski F-Score', "N/A"))
+                with col2:
+                    st.metric("Altman Z-Score", breakdown.get('Altman Z-Score', "N/A"))
+                    st.caption(f"Risk: {breakdown.get('Bankruptcy Risk', 'N/A')}")
+                with col3:
+                    st.metric("Beneish M-Score", breakdown.get('Beneish M-Score', "N/A"))
+                    st.caption(f"Risk: {breakdown.get('Manipulation Risk', 'N/A')}")
+
+                st.markdown("---")
+
+                # 3. Display Any Notes or Warnings
+                notes = data.get("Notes", [])
+                if notes:
+                    st.markdown("#### Analysis Notes:")
+                    for note in notes:
+                        st.caption(f"📝 {note}")
 
         # Add similar display blocks for sentiment and risk
         if st.session_state.sentiment:
