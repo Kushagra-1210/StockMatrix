@@ -107,7 +107,7 @@ def fetch_news_risk(ticker: str, basis: str = "annual"):
 
     # 5. Compute Total Company Risk Score
     if not headline_scores:
-        total_risk_score = 0
+        total_risk_score = 50
     else:
         # Average the scores and normalize to 0-100 scale (capping at 100)
         avg_score = np.mean(headline_scores)
