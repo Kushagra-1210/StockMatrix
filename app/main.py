@@ -905,18 +905,33 @@ elif st.session_state.get("chat_mode") == "run_analysis":
     selected_ticker = st.selectbox("", tickers, key="run_analysis_ticker")
     st.markdown('</div>', unsafe_allow_html=True)
 
+
     st.markdown("---")
-    with st.expander("🎛️ Customize Scoring Model"):
+    # --- UX FIX: Keep expander open when sliders are changed ---
+    if 'analysis_expander_open' not in st.session_state:
+        st.session_state.analysis_expander_open = True
+
+    def open_expander():
+        st.session_state.analysis_expander_open = True
+
+    def close_expander():
+        st.session_state.analysis_expander_open = False
+
+    # Use the expander with expanded state from session
+    with st.expander("🎛️ Customize Scoring Model", expanded=st.session_state.analysis_expander_open):
         st.markdown("Adjust the weights for each analysis category. **They must add up to 100%.**")
 
         if 'user_weights' not in st.session_state:
             st.session_state.user_weights = {"fa": 35, "ta": 35, "sentiment": 20, "news": 10}
 
         weights = st.session_state.user_weights
-        weights["fa"] = st.slider("Fundamental Analysis (%)", 0, 100, weights["fa"], key="analysis_fa_slider")
-        weights["ta"] = st.slider("Technical Analysis (%)", 0, 100, weights["ta"], key="analysis_ta_slider")
-        weights["sentiment"] = st.slider("Sentiment Analysis (%)", 0, 100, weights["sentiment"], key="analysis_sentiment_slider")
-        weights["news"] = st.slider("News & Risk Analysis (%)", 0, 100, weights["news"], key="analysis_news_slider")
+        weights["fa"] = st.slider("Fundamental Analysis (%)", 0, 100, weights["fa"], key="analysis_fa_slider", on_change=open_expander)
+        weights["ta"] = st.slider("Technical Analysis (%)", 0, 100, weights["ta"], key="analysis_ta_slider", on_change=open_expander)
+        weights["sentiment"] = st.slider("Sentiment Analysis (%)", 0, 100, weights["sentiment"], key="analysis_sentiment_slider", on_change=open_expander)
+        weights["news"] = st.slider("News & Risk Analysis (%)", 0, 100, weights["news"], key="analysis_news_slider", on_change=open_expander)
+
+        # Add a button to allow user to close the expander if they want
+        st.button("Close Customization Panel", on_click=close_expander)
 
     st.markdown("---")
 
