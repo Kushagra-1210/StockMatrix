@@ -525,13 +525,22 @@ st.markdown("""
         padding-top: 0 !important;
         padding-bottom: 0 !important;
     }
-    /* Tighter for all Streamlit widgets */
-    .stButton, .stSlider, .stDownloadButton, .stCheckbox, .stTextInput, .stTextArea, .stSelectbox, .stRadio {
-        margin-top: 0.05rem !important;
-        margin-bottom: 0.05rem !important;
+    /* Ultra-tight vertical spacing for all widgets, selectboxes, radios, expanders, columns */
+    .stExpander, .stRadio, .stRadio > div, .stRadio label,
+    .stButton, .stSlider, .stDownloadButton, .stCheckbox, .stTextInput, .stTextArea, .stSelectbox,
+    .ra-selectbox-wrapper div[data-testid="stSelectbox"],
+    .report-selectbox-wrapper div[data-testid="stSelectbox"],
+    div[data-testid="stSelectbox"],
+    .ra-selectbox-wrapper label, .report-selectbox-wrapper label, label,
+    .ra-selectbox-wrapper .stMarkdown, .report-selectbox-wrapper .stMarkdown, .stMarkdown,
+    .stExpander [data-testid="column"], [data-testid="column"] {
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
         padding-top: 0 !important;
         padding-bottom: 0 !important;
     }
+    .stExpander { margin-top: 0.05rem !important; margin-bottom: 0.05rem !important; }
+    .stMarkdown hr { margin-top: 0.05rem !important; margin-bottom: 0.05rem !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -628,7 +637,7 @@ if not st.session_state.greeted:
         Type your choice below to begin:
         """)
     
-    st.session_state.chat_history.append({"role": "assistant", "content": greeting_msg})
+    st.session_state.chat_history.append({"role": "user", "content": greeting_msg})
     st.session_state.greeted = True
 
 for msg in st.session_state.chat_history:
