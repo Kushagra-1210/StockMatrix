@@ -36,6 +36,7 @@ def initialize_session_state():
         "piotroski": None,
         "beneish": None,
         "sentiment": None,
+        "perception": None,
         "risk": None,
         "pdf_report": None,
     }
@@ -985,7 +986,7 @@ elif st.session_state.get("chat_mode") == "run_analysis":
                         final_score = round(
                             (user_weights["fa"] / 100) * st.session_state.fundamentals.get("dcf_score", 0) +
                             (user_weights["ta"] / 100) * st.session_state.technicals.get("ta_score", 0) +
-                            (user_weights["sentiment"] / 100) * st.session_state.sentiment.get("score", 0) * 10 +
+                            (user_weights["sentiment"] / 100) * st.session_state.perception.get("score", 0) * 10 +
                             (user_weights["news"] / 100) * st.session_state.risk.get("risk_score", 50), 2
                         )
                         final_verdict = ("Strong Buy" if final_score >= 80 else "Buy" if final_score >= 65 else "Hold" if final_score >= 50 else "Sell")
