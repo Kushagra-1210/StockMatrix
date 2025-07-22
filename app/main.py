@@ -1057,10 +1057,12 @@ elif st.session_state.get("chat_mode") == "run_analysis":
         if st.session_state.perception:
             with st.expander("🔎 Strategic Perception Analysis", expanded=True):
                 data = st.session_state.perception
-                
+                # Convert the 20-point score to a 100-point scale
+                score_20 = data.get('strategic_perception_score', 0)
+                score_100 = round(score_20 * 5, 2)
                 st.metric(
                     label="Overall Perception Score",
-                    value=f"{data.get('strategic_perception_score', 0)} / 20"
+                    value=f"{score_100} / 100"
                 )
                 st.write(f"**Verdict:** `{data.get('verdict', 'N/A')}`")
                 st.markdown("---")
