@@ -169,13 +169,17 @@ def get_beneish_m_score(stock):
 
 # --- Main Orchestrator Function ---
 
+# In backend/fundamental_analysis.py
+
+# --- REPLACE your main orchestrator function with this ---
 def analyze_fundamentals(ticker: str, basis: str = "annual"):
     """
     Orchestrates the 3-factor fundamental analysis model.
+    Final score is now an average of only the successful models.
     """
     stock = yf.Ticker(ticker)
     
-    f_score_10, z_score_10, m_score_10 = 5.0, 5.0, 5.0
+    successful_scores = []
     breakdown = {}
     notes = []
 
@@ -185,7 +189,7 @@ def analyze_fundamentals(ticker: str, basis: str = "annual"):
         notes.append(f"Piotroski: {piotroski_result['error']}")
     else:
         f_raw = piotroski_result["Piotroski F-Score"]
-        f_score_10 = (f_raw / 9) * 10
+        successful_scores.append((f_raw / 9) * 10) # Add 0-10 score to list
         breakdown['Piotroski F-Score'] = f"{f_raw}/9"
 
     # 2. Altman Z-Score
@@ -195,6 +199,7 @@ def analyze_fundamentals(ticker: str, basis: str = "annual"):
     else:
         z_raw = altman_result["Altman Z-Score"]
         z_score_10 = min(max((z_raw - 1.8) / (2.99 - 1.8) * 10, 0.0), 10.0)
+        successful_scores.append(z_score_10) # Add 0-10 score to list
         breakdown['Altman Z-Score'] = f"{z_raw:.2f}"
         if z_raw > 2.99: breakdown['Bankruptcy Risk'] = "Safe"
         elif z_raw > 1.8: breakdown['Bankruptcy Risk'] = "Gray Zone"
@@ -207,20 +212,27 @@ def analyze_fundamentals(ticker: str, basis: str = "annual"):
     else:
         m_raw = beneish_result["Beneish M-Score"]
         m_score_10 = min(max((-2.22 - m_raw) / 5 * 10, 0.0), 10.0)
+        successful_scores.append(m_score_10) # Add 0-10 score to list
         breakdown['Beneish M-Score'] = f"{m_raw:.2f}"
         breakdown['Manipulation Risk'] = "High" if m_raw > -2.22 else "Low"
 
     # --- Final Composite Score and Verdict ---
-    final_score = (f_score_10 + z_score_10 + m_score_10) / 3 * 10
-    
-    if final_score >= 80: verdict = "Strong Value + Quality"
-    elif final_score >= 60: verdict = "Fundamentally Sound"
-    elif final_score >= 30: verdict = "Fair Value / Watchlist"
-    else: verdict = "High Risk / Avoid"
+    if not successful_scores:
+        # Handle case where all models fail
+        final_score = 0
+        verdict = "Analysis Failed"
+        notes.append("All fundamental models failed due to missing data.")
+    else:
+        # Average only the scores from the models that succeeded
+        final_score = (sum(successful_scores) / len(successful_scores)) * 10
+        if final_score >= 80: verdict = "Strong Value + Quality"
+        elif final_score >= 60: verdict = "Fundamentally Sound"
+        elif final_score >= 30: verdict = "Fair Value / Watchlist"
+        else: verdict = "High Risk / Avoid"
     
     return {
         "Fundamental Score": round(final_score, 2),
         "Verdict": verdict,
-        "Notes": notes if notes else ["All fundamental models completed successfully."],
+        "Notes": notes,
         "Breakdown": breakdown
     }
