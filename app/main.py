@@ -18,9 +18,36 @@ logging.basicConfig(
 )
 
 # =============================================================================
+
 # --- CONFIGURATION (MUST BE AT THE TOP) ---
 # =============================================================================
 st.set_page_config(page_title="StockMatrix", layout="centered")
+
+# --- Persistent User Preferences (Theme, Weights, Last Exchange/Ticker) ---
+import json
+PREFS_KEY = "stockmatrix_user_prefs"
+def load_user_prefs():
+    try:
+        if PREFS_KEY in st.session_state:
+            return st.session_state[PREFS_KEY]
+        # Try to load from local storage (Streamlit experimental API)
+        prefs = st.experimental_get_query_params().get(PREFS_KEY, [None])[0]
+        if prefs:
+            prefs = json.loads(prefs)
+            st.session_state[PREFS_KEY] = prefs
+            return prefs
+    except Exception:
+        pass
+    return {}
+
+def save_user_prefs(prefs):
+    st.session_state[PREFS_KEY] = prefs
+    try:
+        st.experimental_set_query_params(**{PREFS_KEY: json.dumps(prefs)})
+    except Exception:
+        pass
+
+user_prefs = load_user_prefs()
 
 import plotly.graph_objects as go
 
@@ -78,55 +105,101 @@ from backend import (
 from nlp.chat_router import handle_chat_command
 from backend.report_generator import generate_pdf_report, generate_csv_report
 
-# --- Custom CSS for Streamlit ---
-st.markdown("""
-    <div class="top-banner">
-        🪙<span id="stockmatrix-title">StockMatrix</div>
-    </div>
-    """, unsafe_allow_html=True)
 
-st.markdown("""
+from collections import OrderedDict
+
+# --- Watchlist (Personalized) ---
+watchlist = user_prefs.get("watchlist", [])
+st.sidebar.markdown("---")
+st.sidebar.markdown("### ⭐ Watchlist")
+if watchlist:
+    for ticker in watchlist:
+        if st.sidebar.button(f"{ticker}", key=f"watchlist_{ticker}"):
+            st.session_state["run_analysis_ticker"] = ticker
+            st.session_state["chat_mode"] = "run_analysis"
+            st.experimental_rerun()
+else:
+    st.sidebar.caption("No stocks in your watchlist yet.")
+
+# Add/remove to watchlist UI
+add_ticker = st.sidebar.text_input("Add Ticker to Watchlist", "", key="add_watchlist")
+if st.sidebar.button("Add", key="add_watchlist_btn") and add_ticker:
+    if add_ticker not in watchlist:
+        watchlist.append(add_ticker.upper())
+        user_prefs["watchlist"] = watchlist
+        save_user_prefs(user_prefs)
+        st.sidebar.success(f"Added {add_ticker.upper()} to watchlist!")
+        st.experimental_rerun()
+if watchlist:
+    remove_ticker = st.sidebar.selectbox("Remove from Watchlist", ["-"] + watchlist, key="remove_watchlist")
+    if remove_ticker != "-" and st.sidebar.button("Remove", key="remove_watchlist_btn"):
+        watchlist = [t for t in watchlist if t != remove_ticker]
+        user_prefs["watchlist"] = watchlist
+        save_user_prefs(user_prefs)
+        st.experimental_rerun()
+
+
+# --- Accessibility: High-Contrast Mode ---
+contrast = user_prefs.get("contrast", False)
+contrast_toggle = st.sidebar.checkbox("High Contrast Mode", value=contrast, key="contrast_toggle")
+if contrast_toggle != contrast:
+    user_prefs["contrast"] = contrast_toggle
+    save_user_prefs(user_prefs)
+    contrast = contrast_toggle
+
+theme = user_prefs.get("theme", "light")
+theme_toggle = st.sidebar.selectbox("Theme", ["light", "dark"], index=0 if theme=="light" else 1)
+if theme_toggle != theme:
+    user_prefs["theme"] = theme_toggle
+    save_user_prefs(user_prefs)
+    theme = theme_toggle
+
+css = ""
+if theme == "dark":
+    css += '''
+    <style>
+    body, .stApp {
+        background: #18191A !important;
+        color: #F5F6FA !important;
+    }
+    .block-container {
+        background: #23272F;
+        color: #F5F6FA !important;
+    }
+    div[data-testid="stChatMessageGroup"] {
+        background-color: #23272F !important;
+        color: #F5F6FA !important;
+    }
+    .stExpander {
+        background: #23272F !important;
+        color: #F5F6FA !important;
+    }
+    .stButton > button, .stDownloadButton > button {
+        background: linear-gradient(90deg, #FFD700 80%, #FFC300 100%) !important;
+        color: #18191A !important;
+    }
+    .stMarkdown, .stText, .stExpander, .stDataFrame, .stRadio, .stSelectbox, .stButton, .stSlider, .stDownloadButton, .stChatInputContainer, .stChatMessage, .stChatInput, .stTextInput, .stTextArea, .stSelectbox > div, .stSelectbox label, .stRadio label, .stExpanderHeader, .stExpanderContent, .stAlert, .stSubheader, .stHeader, .stCaption, .stTable, .stDataFrame, .stCheckbox label {
+        color: #F5F6FA !important;
+    }
+    </style>
+    '''
+else:
+    css += '''
     <style>
     body {
-        background: #F8F9FB !important; /* Slightly darker than white */
+        background: #F8F9FB !important;
         min-height: 100vh;
         color: #1A1A1A !important;
     }
     .stApp {
-        background: #F8F9FB !important; /* Slightly darker than white */
+        background: #F8F9FB !important;
         min-height: 100vh;
         color: #1A1A1A !important;
     }
-    /* Change chat message background to light yellow */
     div[data-testid="stChatMessageGroup"] {
         background-color: #F5F5F5  !important;
         padding: 16px !important;
         border-radius: 12px !important;
-    }
-    .top-banner {
-        padding: 10px 20px;
-        font-size: 44px;
-        font-weight: 900;
-        position: sticky;
-        top: 0;
-        z-index: 999;
-        background: linear-gradient(90deg, #0A1F44 60%, #FFD700 100%);
-        text-shadow: none !important;
-        box-shadow: 0 2px 8px rgba(10, 31, 68, 0.12);
-        border-radius: 0 0 18px 18px;
-        letter-spacing: 1px;
-        border-bottom: 1px solid #0A1F44;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    .curated-footer {
-        text-align: right;
-        font-size: 15px;
-        color: #FFD700;
-        font-weight: 700;
-        letter-spacing: 0.5px;
-        padding: 10px 20px;
     }
     .block-container {
         background: #FFFFFF;
@@ -135,425 +208,46 @@ st.markdown("""
         box-shadow: 0 4px 32px rgba(10, 31, 68, 0.10);
         color: #1A1A1A !important;
     }
-    /* Make all markdown and widget text visible */
-    .stMarkdown, .stText, .stExpander, .stDataFrame, .stRadio, .stSelectbox, .stButton, .stSlider, .stDownloadButton, .stChatInputContainer, .stChatMessage, .stChatInput, .stTextInput, .stTextArea, .stSelectbox > div, .stSelectbox label, .stRadio label, .stExpanderHeader, .stExpanderContent, .stAlert, .stSubheader, .stHeader, .stCaption, .stTable, .stDataFrame, .stCheckbox label {
-        color: #1A1A1A !important;
-    }
-    /* Ensure all text inside expanders is visible (fix for all analysis blocks) */
-    .stExpanderContent, .stExpanderContent * {
-        color: #1A1A1A !important;
-    }
-    div[data-testid="stCaptionContainer"] {
-        color: #31333F !important; /* Dark grey for readable captions */
-    }
-    /* Headline and subheader text */
-    .stHeader, .stSubheader, h1, h2, h3, h4, h5, h6 {
-        color: #000000 !important;
-        font-weight: 900 !important;
-        /* Remove all shadows and effects */
-        text-shadow: none !important;
-        letter-spacing: normal !important;
-    }
-    /* Chat input bar and send button - THEME UPDATE */
-    section[data-testid="stChatInput"],
-    .stChatInputContainer,
-    div[data-testid="stChatInput"] {
-        background: #F0F0F0 !important;            /* Light grey outer container */
-        border-radius: 20px !important;
-        padding: 6px !important;
-        border: none !important;
-        box-shadow: none !important;
-        margin-bottom: 24px !important;
-        display: flex !important;
-        align-items: center !important;
-    }
-    section[data-testid="stChatInput"] {
-        background-color: #F0F0F0 !important;
-    }
-    
-    section[data-testid="stChatInput"] input,
-    .stChatInputContainer input,
-    div[data-testid="stChatInput"] input {
-        background: #1E1E25 !important;          /* Dark input box */
-        color: #FFFFFF !important;               /* White typing text */
-        border: none !important;
-        font-size: 18px !important;
-        font-weight: 500 !important;
-        border-radius: 12px !important;
-        padding: 8px 12px !important;
-    }
-    section[data-testid="stChatInput"] input::placeholder {
-        color: #CCCCCC !important;
-        opacity: 0.8;
-    }
-    section[data-testid="stChatInput"] button,
-    .stChatInputContainer button,
-    div[data-testid="stChatInput"] button {
-        background: #FFFFFF !important;          /* White send button */
-        color: #0A1F44 !important;               /* Navy arrow */
-        border-radius: 12px !important;
-        border: none !important;
-        font-weight: bold !important;
-        box-shadow: none !important;
-    }
-    section[data-testid="stChatInput"] button:hover,
-    .stChatInputContainer button:hover,
-    div[data-testid="stChatInput"] button:hover {
-        background: #5F4B8B !important; /* Royal Purple for hover */
-        color: #FFD700 !important;
-        border: 2px solid #5F4B8B !important;
-    }
-    /* Expander header color and icon */
-    .stExpanderHeader {
-        color: #000000 !important;
-        font-weight: 600;
-        font-size: 18px;
-        position: relative;
-        padding-left: 28px !important;
-        text-shadow: none !important;
-    }
-    .stExpanderHeader:before {
-        color: #000000 !important;
-        /* Remove gold icon color */
-    }
-    /* Expander background and border */
     .stExpander {
-        background: #F8F9FB !important; /* Match main background */
-        border-radius: 12px !important;
-        border: 1px solid #000000 !important;
-        margin-bottom: 12px !important;
-        box-shadow: none !important;
+        background: #F8F9FB !important;
+        color: #1A1A1A !important;
     }
-    /* Remove gold outline from expander content */
-    .stExpanderContent {
-        border: none !important;
-    }
-    /* Streamlit button style: grey background, black text */
     .stButton > button, .stDownloadButton > button {
         background: linear-gradient(90deg, #FFD700 80%, #FFC300 100%) !important;
         color: #1A1A1A !important;
-        border: none !important;
-        font-weight: bold !important;
-        border-radius: 14px !important;
-        box-shadow: 0 2px 8px rgba(10, 31, 68, 0.10) !important;
-        transition: background 0.2s, color 0.2s !important;
     }
-    section[data-testid="stChatInput"] *:focus {
-        outline: none !important;
-        box-shadow: none !important;
-    }
-
-    /* Button hover state */
-    .stButton > button:hover, .stDownloadButton > button:hover {
-        background: #FFEA70 !important;
-        color: #0A1F44 !important;
-    }
-
-    /* Button disabled state */
-    .stButton > button:disabled, .stDownloadButton > button:disabled {
-        background: #FFF8DC !important;
-        color: #888888 !important;
-        opacity: 1 !important;
-    }
-    /* Force black/dark font for all Streamlit alert messages */
-    .stAlert {
+    .stMarkdown, .stText, .stExpander, .stDataFrame, .stRadio, .stSelectbox, .stButton, .stSlider, .stDownloadButton, .stChatInputContainer, .stChatMessage, .stChatInput, .stTextInput, .stTextArea, .stSelectbox > div, .stSelectbox label, .stRadio label, .stExpanderHeader, .stExpanderContent, .stAlert, .stSubheader, .stHeader, .stCaption, .stTable, .stDataFrame, .stCheckbox label {
         color: #1A1A1A !important;
     }
-
-    /* Also ensure inner divs don’t override it */
-    .stAlert > div {
-        color: #1A1A1A !important;
-    }
-
-    /* Links */
-    a {
-        color: #5F4B8B !important; /* Royal Purple for links */
-    }
-    /* Make all markdown text visible */
-    .stMarkdown p, .stMarkdown ul, .stMarkdown li, .stMarkdown span, .stMarkdown strong, .stMarkdown em {
-        color: #1A1A1A !important;
-    }
-    /* Highlighted inline code in Quick Tips expander */
-    .stExpander .stMarkdown code {
-        background: #FFD700 !important;
-        color: #0A1F44 !important;
-        border-radius: 6px !important;
-        font-weight: 700;
-        font-size: 1em;
-        padding: 2px 8px !important;
-        box-shadow: 0 1px 4px 0 rgba(10, 31, 68, 0.10);
-    }
-    /* Remove white bar at bottom (footer) */
-    footer, .st-emotion-cache-1v0mbdj, .st-emotion-cache-1avcm0n {
-        background: transparent !important;
-        color: transparent !important;
-        box-shadow: none !important;
-        border: none !important;
-        height: 0 !important;
-        min-height: 0 !important;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-    /* Make all radio/checkbox/select options and labels black and bold */
-    .stRadio label, .stRadio span, .stRadio div, 
-    .stCheckbox label, .stCheckbox span, .stCheckbox div,
-    .stSelectbox label, .stSelectbox span, .stSelectbox div,
-    .stSlider label, .stSlider span, .stSlider div {
-        color: #000000 !important;
-        font-weight: 700 !important;
-    }
-    /* Light gray selectbox (dropdown) styling */
-    .stSelectbox label {
-        color: #1A1A1A !important;
-        font-weight: 700 !important;
-    }
-
-    .stSelectbox div[data-baseweb="select"] > div {
-        background: #F0F0F0 !important;   /* Light gray dropdown field only */
-        color: #1A1A1A !important;
-        border-radius: 12px !important;
-        font-weight: 700 !important;
-    }
-
-    .stSelectbox div[data-baseweb="select"] > div {
-        background: #F0F0F0 !important;   /* Light gray for dropdown */
-        color: #1A1A1A !important;
-        border-radius: 12px !important;
-    }
-
-    /* Remove selectbox focus/active border and shadow */
-    .stSelectbox > div:focus-within, .stSelectbox > div:active, .stSelectbox > div[data-baseweb="select"]:focus-within, .stSelectbox > div[data-baseweb="select"]:active {
-        box-shadow: none !important;
-        border: none !important;
-        outline: none !important;
-    }
-    .stSelectbox > div, .stSelectbox div[data-baseweb="select"] > div {
-        border: none !important;
-        outline: none !important;
-    }
-    /* --- Remove background & spacing from radio buttons --- */
-    div[data-testid="stSelectbox"] > div:first-child {
-        background: transparent !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        box-shadow: none !important;
-    }
-    .ra-selectbox-wrapper h4 {
-        margin-bottom: 4px !important;
-        margin-top: 2px !important;
-    }
-    .ra-selectbox-wrapper div[data-testid="stRadio"] {
-        margin-top: 0px !important;
-        margin-bottom: 4px !important;
-        padding: 0 !important;
-    }
-    
-    /* Fix spacing ONLY inside Run Analysis section */
-    .ra-selectbox-wrapper div[data-testid="stSelectbox"] {
-        margin-top: 0px !important;
-        margin-bottom: 6px !important;
-        padding-top: 0px !important;
-    }
-    .ra-selectbox-wrapper > div {
-    margin: 0px !important;
-    padding: 0px !important;
-    }
-
-    /* Fix spacing ONLY inside report section */
-    .report-selectbox-wrapper div[data-testid="stSelectbox"] {
-        margin-top: 8px !important;
-        margin-bottom: 16px !important;
-        padding-top: 0px !important;
-    }
-    #stockmatrix-title {
-        color: #FFFFFF !important;
-        font-size: 44px !important;
-        font-weight: 900 !important;
-        text-shadow: none !important;
-        display: inline;
-    }
-    /* 🔧 Force background of full chat zone (message + input area) */
-    div[data-testid="stChatMessageGroup"] {
-        background-color: #F5F5F5 !important;
-        padding: 16px !important;
-        border-top: 2px solid #E0E0E0;
-    }
-
-    /* --- Ensure all metric text is visible (fix invisible metric text) --- */
-    .stMetric, .stMetricLabel, .stMetricValue, .stMetricContainer, .stMetric > div {
-        color: #1A1A1A !important;
-        font-weight: 700 !important;
-    }
-    /* Also fix for metric blocks inside expanders */
-    .stExpander .stMetric, .stExpander .stMetricLabel, .stExpander .stMetricValue {
-        color: #1A1A1A !important;
-    }
-    /* Ensure subheaders and verdicts are visible */
-    .stExpander .stSubheader, .stExpander h2, .stExpander h3, .stExpander h4 {
-        color: #1A1A1A !important;
-    }
-
-    /* --- Reduce vertical space between metrics and elements in expanders --- */
-    .stExpander .stMetric {
-        margin-bottom: 0.2rem !important;
-        margin-top: 0.2rem !important;
-        padding-bottom: 0 !important;
-        padding-top: 0 !important;
-    }
-    .stExpander .stMetricLabel, .stExpander .stMetricValue {
-        margin-bottom: 0 !important;
-        margin-top: 0 !important;
-        padding-bottom: 0 !important;
-        padding-top: 0 !important;
-        line-height: 1.1 !important;
-    }
-    .stExpander .stColumn {
-        margin-bottom: 0 !important;
-        margin-top: 0 !important;
-        padding-bottom: 0 !important;
-        padding-top: 0 !important;
-    }
-    .stExpander .stMarkdown, .stExpander .stCaption {
-        margin-top: 0.2rem !important;
-        margin-bottom: 0.2rem !important;
-    }
-    /* Remove extra margin from headings in expanders */
-    .stExpander h4, .stExpander h3, .stExpander h2, .stExpander h1 {
-        margin-top: 0.4rem !important;
-        margin-bottom: 0.4rem !important;
-    }
-
-    /* --- Aggressively reduce vertical space in expanders for metrics and headings --- */
-    .stExpander .stMetric {
-        margin-bottom: 0.05rem !important;
-        margin-top: 0.05rem !important;
-        padding-bottom: 0 !important;
-        padding-top: 0 !important;
-    }
-    .stExpander .stMetricLabel, .stExpander .stMetricValue {
-        margin-bottom: 0 !important;
-        margin-top: 0 !important;
-        padding-bottom: 0 !important;
-        padding-top: 0 !important;
-        line-height: 1.05 !important;
-    }
-    .stExpander .stColumn {
-        margin-bottom: 0 !important;
-        margin-top: 0 !important;
-        padding-bottom: 0 !important;
-        padding-top: 0 !important;
-    }
-    .stExpander .stMarkdown, .stExpander .stCaption {
-        margin-top: 0.1rem !important;
-        margin-bottom: 0.1rem !important;
-        padding-top: 0 !important;
-        padding-bottom: 0 !important;
-    }
-    /* Remove extra margin from headings in expanders */
-    .stExpander h1, .stExpander h2, .stExpander h3, .stExpander h4, .stExpander .stSubheader {
-        margin-top: 0.2rem !important;
-        margin-bottom: 0.2rem !important;
-        padding-top: 0 !important;
-        padding-bottom: 0 !important;
-        line-height: 1.1 !important;
-    }
-    /* Remove margin from hr (---) in expanders */
-    .stExpander hr {
-        margin-top: 0.2rem !important;
-        margin-bottom: 0.2rem !important;
-    }
-    /* Remove extra space from columns inside expanders */
-    .stExpander [data-testid="column"] {
-        margin-top: 0 !important;
-        margin-bottom: 0 !important;
-        padding-top: 0 !important;
-        padding-bottom: 0 !important;
-    }
-
-    /* Reduce vertical space between selectboxes and expander in Run Analysis */
-    .ra-selectbox-wrapper div[data-testid="stSelectbox"] {
-        margin-top: 0.2rem !important;
-        margin-bottom: 0.2rem !important;
-        padding-top: 0 !important;
-        padding-bottom: 0 !important;
-    }
-    .ra-selectbox-wrapper label, .ra-selectbox-wrapper .stMarkdown {
-        margin-bottom: 0.1rem !important;
-        margin-top: 0.1rem !important;
-        padding-bottom: 0 !important;
-        padding-top: 0 !important;
-    }
-    /* Reduce space above/below the expander */
-    .stExpander {
-        margin-top: 0.3rem !important;
-        margin-bottom: 0.3rem !important;
-    }
-    /* Reduce space above/below the horizontal rule */
-    .stMarkdown hr {
-        margin-top: 0.3rem !important;
-        margin-bottom: 0.3rem !important;
-    }
-
-    /* --- Tighter vertical spacing for selectboxes, radio, and expanders in ALL modules --- */
-    /* Applies to Run Analysis, Screener, Report, etc. */
-    .ra-selectbox-wrapper div[data-testid="stSelectbox"],
-    .report-selectbox-wrapper div[data-testid="stSelectbox"],
-    div[data-testid="stSelectbox"] {
-        margin-top: 0.05rem !important;
-        margin-bottom: 0.05rem !important;
-        padding-top: 0 !important;
-        padding-bottom: 0 !important;
-    }
-    .ra-selectbox-wrapper label, .ra-selectbox-wrapper .stMarkdown,
-    .report-selectbox-wrapper label, .report-selectbox-wrapper .stMarkdown,
-    label, .stMarkdown {
-        margin-bottom: 0.05rem !important;
-        margin-top: 0.05rem !important;
-        padding-bottom: 0 !important;
-        padding-top: 0 !important;
-    }
-    /* Tighter for radio buttons */
-    .stRadio, .stRadio > div, .stRadio label {
-        margin-top: 0.05rem !important;
-        margin-bottom: 0.05rem !important;
-        padding-top: 0 !important;
-        padding-bottom: 0 !important;
-    }
-    /* Tighter for expanders */
-    .stExpander {
-        margin-top: 0.15rem !important;
-        margin-bottom: 0.15rem !important;
-    }
-    /* Tighter for horizontal rules */
-    .stMarkdown hr {
-        margin-top: 0.15rem !important;
-        margin-bottom: 0.15rem !important;
-    }
-    /* Remove extra space from columns inside expanders and main layout */
-    .stExpander [data-testid="column"], [data-testid="column"] {
-        margin-top: 0 !important;
-        margin-bottom: 0 !important;
-        padding-top: 0 !important;
-        padding-bottom: 0 !important;
-    }
-    /* Ultra-tight vertical spacing for all widgets, selectboxes, radios, expanders, columns */
-    .stExpander, .stRadio, .stRadio > div, .stRadio label,
-    .stButton, .stSlider, .stDownloadButton, .stCheckbox, .stTextInput, .stTextArea, .stSelectbox,
-    .ra-selectbox-wrapper div[data-testid="stSelectbox"],
-    .report-selectbox-wrapper div[data-testid="stSelectbox"],
-    div[data-testid="stSelectbox"],
-    .ra-selectbox-wrapper label, .report-selectbox-wrapper label, label,
-    .ra-selectbox-wrapper .stMarkdown, .report-selectbox-wrapper .stMarkdown, .stMarkdown,
-    .stExpander [data-testid="column"], [data-testid="column"] {
-        margin-top: 0 !important;
-        margin-bottom: 0 !important;
-        padding-top: 0 !important;
-        padding-bottom: 0 !important;
-    }
-    .stExpander { margin-top: 0.05rem !important; margin-bottom: 0.05rem !important; }
-    .stMarkdown hr { margin-top: 0.05rem !important; margin-bottom: 0.05rem !important; }
     </style>
-""", unsafe_allow_html=True)
+    '''
+
+# High-contrast mode CSS
+if contrast:
+    css += '''
+    <style>
+    body, .stApp, .block-container, .stExpander, div[data-testid="stChatMessageGroup"] {
+        background: #000 !important;
+        color: #FFD700 !important;
+    }
+    .stButton > button, .stDownloadButton > button {
+        background: #FFD700 !important;
+        color: #000 !important;
+        border: 2px solid #FFD700 !important;
+    }
+    .stMarkdown, .stText, .stExpander, .stDataFrame, .stRadio, .stSelectbox, .stButton, .stSlider, .stDownloadButton, .stChatInputContainer, .stChatMessage, .stChatInput, .stTextInput, .stTextArea, .stSelectbox > div, .stSelectbox label, .stRadio label, .stExpanderHeader, .stExpanderContent, .stAlert, .stSubheader, .stHeader, .stCaption, .stTable, .stDataFrame, .stCheckbox label {
+        color: #FFD700 !important;
+    }
+    </style>
+    '''
+
+st.markdown("""
+    <div class="top-banner">
+        🪙<span id="stockmatrix-title">StockMatrix</div>
+    </div>
+    """, unsafe_allow_html=True)
+st.markdown('<meta name="viewport" content="width=device-width, initial-scale=1">', unsafe_allow_html=True)
+st.markdown(css, unsafe_allow_html=True)
 
 st.markdown("<div class='curated-footer' style='color: #000000;'>Curated and powered by Kushagra Bansal</div>", unsafe_allow_html=True)
 
@@ -643,6 +337,42 @@ DEFAULT_STATE = {
 
 for key, value in DEFAULT_STATE.items():
     st.session_state.setdefault(key, value)
+
+
+# --- Onboarding Modal for First-Time Users ---
+if not user_prefs.get("onboarded", False):
+    with st.sidebar.expander("👋 Welcome! Start Here", expanded=True):
+        st.markdown("""
+        # Welcome to StockMatrix!
+        - Analyze top stocks across global exchanges
+        - Run analysis, generate reports, and get insights
+        - Use the sidebar to switch theme and access your preferences
+        - Click the help button below for a quick tour anytime
+        """)
+        if st.button("Got it! Hide this panel", key="onboard_btn"):
+            user_prefs["onboarded"] = True
+            save_user_prefs(user_prefs)
+
+
+# --- Help Button for Interactive Tips ---
+if st.sidebar.button("❓ Help / Quick Tour"):
+    st.info("""
+    **Quick Tips:**
+    - Use the sidebar to change theme and access onboarding again.
+    - Type `RA` for Run Analysis, `GR` for Generate Report, `IG` for Insights.
+    - Customize scoring models and download reports.
+    - Add stocks to your watchlist for quick access.
+    - Use the leaderboard and screener for discovery.
+    """)
+
+# --- Export/Share Insights ---
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 📤 Export/Share Insights")
+if st.session_state.get("final_score") is not None:
+    summary = f"Stock: {st.session_state.get('run_analysis_ticker', '')}\nScore: {st.session_state['final_score']}\nVerdict: {st.session_state['final_verdict']}"
+    st.sidebar.download_button("Download Summary", summary, file_name="stockmatrix_summary.txt")
+    st.sidebar.code(summary, language="text")
+    st.sidebar.caption("Copy and share this summary anywhere!")
 
 # --- Initial Chat Message ---
 if not st.session_state.greeted:
@@ -740,21 +470,15 @@ if user_input:
         )
 
 # --- Main Content Rendering ---
-if st.session_state.get("chat_mode") == "screener":
 
+if st.session_state.get("chat_mode") == "screener":
     if st.button("← Back to Main Menu"):
         st.session_state.chat_mode = None
         st.rerun()
-    
     st.subheader("📊 Screener Engine")
-    basis = st.radio("Select Analysis Period", ["Quarterly", "Annual"],
-                    horizontal=True, key="screener_basis")
-    
+    basis = st.radio("Select Analysis Period", ["Quarterly", "Annual"], horizontal=True, key="screener_basis")
     st.markdown("**Choose an exchange**")
-    exchange = st.selectbox("", 
-                          ["NSE", "HKEX", "NYSE", "LSE", "TSE"], 
-                          key="screener_exchange")
-    
+    exchange = st.selectbox("", ["NSE", "HKEX", "NYSE", "LSE", "TSE"], key="screener_exchange")
     col1, col2, col3 = st.columns(3)
     with col1:
         min_upside = col1.slider("Minimum DCF Upside (%)", -50, 200, 20)
@@ -763,77 +487,67 @@ if st.session_state.get("chat_mode") == "screener":
     with col3:
         max_vol = st.slider("Volatility Threshold (Annualized %)", 0, 100, 50)
 
+    # --- Real-time auto-refresh toggle ---
+    auto_refresh = user_prefs.get("screener_auto_refresh", False)
+    auto_refresh_toggle = st.checkbox("🔄 Auto-refresh every 30 seconds", value=auto_refresh, key="screener_auto_refresh")
+    if auto_refresh_toggle != auto_refresh:
+        user_prefs["screener_auto_refresh"] = auto_refresh_toggle
+        save_user_prefs(user_prefs)
+        auto_refresh = auto_refresh_toggle
 
-# In main.py, inside the "screener" block
-
-# ... (after the sliders)
-
-    if st.button("🔍 Find Stocks", key="screener_button"):
+    if st.button("🔍 Find Stocks", key="screener_button") or auto_refresh:
         tickers = get_top_50_tickers(exchange)
         with st.spinner(f"Screening stocks on {exchange}..."):
-            # --- FIX: ADDED THE MISSING CALL TO THE SCREENER ENGINE ---
             results = screener_engine.screen_stocks(
                 tickers=tickers,
                 min_upside=min_upside,
                 min_ta=min_ta,
                 max_volatility=max_vol
             )
-            # Store results in session state to persist
             st.session_state.screener_results = results
+        if auto_refresh:
+            import time
+            time.sleep(30)
+            st.experimental_rerun()
     else:
-        # Ensure results from previous runs are still displayed
         results = st.session_state.get("screener_results", [])
 
-
-    # Display results
     if results:
         st.markdown(f"#### ✅ {len(results)} stocks matched your criteria.")
         df = pd.DataFrame(results)
-
-        # --- FIX: CORRECTED THE STYLING FUNCTION ---
         def highlight_cells(row):
-            # Default style
             styles = ['' for _ in row]
-            # Highlight Upside
             try:
                 upside_val = float(str(row['Upside (%)']).replace('%', ''))
                 if upside_val >= 50:
-                    styles[1] = 'background-color: #d4edda; color: #155724;' # Green
+                    styles[1] = 'background-color: #d4edda; color: #155724;'
                 elif upside_val >= 20:
-                    styles[1] = 'background-color: #fff3cd; color: #856404;' # Yellow
+                    styles[1] = 'background-color: #fff3cd; color: #856404;'
             except (ValueError, TypeError):
-                pass # Ignore if not a number
-
-            # Highlight TA Score
+                pass
             try:
                 ta_score = row['TA Score']
                 if ta_score >= 70:
-                    styles[2] = 'background-color: #d4edda; color: #155724;' # Green
+                    styles[2] = 'background-color: #d4edda; color: #155724;'
             except (ValueError, TypeError):
                 pass
-
-            # Highlight Volatility (lower is better)
             try:
                 vol_val = row['Volatility (%)']
                 if vol_val > 75:
-                    styles[3] = 'background-color: #f8d7da; color: #721c24;' # Red
+                    styles[3] = 'background-color: #f8d7da; color: #721c24;'
             except (ValueError, TypeError):
                 pass
-
             return styles
-
-        # Apply the styling
         styled_df = df.style.apply(highlight_cells, axis=1).format({
             "Upside (%)": "{:.2f}%",
             "TA Score": "{:.2f}",
             "Volatility (%)": "{:.2f}%"
         })
-
         st.dataframe(
             styled_df,
             use_container_width=True,
             hide_index=True,
-            height=min(len(df) * 40 + 40, 600) # Dynamic height
+            height=min(len(df) * 40 + 40, 600)
         )
 
 # =============================================================================
@@ -1011,6 +725,7 @@ elif st.session_state.get("chat_mode") == "run_analysis":
         auto_refresh = st.checkbox("🔄 Auto-refresh every 30 seconds", key="auto_refresh_checkbox")
 
 
+
         if st.button("Stock Price", key="run_analysis_price_btn") or (st.session_state.get("auto_refresh_checkbox") and st.session_state.get("auto_refreshing")):
             st.session_state.auto_refreshing = auto_refresh
             try:
@@ -1031,14 +746,62 @@ elif st.session_state.get("chat_mode") == "run_analysis":
                 - **As of**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                 """)
 
-                # history is a dict of columns, need to reconstruct DataFrame
+                # --- Enhanced Chart Options ---
+                chart_type = st.selectbox(
+                    "Select Chart Type",
+                    ["Line", "Candlestick", "Bar"],
+                    key="run_analysis_chart_type"
+                )
+                show_moving_avg = st.checkbox("Show Moving Average (20d)", value=False, key="run_analysis_ma")
+                show_volume = st.checkbox("Show Volume", value=False, key="run_analysis_vol")
+
                 if history and "Close" in history:
                     import pandas as pd
                     close_series = pd.Series(history["Close"])
+                    df = pd.DataFrame({"Close": close_series})
+                    if "Open" in history and "High" in history and "Low" in history:
+                        df["Open"] = pd.Series(history["Open"])
+                        df["High"] = pd.Series(history["High"])
+                        df["Low"] = pd.Series(history["Low"])
+                    if "Volume" in history:
+                        df["Volume"] = pd.Series(history["Volume"])
+
+                    import plotly.graph_objs as go
                     fig = go.Figure()
-                    fig.add_trace(go.Scatter(x=close_series.index, y=close_series.values, name="Close Price"))
-                    fig.update_layout(title="Price Trend (6 Months)", xaxis_title="Date", yaxis_title=f"Price ({currency})")
-                    st.plotly_chart(fig)
+                    if chart_type == "Line":
+                        fig.add_trace(go.Scatter(x=df.index, y=df["Close"], name="Close Price"))
+                    elif chart_type == "Candlestick" and all(col in df for col in ["Open", "High", "Low", "Close"]):
+                        fig.add_trace(go.Candlestick(
+                            x=df.index,
+                            open=df["Open"],
+                            high=df["High"],
+                            low=df["Low"],
+                            close=df["Close"],
+                            name="Candlestick"
+                        ))
+                    elif chart_type == "Bar":
+                        fig.add_trace(go.Bar(x=df.index, y=df["Close"], name="Close Price"))
+
+                    # Moving Average
+                    if show_moving_avg:
+                        df["MA20"] = df["Close"].rolling(window=20).mean()
+                        fig.add_trace(go.Scatter(x=df.index, y=df["MA20"], name="MA 20d", line=dict(dash="dash")))
+
+                    # Volume
+                    if show_volume and "Volume" in df:
+                        fig.add_trace(go.Bar(x=df.index, y=df["Volume"], name="Volume", yaxis="y2", marker_color="rgba(0,0,255,0.2)"))
+                        fig.update_layout(
+                            yaxis2=dict(overlaying="y", side="right", title="Volume", showgrid=False),
+                            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                        )
+
+                    fig.update_layout(
+                        title="Price Trend (6 Months)",
+                        xaxis_title="Date",
+                        yaxis_title=f"Price ({currency})",
+                        template="plotly_white"
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
                 else:
                     st.info("No price history available.")
 
