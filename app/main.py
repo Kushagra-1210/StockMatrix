@@ -260,12 +260,20 @@ else:
         min-height: 100vh;
         color: #18191A !important;
     }
-    .block-container, .stSidebar, .stSidebarContent, .stSidebarNav {
-        background: #FFFFFF !important;
+    .block-container {
+        background: #fff !important;
         color: #18191A !important;
+        border-radius: 18px;
+        padding: 24px;
+        box-shadow: 0 4px 32px rgba(10, 31, 68, 0.10);
     }
     .stSidebar, .stSidebarContent, .stSidebarNav, .sidebar-content, .sidebar-section {
+        background: #f5f6fa !important;
         color: #FFD700 !important;
+        border-right: 1.5px solid #e0e0e0 !important;
+        box-shadow: 2px 0 16px rgba(10, 31, 68, 0.06);
+        border-top-right-radius: 18px;
+        border-bottom-right-radius: 18px;
     }
     div[data-testid="stChatMessageGroup"] {
         background-color: #F5F5F5  !important;
@@ -319,13 +327,14 @@ if contrast:
 
 
 # --- Improved Top Banner: Always visible and styled for theme ---
-banner_color = "#FFD700" if theme == "dark" or contrast else ("#18191A" if theme == "light" else "#FFD700")
-text_color = "#FFFFFF" if theme == "light" else "#FFFFFF"
-if contrast:
+if theme == "dark" or contrast:
     banner_color = "#FFD700"
-    text_color = "#000"
+    text_color = "#18191A"
+else:
+    banner_color = "#fff"
+    text_color = "#18191A"
 st.markdown(f"""
-    <div class="top-banner" style="width:100%;padding:18px 0 10px 0;text-align:center;background:{banner_color};border-radius:0 0 18px 18px;box-shadow:0 2px 12px rgba(10,31,68,0.10);">
+    <div class="top-banner" style="width:100%;padding:18px 0 10px 0;text-align:center;background:{banner_color};border-radius:0 0 18px 18px;box-shadow:0 4px 32px rgba(10,31,68,0.10);">
         <span style='font-size:2.2rem;font-weight:900;letter-spacing:2px;color:{text_color};vertical-align:middle;'>🪙 StockMatrix</span>
     </div>
     """, unsafe_allow_html=True)
