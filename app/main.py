@@ -295,9 +295,16 @@ if contrast:
     </style>
     '''
 
-st.markdown("""
-    <div class="top-banner">
-        🪙<span id="stockmatrix-title">StockMatrix</div>
+
+# --- Improved Top Banner: Always visible and styled for theme ---
+banner_color = "#FFD700" if theme == "dark" or contrast else ("#18191A" if theme == "light" else "#FFD700")
+text_color = "#18191A" if theme == "light" else "#FFD700"
+if contrast:
+    banner_color = "#FFD700"
+    text_color = "#000"
+st.markdown(f"""
+    <div class="top-banner" style="width:100%;padding:18px 0 10px 0;text-align:center;background:{banner_color};border-radius:0 0 18px 18px;box-shadow:0 2px 12px rgba(10,31,68,0.10);">
+        <span style='font-size:2.2rem;font-weight:900;letter-spacing:2px;color:{text_color};vertical-align:middle;'>🪙 StockMatrix</span>
     </div>
     """, unsafe_allow_html=True)
 st.markdown('<meta name="viewport" content="width=device-width, initial-scale=1">', unsafe_allow_html=True)
