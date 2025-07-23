@@ -147,13 +147,61 @@ if contrast_toggle != contrast:
     save_user_prefs(user_prefs)
     contrast = contrast_toggle
 
-theme = user_prefs.get("theme", "light")
-theme_toggle = st.sidebar.selectbox("Theme", ["light", "dark"], index=0 if theme=="light" else 1)
-if theme_toggle != theme:
-    user_prefs["theme"] = theme_toggle
-    save_user_prefs(user_prefs)
-    theme = theme_toggle
 
+# --- System Theme Detection with User Override ---
+import streamlit.components.v1 as components
+import streamlit as st
+import json
+
+def get_system_theme():
+    # Use a hidden component to get system theme via JS
+    theme = st.session_state.get("system_theme", None)
+    if theme is not None:
+        return theme
+    # Inject JS to detect system theme and send to Streamlit
+    components.html('''
+        <script>
+        const theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        window.parent.postMessage({isDark: theme === 'dark'}, '*');
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.setTheme) {
+                window.parent.postMessage({isDark: event.data.setTheme === 'dark'}, '*');
+            }
+        });
+        </script>
+    ''', height=0)
+    # Fallback to light if not set
+    return "light"
+
+# Listen for theme from frontend (Streamlit custom component workaround)
+if "system_theme" not in st.session_state:
+    st.session_state["system_theme"] = get_system_theme()
+
+# User preference: if not set, use system theme
+theme = user_prefs.get("theme", None)
+if theme is None:
+    theme = st.session_state.get("system_theme", "light")
+
+# Sidebar theme selector (always available)
+theme_toggle = st.sidebar.selectbox(
+    "Theme",
+    ["System Default", "light", "dark"],
+    index=0 if user_prefs.get("theme", None) is None else (1 if theme=="light" else 2)
+)
+if theme_toggle == "System Default":
+    # Remove user override, use system
+    if "theme" in user_prefs:
+        user_prefs.pop("theme")
+        save_user_prefs(user_prefs)
+    theme = st.session_state.get("system_theme", "light")
+else:
+    new_theme = "light" if theme_toggle == "light" else "dark"
+    if user_prefs.get("theme", None) != new_theme:
+        user_prefs["theme"] = new_theme
+        save_user_prefs(user_prefs)
+    theme = new_theme
+
+# --- CSS for both themes, ensuring all text is visible ---
 css = ""
 if theme == "dark":
     css += '''
@@ -180,6 +228,9 @@ if theme == "dark":
     }
     .stMarkdown, .stText, .stExpander, .stDataFrame, .stRadio, .stSelectbox, .stButton, .stSlider, .stDownloadButton, .stChatInputContainer, .stChatMessage, .stChatInput, .stTextInput, .stTextArea, .stSelectbox > div, .stSelectbox label, .stRadio label, .stExpanderHeader, .stExpanderContent, .stAlert, .stSubheader, .stHeader, .stCaption, .stTable, .stDataFrame, .stCheckbox label {
         color: #F5F6FA !important;
+    }
+    h1, h2, h3, h4, h5, h6, .stSubheader, .stHeader {
+        color: #FFD700 !important;
     }
     </style>
     '''
@@ -218,6 +269,9 @@ else:
     }
     .stMarkdown, .stText, .stExpander, .stDataFrame, .stRadio, .stSelectbox, .stButton, .stSlider, .stDownloadButton, .stChatInputContainer, .stChatMessage, .stChatInput, .stTextInput, .stTextArea, .stSelectbox > div, .stSelectbox label, .stRadio label, .stExpanderHeader, .stExpanderContent, .stAlert, .stSubheader, .stHeader, .stCaption, .stTable, .stDataFrame, .stCheckbox label {
         color: #1A1A1A !important;
+    }
+    h1, h2, h3, h4, h5, h6, .stSubheader, .stHeader {
+        color: #FFD700 !important;
     }
     </style>
     '''
