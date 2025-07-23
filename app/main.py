@@ -88,12 +88,12 @@ st.markdown("""
 st.markdown("""
     <style>
     body {
-        background: #F8F9FB !important; /* Slightly darker than white */
+        background: #FFF9DB !important; /* Light yellow */
         min-height: 100vh;
         color: #1A1A1A !important;
     }
     .stApp {
-        background: #F8F9FB !important; /* Slightly darker than white */
+        background: #FFF9DB !important; /* Light yellow */
         min-height: 100vh;
         color: #1A1A1A !important;
     }
@@ -129,7 +129,7 @@ st.markdown("""
         padding: 10px 20px;
     }
     .block-container {
-        background: #FFFFFF;
+        background: #FFF9DB;
         border-radius: 18px;
         padding: 24px;
         box-shadow: 0 4px 32px rgba(10, 31, 68, 0.10);
@@ -158,7 +158,7 @@ st.markdown("""
     section[data-testid="stChatInput"],
     .stChatInputContainer,
     div[data-testid="stChatInput"] {
-        background: #F0F0F0 !important;            /* Light grey outer container */
+        background: #FFF9DB !important;            /* Light yellow outer container */
         border-radius: 20px !important;
         padding: 6px !important;
         border: none !important;
@@ -168,7 +168,7 @@ st.markdown("""
         align-items: center !important;
     }
     section[data-testid="stChatInput"] {
-        background-color: #F0F0F0 !important;
+        background-color: #FFF9DB !important;
     }
     
     section[data-testid="stChatInput"] input,
@@ -218,7 +218,7 @@ st.markdown("""
     }
     /* Expander background and border */
     .stExpander {
-        background: #F8F9FB !important; /* Match main background */
+        background: #FFF9DB !important; /* Match main background (light yellow) */
         border-radius: 12px !important;
         border: 1px solid #000000 !important;
         margin-bottom: 12px !important;
@@ -309,14 +309,14 @@ st.markdown("""
     }
 
     .stSelectbox div[data-baseweb="select"] > div {
-        background: #F0F0F0 !important;   /* Light gray dropdown field only */
+        background: #FFF9DB !important;   /* Light yellow dropdown field only */
         color: #1A1A1A !important;
         border-radius: 12px !important;
         font-weight: 700 !important;
     }
 
     .stSelectbox div[data-baseweb="select"] > div {
-        background: #F0F0F0 !important;   /* Light gray for dropdown */
+        background: #FFF9DB !important;   /* Light yellow for dropdown */
         color: #1A1A1A !important;
         border-radius: 12px !important;
     }
@@ -374,7 +374,7 @@ st.markdown("""
     }
     /* 🔧 Force background of full chat zone (message + input area) */
     div[data-testid="stChatMessageGroup"] {
-        background-color: #F0F0F0 !important;
+        background-color: #FFF9DB !important;
         padding: 16px !important;
         border-top: 2px solid #E0E0E0;
     }
