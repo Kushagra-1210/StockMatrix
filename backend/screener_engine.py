@@ -1,5 +1,6 @@
 # backend/screener_engine.py
 import yfinance as yf
+import pandas as pd
 import numpy as np
 import logging
 from .fundamental_analysis import analyze_fundamentals
@@ -48,10 +49,16 @@ def screen_stocks(tickers: list, min_upside: float = 0, min_ta: float = 0, max_v
 
     return sorted(results, key=lambda x: _parse_percentage(x["Upside (%)"]), reverse=True)
 
+from backend.data_fetcher import get_ticker_data
+
 def calculate_volatility(ticker: str) -> float:
-    # (This function remains unchanged)
+    """Calculates volatility using centralized data fetcher."""
     try:
-        data = yf.Ticker(ticker).history(period="3mo")
+        ticker_data = get_ticker_data(ticker)
+        hist_dict = ticker_data.get("history", {})
+        if not hist_dict or "Close" not in hist_dict:
+            return None
+        data = pd.DataFrame(hist_dict)
         if data.empty or "Close" not in data:
             return None
         returns = data["Close"].pct_change().dropna()

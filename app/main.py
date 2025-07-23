@@ -1,6 +1,8 @@
 # main.py
 import streamlit as st
 import yfinance as yf
+# Centralized data fetcher import
+from backend.data_fetcher import get_ticker_data
 import streamlit.components.v1 as components
 import concurrent.futures
 import os
@@ -92,6 +94,12 @@ st.markdown("""
         background: #F8F9FB !important; /* Slightly darker than white */
         min-height: 100vh;
         color: #1A1A1A !important;
+    }
+    /* Change chat message background to light yellow */
+    div[data-testid="stChatMessageGroup"] {
+        background-color: #FFF9DB !important; /* Light yellow */
+        padding: 16px !important;
+        border-top: 2px solid #E0E0E0;
     }
     .top-banner {
         padding: 10px 20px;
@@ -572,14 +580,27 @@ def get_news_risk_analysis(ticker, basis: str = "annual"):
     return news_mod.fetch_news_risk(ticker, basis=basis.lower())
 
 # Increase cache times and add hash_funcs for yfinance objects
-@st.cache_resource(ttl=86400)
-def get_yf_info(ticker):
-    import yfinance as yf
-    return yf.Ticker(ticker).info
 
-@st.cache_resource(ttl=86400)
+# Use centralized fetcher for info
+@st.cache_data(ttl=86400)
+def get_yf_info(ticker):
+    return get_ticker_data(ticker).get("info", {})
+
+
+# Use centralized fetcher for history (always fetches full history, slice in-memory)
+@st.cache_data(ttl=86400)
 def get_stock_history(ticker, period="6mo"):
-    return yf.Ticker(ticker).history(period=period)
+    import pandas as pd
+    history = get_ticker_data(ticker).get("history", {})
+    if not history or "Close" not in history:
+        return pd.DataFrame()
+    df = pd.DataFrame(history)
+    # Slice by period if possible (default: last 6 months)
+    if period == "6mo":
+        if not df.empty and hasattr(df.index, 'max'):
+            cutoff = pd.Timestamp.now() - pd.DateOffset(months=6)
+            df = df[df.index >= cutoff]
+    return df
 
 @st.cache_data(ttl=86400) # Cache for one day (86400 seconds)
 def cached_get_risk_free_rate():
@@ -988,11 +1009,14 @@ elif st.session_state.get("chat_mode") == "run_analysis":
     with col1:
         auto_refresh = st.checkbox("🔄 Auto-refresh every 30 seconds", key="auto_refresh_checkbox")
 
+
         if st.button("Stock Price", key="run_analysis_price_btn") or (st.session_state.get("auto_refresh_checkbox") and st.session_state.get("auto_refreshing")):
             st.session_state.auto_refreshing = auto_refresh
             try:
-                stock = yf.Ticker(selected_ticker)
-                info = stock.info
+                # Use centralized data fetcher
+                ticker_data = get_ticker_data(selected_ticker)
+                info = ticker_data.get("info", {})
+                history = ticker_data.get("history", {})
                 current_price = info.get("currentPrice", "N/A")
                 currency = info.get("currency", "")
                 market_cap = info.get("marketCap", "N/A")
@@ -1006,23 +1030,24 @@ elif st.session_state.get("chat_mode") == "run_analysis":
                 - **As of**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                 """)
 
-                hist = get_stock_history(selected_ticker, period="6mo")
-                fig = go.Figure()
-                fig.add_trace(go.Scatter(x=hist.index, y=hist["Close"], name="Close Price"))
-                fig.update_layout(title="Price Trend (6 Months)", xaxis_title="Date", yaxis_title=f"Price ({currency})")
-                st.plotly_chart(fig)
+                # history is a dict of columns, need to reconstruct DataFrame
+                if history and "Close" in history:
+                    import pandas as pd
+                    close_series = pd.Series(history["Close"])
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(x=close_series.index, y=close_series.values, name="Close Price"))
+                    fig.update_layout(title="Price Trend (6 Months)", xaxis_title="Date", yaxis_title=f"Price ({currency})")
+                    st.plotly_chart(fig)
+                else:
+                    st.info("No price history available.")
 
                 if auto_refresh:
-                    # This code injects an HTML tag to refresh the page every 30 seconds
-                    # without freezing the Python script.
                     components.html(
                         """
-                        <meta http-equiv="refresh" content="30">
+                        <meta http-equiv=\"refresh\" content=\"30\">
                         """,
-                        height=0, # Make the HTML component invisible
+                        height=0,
                     )
-                # --------------------
-
             except Exception as e:
                 st.error(f"Error fetching stock data: {str(e)}")
 

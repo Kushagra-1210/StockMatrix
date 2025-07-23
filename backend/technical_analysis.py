@@ -69,15 +69,23 @@ def _calculate_adx(high, low, close, length=14):
     return _calculate_ema(adx, length).iloc[-1]
 
 # --- Main Analysis Function ---
+from backend.data_fetcher import get_ticker_data
+
 def analyze_technical_indicators(ticker: str, basis: str = "annual") -> dict:
     """
-    Analyzes technical indicators using a self-contained 10-factor model.
+    Analyzes technical indicators using a self-contained 10-factor model, using centralized data fetcher.
     """
     try:
-        # Fetch 250 days of data to ensure enough for 200-day SMA
-        hist = yf.Ticker(ticker).history(period="250d")
-        if hist.empty or len(hist) < 200:
+        # Use centralized fetcher for price history
+        ticker_data = get_ticker_data(ticker)
+        hist_dict = ticker_data.get("history", {})
+        if not hist_dict or "Close" not in hist_dict:
+            return {"error": "No historical data for TA."}
+        hist = pd.DataFrame(hist_dict)
+        # Use last 250 rows for TA (ensure enough for 200-day SMA)
+        if len(hist) < 200:
             return {"error": "Not enough historical data for TA."}
+        hist = hist.tail(250)
 
         # --- Define local variables for convenience ---
         close = hist['Close']

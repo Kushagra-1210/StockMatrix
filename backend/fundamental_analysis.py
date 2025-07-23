@@ -205,13 +205,24 @@ def get_beneish_m_score(stock):
         return {"error": "An unexpected error occurred during Beneish calculation."}
 
 # --- REPLACE your main orchestrator function with this ---
+from backend.data_fetcher import get_ticker_data
+
 def analyze_fundamentals(ticker: str, basis: str = "annual"):
     """
-    Orchestrates the 3-factor fundamental analysis model.
+    Orchestrates the 3-factor fundamental analysis model using centralized data fetcher.
     Final score is now an average of only the successful models.
     """
-    stock = yf.Ticker(ticker)
-    
+    # Use centralized fetcher for all financial data
+    ticker_data = get_ticker_data(ticker)
+    class StockData:
+        def __init__(self, ticker_data, ticker):
+            self.ticker = ticker
+            self.info = ticker_data.get("info", {})
+            self.financials = pd.DataFrame(ticker_data.get("financials", {}))
+            self.balance_sheet = pd.DataFrame(ticker_data.get("balance_sheet", {}))
+            self.cashflow = pd.DataFrame(ticker_data.get("cashflow", {}))
+    stock = StockData(ticker_data, ticker)
+
     successful_scores = []
     breakdown = {}
     notes = []
