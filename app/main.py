@@ -861,6 +861,8 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
     if 'leaderboard_df' in st.session_state and st.session_state.leaderboard_df is not None:
         st.markdown("###  Leaderboard Results")
         df = st.session_state.leaderboard_df.copy()
+        # Debug: Show columns present in the DataFrame
+        st.info(f"Leaderboard DataFrame columns: {list(df.columns)}")
         # Map weights to columns, ensuring only News-related columns (not Safety Score) are shown
         col_map = {
             "fa": ["FA Score", "Fundamental Score"],
