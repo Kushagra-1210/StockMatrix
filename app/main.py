@@ -374,7 +374,7 @@ st.markdown("""
     }
     /* 🔧 Force background of full chat zone (message + input area) */
     div[data-testid="stChatMessageGroup"] {
-        background-color: #FFF9DB !important;
+        background-color: #F5F5F5 !important;
         padding: 16px !important;
         border-top: 2px solid #E0E0E0;
     }
