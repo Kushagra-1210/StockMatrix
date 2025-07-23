@@ -264,15 +264,23 @@ def analyze_fundamentals(ticker: str, basis: str = "annual"):
     if not successful_scores:
         # Handle case where all models fail
         final_score = 0
-        verdict = "Analysis Failed"
+        verdict = "❌ Analysis Failed: All fundamental models failed due to missing data."
         notes.append("All fundamental models failed due to missing data.")
     else:
         # Average only the scores from the models that succeeded
         final_score = (sum(successful_scores) / len(successful_scores)) * 10
-        if final_score >= 80: verdict = "Strong Value + Quality"
-        elif final_score >= 60: verdict = "Fundamentally Sound"
-        elif final_score >= 30: verdict = "Fair Value / Watchlist"
-        else: verdict = "High Risk / Avoid"
+        if final_score >= 90:
+            verdict = "🌟 Exceptional Value: Outstanding fundamentals and quality."
+        elif final_score >= 80:
+            verdict = "✅ Strong Value + Quality: Very robust fundamentals."
+        elif final_score >= 65:
+            verdict = "🟢 Fundamentally Sound: Good value and quality."
+        elif final_score >= 45:
+            verdict = "🟡 Fair Value / Watchlist: Average fundamentals, monitor closely."
+        elif final_score >= 25:
+            verdict = "🟠 Elevated Risk: Weak fundamentals, exercise caution."
+        else:
+            verdict = "🔴 High Risk / Avoid: Poor fundamentals, significant risk."
     
     return {
         "Fundamental Score": round(final_score, 2),

@@ -27,20 +27,30 @@ def get_market_sentiment_score(ticker: str):
         # 2. Run VADER Sentiment Analysis
         analyzer = SentimentIntensityAnalyzer()
         positive_count, neutral_count, negative_count = 0, 0, 0
+        negative_headlines = []
         for h in headlines:
             score = analyzer.polarity_scores(h)['compound']
             if score >= 0.05:
                 positive_count += 1
             elif score <= -0.05:
                 negative_count += 1
+                negative_headlines.append(h)
             else:
                 neutral_count += 1
-        
         total = len(headlines)
-        
+
         # 3. Aggregate to 0-10 scale
         score = (positive_count - negative_count + neutral_count * 0.5) / total * 10
-        return max(0, min(10, score)), headlines[:3] # Clamp score between 0-10
+
+        # Fallback: if no negative headlines, show general headlines and add a note
+        if not negative_headlines and headlines:
+            fallback_headlines = headlines[:3]
+            return max(0, min(10, score)), {
+                "headlines": fallback_headlines,
+                "note": "Not much negative news found related to the company."
+            }
+        else:
+            return max(0, min(10, score)), sorted(negative_headlines, reverse=True)[:3]
 
     except Exception as e:
         logger.error(f"Market sentiment analysis failed for {ticker}: {e}")
@@ -112,16 +122,30 @@ def analyze_perception(ticker: str):
     total_score = market_score + mgmt_score
 
     # Determine verdict
-    if total_score > 16: verdict = "Strong Perception"
-    elif total_score > 10: verdict = "Positive Perception"
-    else: verdict = "Negative Perception"
+    if total_score > 16:
+        verdict = "🌟 Strong Perception: Market and management sentiment are highly positive."
+    elif total_score > 10:
+        verdict = "🟢 Positive Perception: Generally favorable sentiment with minor concerns."
+    elif total_score > 6:
+        verdict = "🟡 Neutral Perception: Mixed or balanced sentiment."
+    elif total_score > 3:
+        verdict = "🟠 Cautious Perception: Some negative sentiment or red flags present."
+    else:
+        verdict = "🔴 Negative Perception: Predominantly negative sentiment detected."
 
-    return {
+    # If headlines is a dict (fallback), unpack for UI compatibility
+    sample_headlines = headlines["headlines"] if isinstance(headlines, dict) else headlines
+    note = headlines.get("note") if isinstance(headlines, dict) else None
+
+    result = {
         "score": round(total_score / 2, 2),  # Add a 'score' out of 10 for compatibility
         "strategic_perception_score": round(total_score, 2),
         "verdict": verdict,
         "market_sentiment_score": round(market_score, 2),
         "management_quality_score": round(mgmt_score, 2),
-        "sample_headlines": headlines,
+        "sample_headlines": sample_headlines,
         "management_notes": mgmt_notes
     }
+    if note:
+        result["note"] = note
+    return result

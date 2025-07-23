@@ -157,10 +157,18 @@ def analyze_technical_indicators(ticker: str, basis: str = "annual") -> dict:
         # --- Final Score & Signal ---
         final_score = np.mean(list(scores.values())) * 10
         
-        if final_score >= 80: verdict = "Strong Buy"
-        elif final_score >= 60: verdict = "Bullish"
-        elif final_score >= 30: verdict = "Neutral"
-        else: verdict = "Bearish"
+        if final_score >= 90:
+            verdict = "🚀 Strong Buy: Extremely bullish technicals across all indicators."
+        elif final_score >= 80:
+            verdict = "✅ Buy: Most technicals are positive."
+        elif final_score >= 65:
+            verdict = "🟢 Bullish: Uptrend with strong signals."
+        elif final_score >= 45:
+            verdict = "🟡 Neutral: Mixed or sideways signals."
+        elif final_score >= 25:
+            verdict = "🟠 Cautious: Weak or deteriorating technicals."
+        else:
+            verdict = "🔴 Bearish: Strong downtrend or negative signals."
 
         return {
             "ta_score": round(final_score, 2),
