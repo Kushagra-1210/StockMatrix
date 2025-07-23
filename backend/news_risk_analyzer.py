@@ -119,14 +119,22 @@ def fetch_news_risk(ticker: str, basis: str = "annual"):
     elif total_risk_score >= 25: verdict = "Medium Risk"
     else: verdict = "Low Risk"
 
-    return {
-        "risk_score": round(total_risk_score, 2),
-        "verdict": verdict,
-        "headlines": sorted(risk_headlines, key=lambda x: x['score'], reverse=True)[:5], # Top 5 risky headlines
-        "red_flags": red_flags,
-        "yellow_flags": yellow_flags
-    }
     # Fallback: if no risky headlines, show general headlines and add a note
-    if not risk_headlines and headlines:
-        result["headlines"] = headlines[:3]  # Show up to 3 general headlines
-        result["note"] = "Not much risky headlines found related to the company."
+    if not risk_headlines and articles:
+        fallback_headlines = [a['headline'].title() for a in articles[:3]]
+        return {
+            "risk_score": round(total_risk_score, 2),
+            "verdict": verdict,
+            "headlines": fallback_headlines,
+            "note": "Not much risky headlines found related to the company.",
+            "red_flags": red_flags,
+            "yellow_flags": yellow_flags
+        }
+    else:
+        return {
+            "risk_score": round(total_risk_score, 2),
+            "verdict": verdict,
+            "headlines": sorted(risk_headlines, key=lambda x: x['score'], reverse=True)[:5], # Top 5 risky headlines
+            "red_flags": red_flags,
+            "yellow_flags": yellow_flags
+        }
