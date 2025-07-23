@@ -108,3 +108,4 @@ def get_ticker_data(ticker: str) -> Dict[str, Any]:
     Public API: Fetch all data for a ticker (info, financials, etc) in parallel, using persistent cache.
     """
     return data_fetcher.get_all(ticker)
+
