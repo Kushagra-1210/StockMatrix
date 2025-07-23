@@ -202,6 +202,8 @@ else:
     theme = new_theme
 
 # --- CSS for both themes, ensuring all text is visible ---
+
+# --- Improved CSS for font visibility in all themes ---
 css = ""
 if theme == "dark":
     css += '''
@@ -210,9 +212,12 @@ if theme == "dark":
         background: #18191A !important;
         color: #F5F6FA !important;
     }
-    .block-container {
-        background: #23272F;
+    .block-container, .stSidebar, .stSidebarContent, .stSidebarNav {
+        background: #23272F !important;
         color: #F5F6FA !important;
+    }
+    .stSidebar, .stSidebarContent, .stSidebarNav, .sidebar-content, .sidebar-section {
+        color: #FFD700 !important;
     }
     div[data-testid="stChatMessageGroup"] {
         background-color: #23272F !important;
@@ -225,12 +230,20 @@ if theme == "dark":
     .stButton > button, .stDownloadButton > button {
         background: linear-gradient(90deg, #FFD700 80%, #FFC300 100%) !important;
         color: #18191A !important;
+        font-weight: bold !important;
     }
-    .stMarkdown, .stText, .stExpander, .stDataFrame, .stRadio, .stSelectbox, .stButton, .stSlider, .stDownloadButton, .stChatInputContainer, .stChatMessage, .stChatInput, .stTextInput, .stTextArea, .stSelectbox > div, .stSelectbox label, .stRadio label, .stExpanderHeader, .stExpanderContent, .stAlert, .stSubheader, .stHeader, .stCaption, .stTable, .stDataFrame, .stCheckbox label {
+    .stTextInput > div > input, .stTextArea > div > textarea, .stSelectbox > div, .stSelectbox label, .stRadio label, .stCheckbox label {
+        color: #F5F6FA !important;
+        background: #23272F !important;
+        font-weight: 500 !important;
+    }
+    .stMarkdown, .stText, .stExpander, .stDataFrame, .stRadio, .stSelectbox, .stButton, .stSlider, .stDownloadButton, .stChatInputContainer, .stChatMessage, .stChatInput, .stTextInput, .stTextArea, .stExpanderHeader, .stExpanderContent, .stAlert, .stSubheader, .stHeader, .stCaption, .stTable, .stDataFrame {
         color: #F5F6FA !important;
     }
     h1, h2, h3, h4, h5, h6, .stSubheader, .stHeader {
         color: #FFD700 !important;
+        font-weight: 900 !important;
+        letter-spacing: 1px;
     }
     </style>
     '''
@@ -240,38 +253,47 @@ else:
     body {
         background: #F8F9FB !important;
         min-height: 100vh;
-        color: #1A1A1A !important;
+        color: #18191A !important;
     }
     .stApp {
         background: #F8F9FB !important;
         min-height: 100vh;
-        color: #1A1A1A !important;
+        color: #18191A !important;
+    }
+    .block-container, .stSidebar, .stSidebarContent, .stSidebarNav {
+        background: #FFFFFF !important;
+        color: #18191A !important;
+    }
+    .stSidebar, .stSidebarContent, .stSidebarNav, .sidebar-content, .sidebar-section {
+        color: #FFD700 !important;
     }
     div[data-testid="stChatMessageGroup"] {
         background-color: #F5F5F5  !important;
         padding: 16px !important;
         border-radius: 12px !important;
-    }
-    .block-container {
-        background: #FFFFFF;
-        border-radius: 18px;
-        padding: 24px;
-        box-shadow: 0 4px 32px rgba(10, 31, 68, 0.10);
-        color: #1A1A1A !important;
+        color: #18191A !important;
     }
     .stExpander {
         background: #F8F9FB !important;
-        color: #1A1A1A !important;
+        color: #18191A !important;
     }
     .stButton > button, .stDownloadButton > button {
         background: linear-gradient(90deg, #FFD700 80%, #FFC300 100%) !important;
-        color: #1A1A1A !important;
+        color: #18191A !important;
+        font-weight: bold !important;
     }
-    .stMarkdown, .stText, .stExpander, .stDataFrame, .stRadio, .stSelectbox, .stButton, .stSlider, .stDownloadButton, .stChatInputContainer, .stChatMessage, .stChatInput, .stTextInput, .stTextArea, .stSelectbox > div, .stSelectbox label, .stRadio label, .stExpanderHeader, .stExpanderContent, .stAlert, .stSubheader, .stHeader, .stCaption, .stTable, .stDataFrame, .stCheckbox label {
-        color: #1A1A1A !important;
+    .stTextInput > div > input, .stTextArea > div > textarea, .stSelectbox > div, .stSelectbox label, .stRadio label, .stCheckbox label {
+        color: #18191A !important;
+        background: #FFFFFF !important;
+        font-weight: 500 !important;
+    }
+    .stMarkdown, .stText, .stExpander, .stDataFrame, .stRadio, .stSelectbox, .stButton, .stSlider, .stDownloadButton, .stChatInputContainer, .stChatMessage, .stChatInput, .stTextInput, .stTextArea, .stExpanderHeader, .stExpanderContent, .stAlert, .stSubheader, .stHeader, .stCaption, .stTable, .stDataFrame {
+        color: #18191A !important;
     }
     h1, h2, h3, h4, h5, h6, .stSubheader, .stHeader {
         color: #FFD700 !important;
+        font-weight: 900 !important;
+        letter-spacing: 1px;
     }
     </style>
     '''
@@ -298,7 +320,7 @@ if contrast:
 
 # --- Improved Top Banner: Always visible and styled for theme ---
 banner_color = "#FFD700" if theme == "dark" or contrast else ("#18191A" if theme == "light" else "#FFD700")
-text_color = "#18191A" if theme == "light" else "#FFD700"
+text_color = "#FFFFFF" if theme == "light" else "#FFFFFF"
 if contrast:
     banner_color = "#FFD700"
     text_color = "#000"
