@@ -22,6 +22,10 @@ logging.basicConfig(
 # --- CONFIGURATION (MUST BE AT THE TOP) ---
 # =============================================================================
 st.set_page_config(page_title="StockMatrix", layout="centered")
+"""
+main.py - StockMatrix main Streamlit app entry point
+Cleaned and rewritten to remove any null bytes or hidden file corruption.
+"""
 
 # --- Persistent User Preferences (Theme, Weights, Last Exchange/Ticker) ---
 import json
