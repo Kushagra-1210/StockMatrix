@@ -1,32 +1,31 @@
+
 # main.py
-import streamlit as st
-import yfinance as yf
-# Centralized data fetcher import
-from backend.data_fetcher import get_ticker_data
-import streamlit.components.v1 as components
-import concurrent.futures
 import os
 import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import streamlit as st
+import yfinance as yf
+from backend.data_fetcher import get_ticker_data
+import streamlit.components.v1 as components
 import pandas as pd
 from datetime import datetime
 import logging
 import importlib
 
 logging.basicConfig(
-    stream=sys.stdout,
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
 # =============================================================================
 # --- CONFIGURATION (MUST BE AT THE TOP) ---
 # =============================================================================
 st.set_page_config(page_title="StockMatrix", layout="centered")
-### ADD THIS ENTIRE BLOCK ###
+
 import plotly.graph_objects as go
+
 def initialize_session_state():
     """Initializes all required keys in the session state (our whiteboard)."""
-    # These are the "sections" of our whiteboard.
     STATE_KEYS = {
         "ticker": "AAPL",
         "stock_data": None,
@@ -45,22 +44,25 @@ def initialize_session_state():
     for key, value in STATE_KEYS.items():
         if key not in st.session_state:
             st.session_state[key] = value
-
-    # State for the chat assistant (it also uses the whiteboard!)
     if "messages" not in st.session_state:
         st.session_state.messages = [{"role": "assistant", "content": "Hi! Ask me to analyze a stock or compare stocks."}]
 
-# Call the function immediately to set everything up
 initialize_session_state()
 
 def reset_analysis_data():
     """This is our 'eraser' for when the user types a new stock ticker."""
     st.session_state.stock_data = None
     st.session_state.stock_info = None
-    # ... reset all other keys ...
-    
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    st.session_state.price_chart = None
+    st.session_state.technicals = None
+    st.session_state.fundamentals = None
+    st.session_state.dcf = None
+    st.session_state.piotroski = None
+    st.session_state.beneish = None
+    st.session_state.sentiment = None
+    st.session_state.perception = None
+    st.session_state.risk = None
+    st.session_state.pdf_report = None
 
 # --- Backend & NLP Module Imports ---
 from backend import (
@@ -557,8 +559,7 @@ st.markdown("<div class='curated-footer' style='color: #000000;'>Curated and pow
 
 
 
-import logging
-logging.basicConfig(level=logging.DEBUG)
+# ...existing code...
 st.set_option('client.showErrorDetails', True)
 # =============================================================================
 # --- Cached Helper Functions ---
@@ -882,7 +883,7 @@ elif st.session_state.get("chat_mode") == "stock_leaderboard":
     if 'leaderboard_df' in st.session_state and st.session_state.leaderboard_df is not None:
         st.markdown("###  Leaderboard Results")
         df = st.session_state.leaderboard_df.copy()
-        # ...existing code...
+    # ...existing code...
         # Map weights to columns, ensuring only News-related columns (not Safety Score) are shown
         col_map = {
             "fa": ["FA Score", "Fundamental Score"],
@@ -1089,6 +1090,7 @@ elif st.session_state.get("chat_mode") == "run_analysis":
 
         weights = st.session_state.user_weights
 
+
         # Only show Technical Analysis if its weight is not zero
         if st.session_state.technicals and weights.get("ta", 0) > 0:
             with st.expander("🧪 Technical Analysis", expanded=True):
@@ -1099,6 +1101,7 @@ elif st.session_state.get("chat_mode") == "run_analysis":
                     st.metric(label="Technical Score", value=f"{data.get('ta_score', 0)}/100")
                     st.write(f"**Verdict:** `{data.get('verdict', 'N/A')}`")
                     # ... you can add more details here if you want ...
+
 
         # Only show Fundamental Analysis if its weight is not zero
         if st.session_state.fundamentals and weights.get("fa", 0) > 0:
@@ -1113,13 +1116,12 @@ elif st.session_state.get("chat_mode") == "run_analysis":
                 if final_score is not None:
                     st.metric(label="Combined Fundamental Score", value=f"{final_score:.2f}/100")
                     st.subheader(f"Verdict: {verdict}")
-                
                 st.markdown("---")
 
                 # 2. Display the Breakdown of Sub-Scores
                 st.markdown("#### Score Breakdown:")
                 breakdown = data.get("Breakdown", {})
-                
+
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     st.metric("Piotroski F-Score", breakdown.get('Piotroski F-Score', "N/A"))
