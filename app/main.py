@@ -1210,8 +1210,13 @@ elif st.session_state.get("chat_mode") == "run_analysis":
                         st.info(note)
                     headlines = data.get("headlines", [])
                     if headlines:
-                        for headline in headlines[:3]:
-                            st.markdown(f"- {headline}")
+                        # Handle both list of dicts (risky) and list of strings (fallback)
+                        if isinstance(headlines[0], dict):
+                            for h in headlines[:3]:
+                                st.markdown(f"- {h.get('headline', str(h))}")
+                        else:
+                            for h in headlines[:3]:
+                                st.markdown(f"- {h}")
                     else:
                         st.info("No headlines found. (Debug: headlines field is empty or missing)")
                         # Debug: Show the raw data for troubleshooting
