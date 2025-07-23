@@ -113,11 +113,17 @@ def fetch_news_risk(ticker: str, basis: str = "annual"):
         avg_score = np.mean(headline_scores)
         total_risk_score = min(max(avg_score * 2.5, 0), 100) # Simple scaling, can be refined
 
-    # 6. Determine Verdict
-    if total_risk_score >= 75: verdict = "Very High Risk"
-    elif total_risk_score >= 50: verdict = "High Risk"
-    elif total_risk_score >= 25: verdict = "Medium Risk"
-    else: verdict = "Low Risk"
+    # 6. Determine Verdict (improved labels)
+    if total_risk_score >= 85:
+        verdict = "Severe Risk"
+    elif total_risk_score >= 70:
+        verdict = "High Risk"
+    elif total_risk_score >= 50:
+        verdict = "Elevated Risk"
+    elif total_risk_score >= 30:
+        verdict = "Moderate Risk"
+    else:
+        verdict = "Low Risk"
 
     # Fallback: if no risky headlines, show general headlines and add a note
     if not risk_headlines and articles:
