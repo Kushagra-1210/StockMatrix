@@ -1204,6 +1204,10 @@ elif st.session_state.get("chat_mode") == "run_analysis":
                     st.metric(label="Risk Score", value=f"{data.get('risk_score', 0):.1f}/100")
                     st.markdown(f"**Verdict:** `{data.get('verdict', 'N/A')}`")
                     st.markdown("**Recent Risk Headlines:**")
+                    # Show fallback note if present
+                    note = data.get("note")
+                    if note:
+                        st.info(note)
                     headlines = data.get("headlines", [])
                     if headlines:
                         for headline in headlines[:3]:

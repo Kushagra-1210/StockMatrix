@@ -126,3 +126,7 @@ def fetch_news_risk(ticker: str, basis: str = "annual"):
         "red_flags": red_flags,
         "yellow_flags": yellow_flags
     }
+    # Fallback: if no risky headlines, show general headlines and add a note
+    if not risk_headlines and headlines:
+        result["headlines"] = headlines[:3]  # Show up to 3 general headlines
+        result["note"] = "Not much risky headlines found related to the company."
