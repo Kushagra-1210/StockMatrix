@@ -1100,7 +1100,29 @@ elif st.session_state.get("chat_mode") == "run_analysis":
                 else:
                     st.metric(label="Technical Score", value=f"{data.get('ta_score', 0)}/100")
                     st.write(f"**Verdict:** `{data.get('verdict', 'N/A')}`")
-                    # ... you can add more details here if you want ...
+
+                    # --- TECHNICAL INDICATOR BREAKDOWN ---
+                    indicators = data.get('indicators', {})
+                    if indicators:
+                        st.markdown("---")
+                        st.markdown("#### Key Technical Indicators:")
+                        # Show as columns if there are a few, else as a table
+                        if isinstance(indicators, dict):
+                            keys = list(indicators.keys())
+                            n = len(keys)
+                            if n > 0:
+                                cols = st.columns(min(n, 4))
+                                for i, k in enumerate(keys):
+                                    with cols[i % 4]:
+                                        st.metric(k, indicators[k])
+                        else:
+                            st.write(indicators)
+                    # Optionally show any notes
+                    notes = data.get('notes', [])
+                    if notes:
+                        st.markdown("**Technical Analysis Notes:**")
+                        for note in notes:
+                            st.caption(f"📝 {note}")
 
 
         # Only show Fundamental Analysis if its weight is not zero
@@ -1182,8 +1204,15 @@ elif st.session_state.get("chat_mode") == "run_analysis":
                     st.metric(label="Risk Score", value=f"{data.get('risk_score', 0):.1f}/100")
                     st.markdown(f"**Verdict:** `{data.get('verdict', 'N/A')}`")
                     st.markdown("**Recent Risk Headlines:**")
-                    for headline in data.get("headlines", [])[:3]:
-                        st.markdown(f"- {headline}")
+                    headlines = data.get("headlines", [])
+                    if headlines:
+                        for headline in headlines[:3]:
+                            st.markdown(f"- {headline}")
+                    else:
+                        st.info("No headlines found. (Debug: headlines field is empty or missing)")
+                        # Debug: Show the raw data for troubleshooting
+                        with st.expander("Show raw news risk data (debug)"):
+                            st.write(data)
 
         # Display the final investment decision
         if "final_score" in st.session_state and st.session_state.final_score is not None:
