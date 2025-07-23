@@ -99,9 +99,9 @@ st.markdown("""
     }
     /* Change chat message background to light yellow */
     div[data-testid="stChatMessageGroup"] {
-        background-color: #F0F0F0 !important;
+        background-color: #F5F5F5  !important;
         padding: 16px !important;
-        border-top: 2px solid #E0E0E0;
+        border-radius: 12px !important;
     }
     .top-banner {
         padding: 10px 20px;
