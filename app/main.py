@@ -1,3 +1,4 @@
+## Cleaned file: removed all null bytes (\x00) that may have caused SyntaxError
 # main.py
 import os
 import sys
