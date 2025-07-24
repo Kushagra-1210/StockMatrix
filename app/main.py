@@ -34,8 +34,8 @@ def load_user_prefs():
     try:
         if PREFS_KEY in st.session_state:
             return st.session_state[PREFS_KEY]
-        # Try to load from local storage (Streamlit experimental API)
-        prefs = st.experimental_get_query_params().get(PREFS_KEY, [None])[0]
+        # Try to load from local storage (Streamlit query_params API)
+        prefs = st.query_params.get(PREFS_KEY, [None])[0]
         if prefs:
             prefs = json.loads(prefs)
             st.session_state[PREFS_KEY] = prefs
@@ -298,10 +298,6 @@ def cached_get_risk_free_rate():
 # --- DISPLAY HELPER FUNCTIONS ---
 # =============================================================================
 
-
-# =============================================================================
-# --- MAIN APP LOGIC STARTS HERE ---
-# =============================================================================
 
 # ... (The rest of your main.py file, like session state initialization, etc.)
 # --- Load Static Imports ---
