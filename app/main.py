@@ -153,162 +153,54 @@ if contrast_toggle != contrast:
 
 
 # --- System Theme Detection with User Override ---
-import streamlit.components.v1 as components
-import streamlit as st
-import json
 
-def get_system_theme():
-    # Use a hidden component to get system theme via JS
-    theme = st.session_state.get("system_theme", None)
-    if theme is not None:
-        return theme
-    # Inject JS to detect system theme and send to Streamlit
-    components.html('''
-        <script>
-        const theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        window.parent.postMessage({isDark: theme === 'dark'}, '*');
-        window.addEventListener('message', (event) => {
-            if (event.data && event.data.setTheme) {
-                window.parent.postMessage({isDark: event.data.setTheme === 'dark'}, '*');
-            }
-        });
-        </script>
-    ''', height=0)
-    # Fallback to light if not set
-    return "light"
-
-# Listen for theme from frontend (Streamlit custom component workaround)
-if "system_theme" not in st.session_state:
-    st.session_state["system_theme"] = get_system_theme()
-
-# User preference: if not set, use system theme
-theme = user_prefs.get("theme", None)
-if theme is None:
-    theme = st.session_state.get("system_theme", "light")
-
-# Sidebar theme selector (always available)
-theme_toggle = st.sidebar.selectbox(
-    "Theme",
-    ["System Default", "light", "dark"],
-    index=0 if user_prefs.get("theme", None) is None else (1 if theme=="light" else 2)
-)
-if theme_toggle == "System Default":
-    # Remove user override, use system
-    if "theme" in user_prefs:
-        user_prefs.pop("theme")
-        save_user_prefs(user_prefs)
-    theme = st.session_state.get("system_theme", "light")
-else:
-    new_theme = "light" if theme_toggle == "light" else "dark"
-    if user_prefs.get("theme", None) != new_theme:
-        user_prefs["theme"] = new_theme
-        save_user_prefs(user_prefs)
-    theme = new_theme
+# --- Force Dark Mode for All Users ---
+theme = "dark"
 
 # --- CSS for both themes, ensuring all text is visible ---
 
 # --- Improved CSS for font visibility in all themes ---
-css = ""
-if theme == "dark":
-    css += '''
-    <style>
-    body, .stApp {
-        background: #18191A !important;
-        color: #F5F6FA !important;
-    }
-    .block-container, .stSidebar, .stSidebarContent, .stSidebarNav {
-        background: #23272F !important;
-        color: #F5F6FA !important;
-    }
-    .stSidebar, .stSidebarContent, .stSidebarNav, .sidebar-content, .sidebar-section {
-        color: #FFD700 !important;
-    }
-    div[data-testid="stChatMessageGroup"] {
-        background-color: #23272F !important;
-        color: #F5F6FA !important;
-    }
-    .stExpander {
-        background: #23272F !important;
-        color: #F5F6FA !important;
-    }
-    .stButton > button, .stDownloadButton > button {
-        background: linear-gradient(90deg, #FFD700 80%, #FFC300 100%) !important;
-        color: #18191A !important;
-        font-weight: bold !important;
-    }
-    .stTextInput > div > input, .stTextArea > div > textarea, .stSelectbox > div, .stSelectbox label, .stRadio label, .stCheckbox label {
-        color: #F5F6FA !important;
-        background: #23272F !important;
-        font-weight: 500 !important;
-    }
-    .stMarkdown, .stText, .stExpander, .stDataFrame, .stRadio, .stSelectbox, .stButton, .stSlider, .stDownloadButton, .stChatInputContainer, .stChatMessage, .stChatInput, .stTextInput, .stTextArea, .stExpanderHeader, .stExpanderContent, .stAlert, .stSubheader, .stHeader, .stCaption, .stTable, .stDataFrame {
-        color: #F5F6FA !important;
-    }
-    h1, h2, h3, h4, h5, h6, .stSubheader, .stHeader {
-        color: #FFD700 !important;
-        font-weight: 900 !important;
-        letter-spacing: 1px;
-    }
-    </style>
-    '''
-else:
-    css += '''
-    <style>
-    body {
-        background: #F8F9FB !important;
-        min-height: 100vh;
-        color: #18191A !important;
-    }
-    .stApp {
-        background: #F8F9FB !important;
-        min-height: 100vh;
-        color: #18191A !important;
-    }
-    .block-container {
-        background: #fff !important;
-        color: #18191A !important;
-        border-radius: 18px;
-        padding: 24px;
-        box-shadow: 0 4px 32px rgba(10, 31, 68, 0.10);
-    }
-    .stSidebar, .stSidebarContent, .stSidebarNav, .sidebar-content, .sidebar-section {
-        background: #f5f6fa !important;
-        color: #FFD700 !important;
-        border-right: 1.5px solid #e0e0e0 !important;
-        box-shadow: 2px 0 16px rgba(10, 31, 68, 0.06);
-        border-top-right-radius: 18px;
-        border-bottom-right-radius: 18px;
-    }
-    div[data-testid="stChatMessageGroup"] {
-        background-color: #F5F5F5  !important;
-        padding: 16px !important;
-        border-radius: 12px !important;
-        color: #18191A !important;
-    }
-    .stExpander {
-        background: #F8F9FB !important;
-        color: #18191A !important;
-    }
-    .stButton > button, .stDownloadButton > button {
-        background: linear-gradient(90deg, #FFD700 80%, #FFC300 100%) !important;
-        color: #18191A !important;
-        font-weight: bold !important;
-    }
-    .stTextInput > div > input, .stTextArea > div > textarea, .stSelectbox > div, .stSelectbox label, .stRadio label, .stCheckbox label {
-        color: #18191A !important;
-        background: #FFFFFF !important;
-        font-weight: 500 !important;
-    }
-    .stMarkdown, .stText, .stExpander, .stDataFrame, .stRadio, .stSelectbox, .stButton, .stSlider, .stDownloadButton, .stChatInputContainer, .stChatMessage, .stChatInput, .stTextInput, .stTextArea, .stExpanderHeader, .stExpanderContent, .stAlert, .stSubheader, .stHeader, .stCaption, .stTable, .stDataFrame {
-        color: #18191A !important;
-    }
-    h1, h2, h3, h4, h5, h6, .stSubheader, .stHeader {
-        color: #FFD700 !important;
-        font-weight: 900 !important;
-        letter-spacing: 1px;
-    }
-    </style>
-    '''
+css = '''
+<style>
+body, .stApp {
+    background: #18191A !important;
+    color: #F5F6FA !important;
+}
+.block-container, .stSidebar, .stSidebarContent, .stSidebarNav {
+    background: #23272F !important;
+    color: #F5F6FA !important;
+}
+.stSidebar, .stSidebarContent, .stSidebarNav, .sidebar-content, .sidebar-section {
+    color: #FFD700 !important;
+}
+div[data-testid="stChatMessageGroup"] {
+    background-color: #23272F !important;
+    color: #F5F6FA !important;
+}
+.stExpander {
+    background: #23272F !important;
+    color: #F5F6FA !important;
+}
+.stButton > button, .stDownloadButton > button {
+    background: linear-gradient(90deg, #FFD700 80%, #FFC300 100%) !important;
+    color: #18191A !important;
+    font-weight: bold !important;
+}
+.stTextInput > div > input, .stTextArea > div > textarea, .stSelectbox > div, .stSelectbox label, .stRadio label, .stCheckbox label {
+    color: #F5F6FA !important;
+    background: #23272F !important;
+    font-weight: 500 !important;
+}
+.stMarkdown, .stText, .stExpander, .stDataFrame, .stRadio, .stSelectbox, .stButton, .stSlider, .stDownloadButton, .stChatInputContainer, .stChatMessage, .stChatInput, .stTextInput, .stTextArea, .stExpanderHeader, .stExpanderContent, .stAlert, .stSubheader, .stHeader, .stCaption, .stTable, .stDataFrame {
+    color: #F5F6FA !important;
+}
+h1, h2, h3, h4, h5, h6, .stSubheader, .stHeader {
+    color: #FFD700 !important;
+    font-weight: 900 !important;
+    letter-spacing: 1px;
+}
+</style>
+'''
 
 # High-contrast mode CSS
 if contrast:
