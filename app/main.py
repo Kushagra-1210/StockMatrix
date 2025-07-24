@@ -1,5 +1,3 @@
-## Cleaned file: removed all null bytes (\x00) that may have caused SyntaxError
-# main.py
 import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -16,10 +14,6 @@ import importlib
 # --- CONFIGURATION (MUST BE AT THE TOP) ---
 # =============================================================================
 st.set_page_config(page_title="StockMatrix", layout="centered")
-"""
-main.py - StockMatrix main Streamlit app entry point
-Cleaned and rewritten to remove any null bytes or hidden file corruption.
-"""
 
 # --- Persistent User Preferences (Theme, Weights, Last Exchange/Ticker) ---
 import json
