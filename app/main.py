@@ -12,12 +12,6 @@ from datetime import datetime
 import logging
 import importlib
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
-
-# =============================================================================
 
 # --- CONFIGURATION (MUST BE AT THE TOP) ---
 # =============================================================================
