@@ -211,17 +211,25 @@ if contrast:
 
 
 # --- Improved Top Banner: Always visible and styled for theme ---
-if theme == "dark" or contrast:
-    banner_color = "#FFD700"
-    text_color = "#18191A"
-else:
-    banner_color = "#fff"
-    text_color = "#18191A"
-st.markdown(f"""
-    <div class="top-banner" style="width:100%;padding:18px 0 10px 0;text-align:center;background:{banner_color};border-radius:0 0 18px 18px;box-shadow:0 4px 32px rgba(10,31,68,0.10);">
-        <span style='font-size:2.2rem;font-weight:900;letter-spacing:2px;color:{text_color};vertical-align:middle;'>🪙 StockMatrix</span>
-    </div>
-    """, unsafe_allow_html=True)
+banner_color = "#FFD700"
+text_color = "#18191A"
+st.markdown("""
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@900&display=swap" rel="stylesheet">
+<style>
+.top-banner-title {
+    font-family: 'Montserrat', sans-serif !important;
+    font-size: 3.2rem !important;
+    font-weight: 900 !important;
+    letter-spacing: 2px;
+    color: #18191A !important;
+    vertical-align: middle;
+    display: inline-block;
+}
+</style>
+<div class="top-banner" style="width:100%;padding:24px 0 16px 0;text-align:center;background:#FFD700;border-radius:0 0 18px 18px;box-shadow:0 4px 32px rgba(10,31,68,0.10);">
+    <span class="top-banner-title">🪙 StockMatrix</span>
+</div>
+""", unsafe_allow_html=True)
 st.markdown('<meta name="viewport" content="width=device-width, initial-scale=1">', unsafe_allow_html=True)
 st.markdown(css, unsafe_allow_html=True)
 
