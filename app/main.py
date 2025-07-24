@@ -12,7 +12,6 @@ import importlib
 
 
 # --- CONFIGURATION (MUST BE AT THE TOP) ---
-# =============================================================================
 st.set_page_config(page_title="StockMatrix", layout="centered")
 
 # --- Persistent User Preferences (Theme, Weights, Last Exchange/Ticker) ---
@@ -209,15 +208,13 @@ if contrast:
     </style>
     '''
 
-
 # --- Improved Top Banner: Always visible and styled for theme ---
 banner_color = "#FFD700"
 text_color = "#18191A"
 st.markdown("""
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@900&display=swap" rel="stylesheet">
 <style>
 .top-banner-title {
-    font-family: 'Montserrat', sans-serif !important;
+    font-family: 'Times New Roman', Times, serif !important;
     font-size: 3.2rem !important;
     font-weight: 900 !important;
     letter-spacing: 2px;
