@@ -234,7 +234,7 @@ st.markdown('<meta name="viewport" content="width=device-width, initial-scale=1"
 st.markdown(css, unsafe_allow_html=True)
 
 st.markdown("""
-<div class='curated-footer' style='color: #FFFFFF; background: #FFD700; text-align: right; padding: 8px 24px 8px 0; border-radius: 0 0 18px 18px;'>Curated and powered by Kushagra Bansal</div>
+<div class='curated-footer' style='color: #FFFFFF; text-align: right;'>Curated and powered by Kushagra Bansal</div>
 """, unsafe_allow_html=True)
 
 
