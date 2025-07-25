@@ -451,6 +451,6 @@ if user_input:
             "Please type one of these to continue."
         )
 # --- Main Content Rendering -
-from app.views.routing_clean import get_view
+from app.views.routing import get_view
 view_func = get_view(st.session_state.get("chat_mode"))
 view_func(st, user_prefs)
