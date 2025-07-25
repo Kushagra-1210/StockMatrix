@@ -454,4 +454,3 @@ if user_input:
 from app.views.routing import get_view
 view_func = get_view(st.session_state.get("chat_mode"))
 view_func(st, user_prefs)
-
