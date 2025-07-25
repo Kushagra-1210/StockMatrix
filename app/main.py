@@ -227,7 +227,7 @@ st.markdown("""
 }
 </style>
 <div class="top-banner" style="width:100%;padding:24px 0 16px 0;text-align:center;background:#FFD700;border-radius:0 0 18px 18px;box-shadow:0 4px 32px rgba(10,31,68,0.10);">
-    <span class="top-banner-title">🪙 StockMatrix</span>
+    <span class="top-banner-title" style="background: #FFD700; padding: 0 16px; border-radius: 12px; color: #18191A !important;">🪙 StockMatrix</span>
 </div>
 """, unsafe_allow_html=True)
 st.markdown('<meta name="viewport" content="width=device-width, initial-scale=1">', unsafe_allow_html=True)
