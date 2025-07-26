@@ -1,5 +1,4 @@
 # Routing logic for StockMatrix main UI
-
 def get_view(mode):
     if mode == "screener":
         from .screener import show_screener
@@ -19,3 +18,4 @@ def get_view(mode):
     else:
         from .watchlist import show_watchlist
         return show_watchlist
+

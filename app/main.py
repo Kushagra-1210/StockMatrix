@@ -12,7 +12,6 @@ import importlib
 
 
 # --- CONFIGURATION (MUST BE AT THE TOP) ---
-#====================================================
 st.set_page_config(page_title="StockMatrix", layout="centered")
 
 # --- Persistent User Preferences (Theme, Weights, Last Exchange/Ticker) ---
