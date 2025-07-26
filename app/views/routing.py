@@ -1,5 +1,6 @@
 # Routing logic for StockMatrix main UI
 def get_view(mode):
+    """Routing logic for StockMatrix main UI"""
     if mode == "screener":
         from .screener import show_screener
         return show_screener
