@@ -37,6 +37,24 @@ def show_screener(st, user_prefs):
                 max_volatility=max_vol
             )
             st.session_state.screener_results = results
+            # Convert to DataFrame and store for Strategic Insights
+            df = pd.DataFrame(results)
+            st.session_state["stock_data_df"] = df
+            # Real news verdicts from backend.news_risk_analyzer
+            from backend.news_risk_analyzer import fetch_news_risk
+            news_verdicts = {}
+            for _, row in df.iterrows():
+                ticker = row["Ticker"]
+                try:
+                    news_result = fetch_news_risk(ticker)
+                    # Extract a simple verdict string (e.g., 'Minimal Risk', 'High Risk', etc.)
+                    verdict = news_result.get("verdict", "Unknown")
+                    # Remove emoji if present
+                    verdict = verdict.split(": ")[-1] if ": " in verdict else verdict
+                except Exception:
+                    verdict = "Unknown"
+                news_verdicts[ticker] = verdict
+            st.session_state["news_verdicts"] = news_verdicts
         if auto_refresh:
             time.sleep(30)
             st.experimental_rerun()
@@ -46,6 +64,20 @@ def show_screener(st, user_prefs):
     if results:
         st.markdown(f"#### ✅ {len(results)} stocks matched your criteria.")
         df = pd.DataFrame(results)
+        st.session_state["stock_data_df"] = df
+        # Real news verdicts from backend.news_risk_analyzer
+        from backend.news_risk_analyzer import fetch_news_risk
+        news_verdicts = {}
+        for _, row in df.iterrows():
+            ticker = row["Ticker"]
+            try:
+                news_result = fetch_news_risk(ticker)
+                verdict = news_result.get("verdict", "Unknown")
+                verdict = verdict.split(": ")[-1] if ": " in verdict else verdict
+            except Exception:
+                verdict = "Unknown"
+            news_verdicts[ticker] = verdict
+        st.session_state["news_verdicts"] = news_verdicts
         def highlight_cells(row):
             styles = ['' for _ in row]
             try:
