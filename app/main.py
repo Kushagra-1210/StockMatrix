@@ -497,12 +497,12 @@ if st.session_state.get("show_insight_buttons", False):
     st.markdown("**Choose an Insight Option:**")
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("Screener", key="insight_screener_btn"):
+        if st.button("Stock Screener", key="insight_screener_btn"):
             st.session_state.chat_mode = "screener"
             st.session_state.show_insight_buttons = False
             st.rerun()
     with col2:
-        if st.button("Leaderboard", key="insight_leaderboard_btn"):
+        if st.button("Stock Leaderboard", key="insight_leaderboard_btn"):
             st.session_state.chat_mode = "stock_leaderboard"
             st.session_state.show_insight_buttons = False
             st.rerun()
