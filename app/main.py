@@ -371,7 +371,7 @@ if st.sidebar.button("❓ Help / Quick Tour"):
 # --- Strategic Insights Tab Button ---
 if st.sidebar.button("📈 Strategic Insights"):
     st.session_state["chat_mode"] = "strategic_insights"
-    st.experimental_rerun()
+    st.rerun()
 
 
 # --- Export/Share Insights ---
