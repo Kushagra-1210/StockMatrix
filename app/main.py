@@ -356,6 +356,7 @@ if not user_prefs.get("onboarded", False):
             save_user_prefs(user_prefs)
 
 
+
 # --- Help Button for Interactive Tips ---
 if st.sidebar.button("❓ Help / Quick Tour"):
     st.info("""
@@ -366,6 +367,11 @@ if st.sidebar.button("❓ Help / Quick Tour"):
     - Add stocks to your watchlist for quick access.
     - Use the leaderboard and screener for discovery.
     """)
+
+# --- Strategic Insights Tab Button ---
+if st.sidebar.button("📈 Strategic Insights"):
+    st.session_state["chat_mode"] = "strategic_insights"
+    st.experimental_rerun()
 
 
 # --- Export/Share Insights ---

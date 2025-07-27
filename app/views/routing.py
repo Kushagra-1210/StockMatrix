@@ -16,6 +16,9 @@ def get_view(mode):
     elif mode == "onboarding":
         from .onboarding import show_onboarding
         return show_onboarding
+    elif mode == "strategic_insights":
+        from .strategic_insights import show_strategic_insights
+        return show_strategic_insights
     else:
         from .watchlist import show_watchlist
         return show_watchlist
