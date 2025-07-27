@@ -2,6 +2,7 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import streamlit as st
+from config.ticker_lists import TICKER_TO_NAME
 import yfinance as yf
 from backend.data_fetcher import get_ticker_data
 import streamlit.components.v1 as components
@@ -99,13 +100,16 @@ from backend.report_generator import generate_pdf_report, generate_csv_report
 
 from collections import OrderedDict
 
+
 # --- Watchlist (Personalized) ---
 watchlist = user_prefs.get("watchlist", [])
 st.sidebar.markdown("---")
 st.sidebar.markdown("### ⭐ Watchlist")
 if watchlist:
     for ticker in watchlist:
-        if st.sidebar.button(f"{ticker}", key=f"watchlist_{ticker}"):
+        company_name = TICKER_TO_NAME.get(ticker.upper(), "Unknown Company")
+        label = f"{ticker} - {company_name}"
+        if st.sidebar.button(label, key=f"watchlist_{ticker}"):
             st.session_state["run_analysis_ticker"] = ticker
             st.session_state["chat_mode"] = "run_analysis"
             st.experimental_rerun()
@@ -122,12 +126,16 @@ if st.sidebar.button("Add", key="add_watchlist_btn") and add_ticker:
         st.sidebar.success(f"Added {add_ticker.upper()} to watchlist!")
         st.experimental_rerun()
 if watchlist:
-    remove_ticker = st.sidebar.selectbox("Remove from Watchlist", ["-"] + watchlist, key="remove_watchlist")
-    if remove_ticker != "-" and st.sidebar.button("Remove", key="remove_watchlist_btn"):
-        watchlist = [t for t in watchlist if t != remove_ticker]
-        user_prefs["watchlist"] = watchlist
-        save_user_prefs(user_prefs)
-        st.experimental_rerun()
+    remove_options = ["-"] + [f"{t} - {TICKER_TO_NAME.get(t.upper(), 'Unknown Company')}" for t in watchlist]
+    remove_selection = st.sidebar.selectbox("Remove from Watchlist", remove_options, key="remove_watchlist")
+    if remove_selection != "-":
+        # Extract ticker from selection (before the first ' - ')
+        remove_ticker = remove_selection.split(" - ")[0]
+        if st.sidebar.button("Remove", key="remove_watchlist_btn"):
+            watchlist = [t for t in watchlist if t != remove_ticker]
+            user_prefs["watchlist"] = watchlist
+            save_user_prefs(user_prefs)
+            st.experimental_rerun()
 
 
 # --- Accessibility: High-Contrast Mode ---
@@ -359,11 +367,14 @@ if st.sidebar.button("❓ Help / Quick Tour"):
     - Use the leaderboard and screener for discovery.
     """)
 
+
 # --- Export/Share Insights ---
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 📤 Export/Share Insights")
 if st.session_state.get("final_score") is not None:
-    summary = f"Stock: {st.session_state.get('run_analysis_ticker', '')}\nScore: {st.session_state['final_score']}\nVerdict: {st.session_state['final_verdict']}"
+    ticker = st.session_state.get('run_analysis_ticker', '')
+    company_name = TICKER_TO_NAME.get(ticker.upper(), "Unknown Company")
+    summary = f"Stock: {ticker} - {company_name}\nScore: {st.session_state['final_score']}\nVerdict: {st.session_state['final_verdict']}"
     st.sidebar.download_button("Download Summary", summary, file_name="stockmatrix_summary.txt")
     st.sidebar.code(summary, language="text")
     st.sidebar.caption("Copy and share this summary anywhere!")
