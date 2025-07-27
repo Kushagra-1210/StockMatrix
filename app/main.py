@@ -428,7 +428,6 @@ if user_input:
     # Initialize all variables with default values
     response = None
     screener_data = None
-    context = None  # Explicitly initialize context
 
     # Handle special commands
     if user_input.lower() == "screener":
@@ -454,7 +453,7 @@ if user_input:
         st.session_state.show_insight_buttons = True
         st.rerun()
     else:
-        response, screener_data, context = handle_chat_command(user_input)
+        response, screener_data = handle_chat_command(user_input)
         if "chat_mode" not in st.session_state:
             st.session_state.chat_mode = None
 
@@ -464,7 +463,7 @@ if user_input:
         if st.session_state.get("chat_mode") in [None, ""]:
             st.chat_message("assistant").markdown(response)
         # For specific modes, let their sections handle the display
-    
+
     # Handle screener data if present
     if screener_data:
         st.dataframe(screener_data)
