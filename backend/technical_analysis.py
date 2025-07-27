@@ -147,7 +147,10 @@ def analyze_technical_indicators(ticker: str, basis: str = "annual") -> dict:
         scores['MACD'] = 10 if macd_hist.iloc[-1] > 0 else 0
         scores['RSI'] = _normalize_rsi_stoch(rsi.iloc[-1])
         scores['Stoch'] = _normalize_rsi_stoch(stoch_k.iloc[-1])
-        scores['Momentum'] = _normalize_momentum(momentum.last('50D'))
+        scores['SMA200'] = 10 if close.iloc[-1] > sma200 else 0
+        last_50 = momentum.loc[momentum.index > (momentum.index.max() - pd.Timedelta(days=50))]
+        scores['Momentum'] = _normalize_momentum(last_50)
+        
         scores['ATR'] = _normalize_volatility(atr, close.iloc[-1])
         scores['BBW'] = 10 - max(0, min(10, bbw)) # Lower width = higher score
         scores['OBV'] = 10 if obv.diff().iloc[-1] > 0 else 0
