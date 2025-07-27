@@ -1,5 +1,7 @@
 
+
 # config/ticker_lists.py
+__all__ = ["fallback_tickers", "TICKER_TO_NAME"]
 
 fallback_tickers = {
     "NSE": [
