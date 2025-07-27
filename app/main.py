@@ -493,7 +493,7 @@ if user_input:
         )
 
 # --- Show Insight Options if Flag is Set (for IG command) ---
-if st.session_state.get("show_insight_buttons", False):
+if st.session_state.get("chat_mode") == "insight_generation":
     st.markdown("**Choose an Insight Option:**")
     col1, col2 = st.columns(2)
     with col1:
