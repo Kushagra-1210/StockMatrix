@@ -464,9 +464,22 @@ if user_input:
             st.chat_message("assistant").markdown(response)
         # For specific modes, let their sections handle the display
 
-    # Handle screener data if present
-    if screener_data:
-        st.dataframe(screener_data)
+
+    # Handle screener data if present and valid
+    import pandas as pd
+    if screener_data is not None:
+        if isinstance(screener_data, pd.DataFrame):
+            try:
+                st.dataframe(screener_data)
+            except Exception:
+                st.warning("Could not display screener data as a table.")
+        elif isinstance(screener_data, list) and screener_data and isinstance(screener_data[0], dict):
+            try:
+                st.dataframe(pd.DataFrame(screener_data))
+            except Exception:
+                st.warning("Could not display screener data as a table.")
+        else:
+            st.info(str(screener_data))
 
     # Handle invalid commands
     if (not response and 
