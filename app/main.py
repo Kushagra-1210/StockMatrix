@@ -186,6 +186,19 @@ h1, h2, h3, h4, h5, h6, .stSubheader, .stHeader {
     font-weight: 900 !important;
     letter-spacing: 1px;
 }
+/* Dropdown selector styling */
+.stSelectbox > div {
+    background: linear-gradient(90deg, #FFD700, #FFC300) !important;
+    color: #18191A !important;
+    font-weight: bold !important;
+    border-radius: 8px !important;
+}
+
+/* Selected option text */
+.stSelectbox div[data-baseweb="select"] > div {
+    color: #18191A !important;
+    background-color: transparent !important;
+}
 </style>
 '''
 
