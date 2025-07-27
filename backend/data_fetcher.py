@@ -4,6 +4,7 @@ import pickle
 import time
 from typing import Dict, Any
 import yfinance as yf
+import pandas as pd
 
 # Directory for persistent cache
 data_cache_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'cache')
@@ -64,41 +65,53 @@ class DataFetcher:
             t.join()
         return results
 
-    def get_data(self, ticker: str, data_type: str):
-        """
-        Gets a single data type for a ticker, using memory cache, disk cache, or yfinance as needed.
-        """
-        key = f"{ticker}_{data_type}"
-        # 1. Check in-memory cache
-        if key in self.memory_cache:
-            return self.memory_cache[key]
-        # 2. Check persistent cache
-        with cache_lock:
-            cached = _load_cache(ticker, data_type)
-        if cached is not None:
-            self.memory_cache[key] = cached
-            return cached
-        # 3. Fetch from yfinance
-        yf_ticker = yf.Ticker(ticker)
+def get_data(self, ticker: str, data_type: str):
+    key = f"{ticker}_{data_type}"
+
+    # 1. Check in-memory cache
+    if key in self.memory_cache:
+        return self.memory_cache[key]
+
+    # 2. Check persistent cache
+    with cache_lock:
+        cached = _load_cache(ticker, data_type)
+    if cached is not None:
+        self.memory_cache[key] = cached
+        return cached
+
+    # 3. Fetch from yfinance
+    yf_ticker = yf.Ticker(ticker)
+    data = None
+
+    try:
         if data_type == 'info':
             data = yf_ticker.info
         elif data_type == 'financials':
-            data = yf_ticker.financials.to_dict() if hasattr(yf_ticker.financials, 'to_dict') else dict(yf_ticker.financials)
+            data = yf_ticker.financials.to_dict()
         elif data_type == 'balance_sheet':
-            data = yf_ticker.balance_sheet.to_dict() if hasattr(yf_ticker.balance_sheet, 'to_dict') else dict(yf_ticker.balance_sheet)
+            data = yf_ticker.balance_sheet.to_dict()
         elif data_type == 'cashflow':
-            data = yf_ticker.cashflow.to_dict() if hasattr(yf_ticker.cashflow, 'to_dict') else dict(yf_ticker.cashflow)
+            data = yf_ticker.cashflow.to_dict()
         elif data_type == 'earnings':
-            data = yf_ticker.earnings.to_dict() if hasattr(yf_ticker.earnings, 'to_dict') else dict(yf_ticker.earnings)
+            # Replace deprecated 'earnings' with income_stmt fallback
+            income_stmt = yf_ticker.income_stmt
+            if isinstance(income_stmt, pd.DataFrame) and "Net Income" in income_stmt.index:
+                data = income_stmt.loc["Net Income"].to_dict()
+            else:
+                data = {}
         elif data_type == 'history':
-            data = yf_ticker.history(period='max').to_dict() if hasattr(yf_ticker.history(period='max'), 'to_dict') else dict(yf_ticker.history(period='max'))
-        else:
-            data = None
-        # 4. Save to caches
-        self.memory_cache[key] = data
-        with cache_lock:
-            _save_cache(ticker, data_type, data)
-        return data
+            hist_df = yf_ticker.history(period='max')
+            data = hist_df.to_dict() if isinstance(hist_df, pd.DataFrame) else {}
+    except Exception as e:
+        data = {}
+
+    # 4. Save to caches
+    self.memory_cache[key] = data
+    with cache_lock:
+        _save_cache(ticker, data_type, data)
+
+    return data
+
 
 # Singleton instance for app-wide use
 data_fetcher = DataFetcher()
