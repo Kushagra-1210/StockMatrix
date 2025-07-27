@@ -112,7 +112,7 @@ if watchlist:
         if st.sidebar.button(label, key=f"watchlist_{ticker}"):
             st.session_state["run_analysis_ticker"] = ticker
             st.session_state["chat_mode"] = "run_analysis"
-            st.experimental_rerun()
+            st.rerun()
 else:
     st.sidebar.caption("No stocks in your watchlist yet.")
 
@@ -124,7 +124,7 @@ if st.sidebar.button("Add", key="add_watchlist_btn") and add_ticker:
         user_prefs["watchlist"] = watchlist
         save_user_prefs(user_prefs)
         st.sidebar.success(f"Added {add_ticker.upper()} to watchlist!")
-        st.experimental_rerun()
+        st.rerun()
 if watchlist:
     remove_options = ["-"] + [f"{t} - {TICKER_TO_NAME.get(t.upper(), 'Unknown Company')}" for t in watchlist]
     remove_selection = st.sidebar.selectbox("Remove from Watchlist", remove_options, key="remove_watchlist")
@@ -135,7 +135,7 @@ if watchlist:
             watchlist = [t for t in watchlist if t != remove_ticker]
             user_prefs["watchlist"] = watchlist
             save_user_prefs(user_prefs)
-            st.experimental_rerun()
+            st.rerun()
 
 
 # --- Accessibility: High-Contrast Mode ---
@@ -491,6 +491,24 @@ if user_input:
             "- Insight Generation (IG)\n\n"
             "Please type one of these to continue."
         )
+
+# --- Show Insight Options if Flag is Set (for IG command) ---
+if st.session_state.get("show_insight_buttons", False):
+    st.markdown("**Choose an Insight Option:**")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Screener", key="insight_screener_btn"):
+            st.session_state.chat_mode = "screener"
+            st.session_state.show_insight_buttons = False
+            st.rerun()
+    with col2:
+        if st.button("Leaderboard", key="insight_leaderboard_btn"):
+            st.session_state.chat_mode = "stock_leaderboard"
+            st.session_state.show_insight_buttons = False
+            st.rerun()
+    # Optionally add more insight options here
+    # Reset flag after showing
+    st.session_state.show_insight_buttons = False
 # --- Main Content Rendering -
 from app.views.routing import get_view
 view_func = get_view(st.session_state.get("chat_mode"))
