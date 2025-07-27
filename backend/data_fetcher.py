@@ -81,29 +81,44 @@ def get_data(self, ticker: str, data_type: str):
 
     # 3. Fetch from yfinance
     yf_ticker = yf.Ticker(ticker)
-    data = None
+    data = {}
 
     try:
         if data_type == 'info':
-            data = yf_ticker.info
+            data = yf_ticker.info or {}
+
         elif data_type == 'financials':
-            data = yf_ticker.financials.to_dict()
+            fin = yf_ticker.financials
+            data = fin.to_dict() if isinstance(fin, pd.DataFrame) else {}
+
         elif data_type == 'balance_sheet':
-            data = yf_ticker.balance_sheet.to_dict()
+            bs = yf_ticker.balance_sheet
+            data = bs.to_dict() if isinstance(bs, pd.DataFrame) else {}
+
         elif data_type == 'cashflow':
-            data = yf_ticker.cashflow.to_dict()
+            cf = yf_ticker.cashflow
+            data = cf.to_dict() if isinstance(cf, pd.DataFrame) else {}
+
         elif data_type == 'earnings':
-            # Replace deprecated 'earnings' with income_stmt fallback
-            income_stmt = yf_ticker.income_stmt
-            if isinstance(income_stmt, pd.DataFrame) and "Net Income" in income_stmt.index:
-                data = income_stmt.loc["Net Income"].to_dict()
+            stmt = yf_ticker.income_stmt
+            if isinstance(stmt, pd.DataFrame) and "Net Income" in stmt.index:
+                data = stmt.loc["Net Income"].to_dict()
             else:
                 data = {}
+
         elif data_type == 'history':
             hist_df = yf_ticker.history(period='max')
             data = hist_df.to_dict() if isinstance(hist_df, pd.DataFrame) else {}
+
     except Exception as e:
         data = {}
+
+    # 4. Save to cache
+    self.memory_cache[key] = data
+    with cache_lock:
+        _save_cache(ticker, data_type, data)
+
+    return data
 
     # 4. Save to caches
     self.memory_cache[key] = data
