@@ -21,7 +21,7 @@ def show_run_analysis(st, user_prefs):
         st.session_state["run_analysis_ticker"] = tickers[0] if tickers else None
         st.session_state.last_exchange = exchange
     st.markdown("2. Choose a Stock", unsafe_allow_html=True)
-    selected_ticker = st.selectbox("", tickers, key="run_analysis_ticker")
+    selected_ticker = st.selectbox("Choose a stock", tickers, key="run_analysis_ticker")
     st.markdown('</div>', unsafe_allow_html=True)
     st.markdown("---")
     if 'analysis_expander_open' not in st.session_state:
