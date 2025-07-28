@@ -78,9 +78,13 @@ def analyze_technical_indicators(ticker: str, basis: str = "annual") -> dict:
     try:
         # Use centralized fetcher for price history
         ticker_data = get_ticker_data(ticker)
+        if not isinstance(ticker_data, dict):
+            return {"error": f"Invalid data returned for {ticker}: {ticker_data}"}
+
         hist_dict = ticker_data.get("history", {})
-        if not hist_dict or "Close" not in hist_dict:
-            return {"error": "No historical data for TA."}
+        if not isinstance(hist_dict, dict) or "Close" not in hist_dict:
+            return {"error": f"No valid historical data for TA for {ticker}."}
+
         hist = pd.DataFrame(hist_dict)
         # Use last 250 rows for TA (ensure enough for 200-day SMA)
         if len(hist) < 200:
@@ -150,7 +154,7 @@ def analyze_technical_indicators(ticker: str, basis: str = "annual") -> dict:
         scores['SMA200'] = 10 if close.iloc[-1] > sma200 else 0
         last_50 = momentum.loc[momentum.index > (momentum.index.max() - pd.Timedelta(days=50))]
         scores['Momentum'] = _normalize_momentum(last_50)
-        
+
         scores['ATR'] = _normalize_volatility(atr, close.iloc[-1])
         scores['BBW'] = 10 - max(0, min(10, bbw)) # Lower width = higher score
         scores['OBV'] = 10 if obv.diff().iloc[-1] > 0 else 0
