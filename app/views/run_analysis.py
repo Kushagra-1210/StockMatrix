@@ -15,7 +15,12 @@ def show_run_analysis(st, user_prefs):
     st.markdown("Select Data Basis")
     basis = st.radio(label="", options=["Quarterly", "Annual"], horizontal=True, key="run_analysis_basis")
     st.markdown("1. Choose an Exchange")
-    exchange = st.selectbox("", ["NSE", "HKEX", "NYSE", "LSE", "TSE"], key="run_analysis_exchange")
+    exchange = st.selectbox(
+    label="Select exchange",  # Give it a real label
+    options=["NSE", "HKEX", "NYSE", "LSE", "TSE"],
+    key="run_analysis_exchange",
+    label_visibility="collapsed"  # This hides the label visually but keeps it accessible
+    )
     tickers = get_top_50_tickers(exchange)
     if "last_exchange" not in st.session_state or st.session_state.last_exchange != exchange:
         st.session_state["run_analysis_ticker"] = tickers[0] if tickers else None
