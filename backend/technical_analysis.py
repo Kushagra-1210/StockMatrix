@@ -82,13 +82,14 @@ def analyze_technical_indicators(ticker: str, basis: str = "annual") -> dict:
         logger.debug(f"Ticker data fetched for {ticker}: {type(ticker_data)}")
 
         if not isinstance(ticker_data, dict):
-            return {"error": f"Invalid data returned for {ticker}: {ticker_data}"}
+            return {"error": f"❌ Invalid data format received for {ticker}. Expected dictionary but got {type(ticker_data).__name__}."}
+
         if "error" in ticker_data:
             return ticker_data
-        
+
         hist_dict = ticker_data.get("history", {})
-        if not isinstance(hist_dict, dict) or "Close" not in hist_dict:
-            return {"error": f"No valid historical data for TA for {ticker}."}
+        if not isinstance(hist_dict, dict) or not hist_dict:
+            return {"error": f"❌ No valid historical data for TA for {ticker}."}
 
         hist = pd.DataFrame(hist_dict)
         # Use last 250 rows for TA (ensure enough for 200-day SMA)

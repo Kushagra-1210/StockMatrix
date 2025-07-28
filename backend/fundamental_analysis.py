@@ -204,8 +204,6 @@ def get_beneish_m_score(stock):
         logger.error(f"Beneish calculation failed for {stock.ticker}: {e}")
         return {"error": "An unexpected error occurred during Beneish calculation."}
 
-# --- REPLACE your main orchestrator function with this ---
-from backend.data_fetcher import get_ticker_data
 
 def analyze_fundamentals(ticker_data: dict, basis: str = "annual"):
     """
