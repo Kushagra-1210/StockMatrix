@@ -1,3 +1,6 @@
+import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from backend.market_selector import get_top_50_tickers
 from backend.data_fetcher import get_ticker_data
 from datetime import datetime
@@ -132,7 +135,7 @@ def show_run_analysis(st, user_prefs):
                         final_score = round(
                             (user_weights["fa"] / 100) * st.session_state.fundamentals.get("Fundamental Score", 0) +
                             (user_weights["ta"] / 100) * st.session_state.technicals.get("ta_score", 0) +
-                            (user_weights["sentiment"] / 100) * st.session_state.perception.get("score", 0) * 10 +
+                            (user_weights["sentiment"] / 100) * st.session_state.perception.get("score", 0) +
                             (user_weights["news"] / 100) * st.session_state.risk.get("risk_score", 50), 2
                         )
                         final_verdict = ("Strong Buy" if final_score >= 80 else "Buy" if final_score >= 65 else "Hold" if final_score >= 50 else "Sell")
