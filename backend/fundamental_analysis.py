@@ -1,10 +1,10 @@
 # backend/fundamental_analysis.py
-import yfinance as yf
 import pandas as pd
 import numpy as np
 import logging
 
 logger = logging.getLogger(__name__)
+from backend.data_fetcher import get_ticker_data
 
 # --- Helper function to safely access financial data ---
 def _safe_get(df, keys, year=0):
@@ -207,21 +207,20 @@ def get_beneish_m_score(stock):
 # --- REPLACE your main orchestrator function with this ---
 from backend.data_fetcher import get_ticker_data
 
-def analyze_fundamentals(ticker: str, basis: str = "annual"):
+def analyze_fundamentals(ticker_data: dict, basis: str = "annual"):
     """
-    Orchestrates the 3-factor fundamental analysis model using centralized data fetcher.
-    Final score is now an average of only the successful models.
+    Orchestrates the 3-factor fundamental analysis model using pre-fetched data.
     """
-    # Use centralized fetcher for all financial data
-    ticker_data = get_ticker_data(ticker)
-    class StockData:
-        def __init__(self, ticker_data, ticker):
-            self.ticker = ticker
-            self.info = ticker_data.get("info", {})
-            self.financials = pd.DataFrame(ticker_data.get("financials", {}))
-            self.balance_sheet = pd.DataFrame(ticker_data.get("balance_sheet", {}))
-            self.cashflow = pd.DataFrame(ticker_data.get("cashflow", {}))
-    stock = StockData(ticker_data, ticker)
+    # Create a compatible "stock" object from the pre-fetched data dictionary
+    class StockObject:
+        def __init__(self, data):
+            self.info = data.get("info", {})
+            self.financials = pd.DataFrame.from_dict(data.get("financials", {}))
+            self.balance_sheet = pd.DataFrame.from_dict(data.get("balance_sheet", {}))
+            self.cashflow = pd.DataFrame.from_dict(data.get("cashflow", {}))
+            self.ticker = self.info.get("symbol", "N/A")
+
+    stock = StockObject(ticker_data)
 
     successful_scores = []
     breakdown = {}
