@@ -112,7 +112,7 @@ if watchlist:
         if st.sidebar.button(label, key=f"watchlist_{ticker}"):
             st.session_state["run_analysis_ticker"] = ticker
             st.session_state["chat_mode"] = "run_analysis"
-            st.experimental_rerun()
+            st.rerun()
 else:
     st.sidebar.caption("No stocks in your watchlist yet.")
 
@@ -124,7 +124,7 @@ if st.sidebar.button("Add", key="add_watchlist_btn") and add_ticker:
         user_prefs["watchlist"] = watchlist
         save_user_prefs(user_prefs)
         st.sidebar.success(f"Added {add_ticker.upper()} to watchlist!")
-        st.experimental_rerun()
+        st.rerun()
 if watchlist:
     remove_options = ["-"] + [f"{t} - {TICKER_TO_NAME.get(t.upper(), 'Unknown Company')}" for t in watchlist]
     remove_selection = st.sidebar.selectbox("Remove from Watchlist", remove_options, key="remove_watchlist")
@@ -135,7 +135,7 @@ if watchlist:
             watchlist = [t for t in watchlist if t != remove_ticker]
             user_prefs["watchlist"] = watchlist
             save_user_prefs(user_prefs)
-            st.experimental_rerun()
+            st.rerun()
 
 
 # --- Accessibility: High-Contrast Mode ---
@@ -356,6 +356,7 @@ if not user_prefs.get("onboarded", False):
             save_user_prefs(user_prefs)
 
 
+
 # --- Help Button for Interactive Tips ---
 if st.sidebar.button("❓ Help / Quick Tour"):
     st.info("""
@@ -366,6 +367,11 @@ if st.sidebar.button("❓ Help / Quick Tour"):
     - Add stocks to your watchlist for quick access.
     - Use the leaderboard and screener for discovery.
     """)
+
+# --- Strategic Insights Tab Button ---
+if st.sidebar.button("📈 Strategic Insights"):
+    st.session_state["chat_mode"] = "strategic_insights"
+    st.rerun()
 
 
 # --- Export/Share Insights ---
@@ -422,7 +428,6 @@ if user_input:
     # Initialize all variables with default values
     response = None
     screener_data = None
-    context = None  # Explicitly initialize context
 
     # Handle special commands
     if user_input.lower() == "screener":
@@ -448,7 +453,7 @@ if user_input:
         st.session_state.show_insight_buttons = True
         st.rerun()
     else:
-        response, screener_data, context = handle_chat_command(user_input)
+        response, screener_data = handle_chat_command(user_input)
         if "chat_mode" not in st.session_state:
             st.session_state.chat_mode = None
 
@@ -458,10 +463,23 @@ if user_input:
         if st.session_state.get("chat_mode") in [None, ""]:
             st.chat_message("assistant").markdown(response)
         # For specific modes, let their sections handle the display
-    
-    # Handle screener data if present
-    if screener_data:
-        st.dataframe(screener_data)
+
+
+    # Handle screener data if present and valid
+    import pandas as pd
+    if screener_data is not None:
+        if isinstance(screener_data, pd.DataFrame):
+            try:
+                st.dataframe(screener_data)
+            except Exception:
+                st.warning("Could not display screener data as a table.")
+        elif isinstance(screener_data, list) and screener_data and isinstance(screener_data[0], dict):
+            try:
+                st.dataframe(pd.DataFrame(screener_data))
+            except Exception:
+                st.warning("Could not display screener data as a table.")
+        else:
+            st.info(str(screener_data))
 
     # Handle invalid commands
     if (not response and 
@@ -473,6 +491,24 @@ if user_input:
             "- Insight Generation (IG)\n\n"
             "Please type one of these to continue."
         )
+
+# --- Show Insight Options if Flag is Set (for IG command) ---
+if st.session_state.get("chat_mode") == "insight_generation":
+    st.markdown("**Choose an Insight Option:**")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Stock Screener", key="insight_screener_btn"):
+            st.session_state.chat_mode = "screener"
+            st.session_state.show_insight_buttons = False
+            st.rerun()
+    with col2:
+        if st.button("Stock Leaderboard", key="insight_leaderboard_btn"):
+            st.session_state.chat_mode = "stock_leaderboard"
+            st.session_state.show_insight_buttons = False
+            st.rerun()
+    # Optionally add more insight options here
+    # Reset flag after showing
+    st.session_state.show_insight_buttons = False
 # --- Main Content Rendering -
 from app.views.routing import get_view
 view_func = get_view(st.session_state.get("chat_mode"))
