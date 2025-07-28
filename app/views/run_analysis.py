@@ -13,7 +13,13 @@ def show_run_analysis(st, user_prefs):
     st.subheader("⚙️ Run Analysis Module")
     st.markdown('<div class="ra-selectbox-wrapper">', unsafe_allow_html=True)
     st.markdown("Select Data Basis")
-    basis = st.radio(label="", options=["Quarterly", "Annual"], horizontal=True, key="run_analysis_basis")
+    basis = st.radio(
+        label="Select basis",
+        options=["Quarterly", "Annual"],
+        horizontal=True,
+        key="run_analysis_basis",
+        label_visibility="collapsed"
+    )
     st.markdown("1. Choose an Exchange")
     exchange = st.selectbox(
     label="Select exchange",  # Give it a real label
