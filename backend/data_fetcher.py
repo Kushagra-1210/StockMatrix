@@ -9,7 +9,7 @@ import streamlit as st
 logger = logging.getLogger(__name__)
 
 @st.cache_data(ttl=3600)  # Cache data for 1 hour
-def get_ticker_data(ticker_str: str):
+def get_ticker_data(ticker_str: str) -> dict:
     """
     Fetch all financial and historical data for a given stock ticker using yfinance.
     Includes validation to ensure data isn't empty and logs meaningful errors.

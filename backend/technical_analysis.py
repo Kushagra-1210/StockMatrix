@@ -6,6 +6,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 # --- Helper functions to normalize indicator values to a 0-10 scale ---
 def _normalize_rsi_stoch(value):
     """Normalizes RSI/Stochastic. Lower values (oversold) get a higher score."""
@@ -78,9 +79,13 @@ def analyze_technical_indicators(ticker: str, basis: str = "annual") -> dict:
     try:
         # Use centralized fetcher for price history
         ticker_data = get_ticker_data(ticker)
+        logger.debug(f"Ticker data fetched for {ticker}: {type(ticker_data)}")
+
         if not isinstance(ticker_data, dict):
             return {"error": f"Invalid data returned for {ticker}: {ticker_data}"}
-
+        if "error" in ticker_data:
+            return ticker_data
+        
         hist_dict = ticker_data.get("history", {})
         if not isinstance(hist_dict, dict) or "Close" not in hist_dict:
             return {"error": f"No valid historical data for TA for {ticker}."}
