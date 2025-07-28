@@ -2,7 +2,7 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import streamlit as st
-from config.ticker_lists import TICKER_TO_NAME
+from config.ticker_lists import fallback_tickers,TICKER_TO_NAME
 import yfinance as yf
 from backend.data_fetcher import get_ticker_data
 import streamlit.components.v1 as components
