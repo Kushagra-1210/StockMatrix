@@ -9,7 +9,12 @@ def show_screener(st, user_prefs):
     st.subheader("📊 Screener Engine")
     basis = st.radio("Select Analysis Period", ["Quarterly", "Annual"], horizontal=True, key="screener_basis")
     st.markdown("**Choose an exchange**")
-    exchange = st.selectbox("", ["NSE", "HKEX", "NYSE", "LSE", "TSE"], key="screener_exchange")
+    exchange = st.selectbox(
+        label="Select exchange",
+        options=["NSE", "HKEX", "NYSE", "LSE", "TSE"],
+        key="screener_exchange",
+        label_visibility="collapsed"
+    )
     col1, col2, col3 = st.columns(3)
     with col1:
         min_upside = col1.slider("Minimum DCF Upside (%)", -50, 200, 20)
