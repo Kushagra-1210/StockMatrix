@@ -65,22 +65,31 @@ def analyze_technical_indicators(ticker: str, basis: str = "annual") -> dict:
         notes, scores = [], {}
         close = hist['Close']; low = hist['Low']; high = hist['High']; volume = hist['Volume']
 
-        # SMA Trend
+        # SMA Trend with slope logic
         if len(hist) >= 200:
             price = close.iloc[-1]
-            sma50 = close.rolling(window=50).mean().iloc[-1]
-            sma200 = close.rolling(window=200).mean().iloc[-1]
-            if price > sma50 > sma200: scores['SMA_Trend'] = 10.0
-            elif sma50 > price > sma200: scores['SMA_Trend'] = 7.0
-            elif sma50 > sma200: scores['SMA_Trend'] = 6.0
-            elif price < sma50 < sma200: scores['SMA_Trend'] = 0.0
-            elif sma50 < price < sma200: scores['SMA_Trend'] = 3.0
-            else: scores['SMA_Trend'] = 5.0
+            sma50 = close.rolling(window=50).mean()
+            sma200 = close.rolling(window=200).mean()
+            sma_slope_50 = LinearRegression().fit(np.arange(50).reshape(-1, 1), sma50.dropna().values[-50:]).coef_[0]
+            sma_slope_200 = LinearRegression().fit(np.arange(200).reshape(-1, 1), sma200.dropna().values[-200:]).coef_[0]
+            
+            if price > sma50.iloc[-1] > sma200.iloc[-1] and sma_slope_50 > 0 and sma_slope_200 > 0:
+                scores['SMA_Trend'] = 10.0
+            elif sma50.iloc[-1] > price > sma200.iloc[-1] and sma_slope_50 > 0:
+                scores['SMA_Trend'] = 7.0
+            elif sma50.iloc[-1] > sma200.iloc[-1]:
+                scores['SMA_Trend'] = 6.0
+            elif price < sma50.iloc[-1] < sma200.iloc[-1] and sma_slope_50 < 0:
+                scores['SMA_Trend'] = 0.0
+            elif sma50.iloc[-1] < price < sma200.iloc[-1]:
+                scores['SMA_Trend'] = 3.0
+            else:
+                scores['SMA_Trend'] = 5.0
         else:
             scores['SMA_Trend'] = 5.0
-            notes.append("200-day SMA trend could not be calculated.")
+            notes.append("SMA trend could not be fully calculated.")
 
-        # MACD with neutral zone check
+        # MACD with neutral zone
         if len(hist) >= 26:
             ema12 = _calculate_ema(close, 12)
             ema26 = _calculate_ema(close, 26)
@@ -93,7 +102,7 @@ def analyze_technical_indicators(ticker: str, basis: str = "annual") -> dict:
             scores['MACD'] = 5.0
             notes.append("MACD could not be calculated.")
 
-        # RSI + Stochastic
+        # RSI and Stochastic
         if len(hist) >= 14:
             delta = close.diff()
             gain = delta.where(delta > 0, 0).ewm(span=14, adjust=False).mean()
@@ -107,7 +116,7 @@ def analyze_technical_indicators(ticker: str, basis: str = "annual") -> dict:
             scores['Stoch'] = normalize_indicator(stoch_k.iloc[-1], 40, 60, bullish_is_high=False)
         else:
             scores['RSI'] = 5.0; scores['Stoch'] = 5.0
-            notes.append("RSI and Stochastic could not be calculated.")
+            notes.append("RSI/Stochastic could not be calculated.")
 
         # ADX
         if len(hist) >= 28:
@@ -117,7 +126,7 @@ def analyze_technical_indicators(ticker: str, basis: str = "annual") -> dict:
             scores['ADX_Strength'] = 5.0
             notes.append("ADX could not be calculated.")
 
-        # ATR Volatility (more sensitive logic)
+        # ATR Volatility
         if len(hist) >= 15:
             atr = _calculate_atr(high, low, close, 14).iloc[-1]
             atr_percent = (atr / close.iloc[-1]) * 100
@@ -126,19 +135,22 @@ def analyze_technical_indicators(ticker: str, basis: str = "annual") -> dict:
             scores['ATR_Vol'] = 5.0
             notes.append("ATR Volatility could not be calculated.")
 
-        # OBV with linear regression slope
+        # OBV with regression trend
         if len(hist) >= 20 and 'Volume' in hist.columns:
             obv = (np.sign(close.diff()) * volume).cumsum()
             obv_recent = obv.tail(10).reset_index()
             obv_recent['t'] = range(len(obv_recent))
-            reg = LinearRegression().fit(obv_recent[['t']], obv_recent[0])
-            slope = reg.coef_[0]
-            scores['OBV_Trend'] = 10.0 if slope > 0 else 0.0
+            try:
+                reg = LinearRegression().fit(obv_recent[['t']], obv_recent[0])
+                slope = reg.coef_[0]
+                scores['OBV_Trend'] = 10.0 if slope > 0 else 0.0
+            except Exception:
+                scores['OBV_Trend'] = 5.0
+                notes.append("OBV slope regression failed.")
         else:
             scores['OBV_Trend'] = 5.0
-            notes.append("OBV trend slope could not be calculated.")
+            notes.append("OBV trend could not be calculated.")
 
-        # Final
         final_score = np.mean(list(scores.values())) * 10
         if final_score >= 80: verdict = "🚀 Strong Buy"
         elif final_score >= 65: verdict = "✅ Buy"
