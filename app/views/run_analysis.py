@@ -27,13 +27,24 @@ def show_run_analysis(st, user_prefs):
     key="run_analysis_exchange",
     label_visibility="collapsed"  # This hides the label visually but keeps it accessible
     )
+
     tickers = get_top_50_tickers(exchange)
     if "last_exchange" not in st.session_state or st.session_state.last_exchange != exchange:
         st.session_state["run_analysis_ticker"] = tickers[0] if tickers else None
         st.session_state.last_exchange = exchange
+
     st.markdown("2. Choose a Stock", unsafe_allow_html=True)
     selected_ticker = st.selectbox("Choose a stock", tickers, key="run_analysis_ticker")
+
     st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("3. Select the Stock's Industry", unsafe_allow_html=True)
+    industry = st.selectbox(
+        "Industry",
+        options=['default', 'Energy', 'FMCG', 'Banking', 'Technology', 'Healthcare', 'Industrials', 'Consumer Cyclical'],
+        key="run_analysis_industry",
+        help="Select the industry to use appropriate benchmarks for technical analysis."
+    )
+
     st.markdown("---")
     if 'analysis_expander_open' not in st.session_state:
         st.session_state.analysis_expander_open = True
@@ -137,7 +148,13 @@ def show_run_analysis(st, user_prefs):
             with st.spinner(f"🔍 Running {basis.lower()} analysis for {selected_ticker}..."):
                 try:
                     from backend import technical_analysis as ta_mod, fundamental_analysis as fa_mod, sentiment_analysis as sentiment_mod, news_risk_analyzer as news_mod
-                    st.session_state.technicals = ta_mod.analyze_technical_indicators(selected_ticker, basis=basis.lower())
+                    
+                    st.session_state.technicals = ta_mod.analyze_technical_indicators(
+                        ticker = selected_ticker, 
+                        industry=industry, 
+                        basis=basis.lower()
+                        )
+
                     st.session_state.fundamentals = fa_mod.analyze_fundamentals(selected_ticker, basis=basis.lower())
                     st.session_state.perception = sentiment_mod.analyze_perception(selected_ticker)
                     st.session_state.risk = news_mod.fetch_news_risk(selected_ticker, basis=basis.lower())

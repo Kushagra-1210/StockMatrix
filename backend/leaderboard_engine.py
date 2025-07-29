@@ -7,6 +7,7 @@ from .sentiment_analysis import analyze_perception
 from .news_risk_analyzer import fetch_news_risk
 from .market_selector import get_top_50_tickers
 
+from backend.data_fetcher import get_ticker_data
 logger = logging.getLogger(__name__)
 
 def get_leaderboard(exchange: str):
@@ -18,9 +19,15 @@ def get_leaderboard(exchange: str):
     
     for ticker in tickers:
         try:
+            ticker_data = get_ticker_data(ticker)
+            if "error" in ticker_data:
+                logging.warning(f"Skipping {ticker} for leaderboard: Could not fetch data.")
+                continue
+            industry = ticker_data.get("info", {}).get("sector", "default")
+            
             # 1. Call all four advanced analysis modules
             fa = analyze_fundamentals(ticker)
-            ta = analyze_technical_indicators(ticker)
+            ta = analyze_technical_indicators(ticker, industry=industry, basis="annual")
             perception = analyze_perception(ticker)
             news_risk = fetch_news_risk(ticker)
 

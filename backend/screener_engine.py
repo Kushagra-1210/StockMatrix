@@ -20,9 +20,16 @@ def screen_stocks(tickers: list, min_upside: float = 0, min_ta: float = 0, max_v
 
     for ticker in tickers:
         try:
+            ticker_data = get_ticker_data(ticker)
+            if "error" in ticker_data:
+                logging.warning(f"Skipping {ticker} in screener: Could not fetch data.")
+                continue
+            # Get the industry from the 'sector' field, defaulting to 'default'
+            industry = ticker_data.get("info", {}).get("sector", "default")
+
             # Using the new, more powerful fundamental analysis function
             fa = analyze_fundamentals(ticker, basis="annual")
-            ta = analyze_technical_indicators(ticker, basis="annual")
+            ta = analyze_technical_indicators(ticker, industry=industry, basis="annual")
             vol = calculate_volatility(ticker)
 
             if any(isinstance(r, dict) and "error" in r for r in [fa, ta]) or vol is None:
