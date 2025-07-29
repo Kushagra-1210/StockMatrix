@@ -31,7 +31,9 @@ def screen_stocks(tickers: list, min_upside: float = 0, min_ta: float = 0, max_v
 
             # --- CORRECTED FILTERING LOGIC ---
             # Use the helper function to convert the 'Upside' string to a number
-            upside_value = _parse_percentage(fa.get("Upside"))
+            upside_value = None
+            if fa.get("Upside"): # Check if the key exists before parsing
+                upside_value = _parse_percentage(fa.get("Upside"))
 
             if upside_value is not None and upside_value >= min_upside and ta["ta_score"] >= min_ta and vol <= max_volatility:
                 results.append({

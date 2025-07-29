@@ -205,10 +205,15 @@ def get_beneish_m_score(stock):
         return {"error": "An unexpected error occurred during Beneish calculation."}
 
 
-def analyze_fundamentals(ticker_data: dict, basis: str = "annual"):
+def analyze_fundamentals(ticker: str, basis: str = "annual"):
     """
-    Orchestrates the 3-factor fundamental analysis model using pre-fetched data.
+    Orchestrates the 3-factor fundamental analysis model.
     """
+    # Add this block to fetch data internally
+    ticker_data = get_ticker_data(ticker)
+    if "error" in ticker_data:
+        return ticker_data  # Pass the error along if data fetching fails
+
     # Create a compatible "stock" object from the pre-fetched data dictionary
     class StockObject:
         def __init__(self, data):
