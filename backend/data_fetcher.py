@@ -42,7 +42,7 @@ def get_ticker_data(ticker_str: str) -> dict:
         # Convert data to serializable format
         return {
             "info": info_data or {},
-            "history": hist_data.to_dict('index') if not hist_data.empty else {},
+            "history": hist_data.to_dict('list') if not hist_data.empty else {},
             "financials": financials_data.to_dict() if not financials_data.empty else {},
             "balance_sheet": balance_sheet_data.to_dict() if not balance_sheet_data.empty else {},
             "cashflow": cashflow_data.to_dict() if not cashflow_data.empty else {},
