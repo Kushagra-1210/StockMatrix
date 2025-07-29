@@ -133,8 +133,9 @@ def analyze_technical_indicators(ticker: str, industry: str = 'default', basis: 
             signal_line = _calculate_ema(macd_line, 9)
             macd_hist = macd_line - signal_line
             latest_hist = macd_hist.iloc[-1]
-            low, high = thresholds['MACD']
-            scores['MACD'] = normalize_indicator(latest_hist, low, high, bullish_is_high=True)
+            macd_low, macd_high = thresholds['MACD']
+            scores['MACD'] = normalize_indicator(latest_hist, macd_low, macd_high, bullish_is_high=True)
+
         else:
             scores['MACD'] = 5.0
             notes.append("MACD could not be calculated.")
@@ -145,14 +146,15 @@ def analyze_technical_indicators(ticker: str, industry: str = 'default', basis: 
             gain = delta.where(delta > 0, 0).ewm(span=14, adjust=False).mean()
             loss = (-delta.where(delta < 0, 0)).ewm(span=14, adjust=False).mean()
             rsi = 100 - (100 / (1 + (gain / (loss + 1e-6))))
-            low, high = thresholds['RSI']
-            scores['RSI'] = normalize_indicator(rsi.iloc[-1], low, high, bullish_is_high=False)
+            rsi_low, rsi_high = thresholds['RSI']
+            scores['RSI'] = normalize_indicator(rsi.iloc[-1], rsi_low, rsi_high, bullish_is_high=False)
 
             low14 = low.rolling(14).min()
             high14 = high.rolling(14).max()
             stoch_k = 100 * (close - low14) / (high14 - low14 + 1e-6)
-            low, high = thresholds['Stoch']
-            scores['Stoch'] = normalize_indicator(stoch_k.iloc[-1], low, high, bullish_is_high=False)
+            stoch_low, stoch_high = thresholds['Stoch']
+            scores['Stoch'] = normalize_indicator(stoch_k.iloc[-1], stoch_low, stoch_high, bullish_is_high=False)
+
         else:
             scores['RSI'] = 5.0; scores['Stoch'] = 5.0
             notes.append("RSI/Stochastic could not be calculated.")
@@ -160,8 +162,9 @@ def analyze_technical_indicators(ticker: str, industry: str = 'default', basis: 
         # ADX
         if len(hist) >= 28:
             adx = _calculate_adx(high, low, close, 14)
-            low, high = thresholds['ADX']
-            scores['ADX_Strength'] = normalize_indicator(adx, low, high, bullish_is_high=True)
+            adx_low, adx_high = thresholds['ADX']
+            scores['ADX_Strength'] = normalize_indicator(adx, adx_low, adx_high, bullish_is_high=True)
+
         else:
             scores['ADX_Strength'] = 5.0
             notes.append("ADX could not be calculated.")
@@ -170,8 +173,8 @@ def analyze_technical_indicators(ticker: str, industry: str = 'default', basis: 
         if len(hist) >= 15:
             atr = _calculate_atr(high, low, close, 14).iloc[-1]
             atr_percent = (atr / close.iloc[-1]) * 100
-            low, high = thresholds['ATR']
-            scores['ATR_Vol'] = normalize_volatility(atr_percent, low, high)
+            atr_low, atr_high = thresholds['ATR']
+            scores['ATR_Vol'] = normalize_volatility(atr_percent, atr_low, atr_high)
         else:
             scores['ATR_Vol'] = 5.0
             notes.append("ATR Volatility could not be calculated.")
