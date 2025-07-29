@@ -171,4 +171,4 @@ def analyze_technical_indicators(ticker: str, basis: str = "annual") -> dict:
 
     except Exception as e:
         logger.error(f"Failed to perform TA for {ticker}: {e}", exc_info=True)
-        return {"error": f"Could not perform TA. Error: {e}"}
+        return {"error": f"Could not perform TA. Error: {e}"} 
