@@ -20,7 +20,7 @@ def get_ticker_data(ticker_str: str) -> dict:
 
         with ThreadPoolExecutor(max_workers=5) as executor:
             info_future = executor.submit(lambda: stock.info)
-            hist_future = executor.submit(lambda: stock.history(period="1y"))
+            hist_future = executor.submit(lambda: stock.history(period="max"))
             financials_future = executor.submit(lambda: stock.financials)
             balance_sheet_future = executor.submit(lambda: stock.balance_sheet)
             cashflow_future = executor.submit(lambda: stock.cashflow)
