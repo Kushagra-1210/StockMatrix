@@ -22,8 +22,14 @@ def normalize_indicator(value, neutral_low, neutral_high, bullish_is_high=True):
 
 def normalize_volatility(vol_percent):
     if pd.isna(vol_percent): return 5.0
-    score = 10 - ((vol_percent - 1.5) / (7.0 - 1.5)) * 10
-    return max(0.0, min(10.0, score))
+    if vol_percent < 2.0:
+        return 3.0  # Too low → stagnant market
+    elif 2.0 <= vol_percent <= 4.0:
+        return 7.0  # Ideal volatility
+    elif 4.0 < vol_percent <= 6.0:
+        return 10.0  # Very tradable
+    else:
+        return 5.0  # High volatility → riskier 
 
 # --- 2. CALCULATORS ---
 def _calculate_ema(series, span):
@@ -121,7 +127,7 @@ def analyze_technical_indicators(ticker: str, basis: str = "annual") -> dict:
         # ADX
         if len(hist) >= 28:
             adx = _calculate_adx(high, low, close, 14)
-            scores['ADX_Strength'] = normalize_indicator(adx, 20, 25, bullish_is_high=True)
+            scores['ADX_Strength'] = normalize_indicator(adx, 15, 35, bullish_is_high=True)
         else:
             scores['ADX_Strength'] = 5.0
             notes.append("ADX could not be calculated.")
@@ -143,7 +149,12 @@ def analyze_technical_indicators(ticker: str, basis: str = "annual") -> dict:
             try:
                 reg = LinearRegression().fit(obv_recent[['t']], obv_recent[0])
                 slope = reg.coef_[0]
-                scores['OBV_Trend'] = 10.0 if slope > 0 else 0.0
+                if abs(slope) < 1e5:  # Flat or unreliable
+                    scores['OBV_Trend'] = 5.0
+                    notes.append("OBV trend too flat to be meaningful.")
+                else:
+                    scores['OBV_Trend'] = 10.0 if slope > 0 else 0.0
+
             except Exception:
                 scores['OBV_Trend'] = 5.0
                 notes.append("OBV slope regression failed.")
