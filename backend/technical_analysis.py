@@ -86,6 +86,8 @@ def analyze_technical_indicators(ticker: str, basis: str = "annual") -> dict:
             return {"error": "❌ No valid historical data for TA."}
 
         hist = pd.DataFrame(ticker_data["history"])
+        hist['Date'] = pd.to_datetime(hist['Date'])
+        hist.set_index('Date', inplace=True)
         
         notes = []
         if len(hist) < 250:
