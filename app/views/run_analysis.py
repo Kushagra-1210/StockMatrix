@@ -173,9 +173,9 @@ def show_run_analysis(st, user_prefs):
                             keys = list(indicators.keys())
                             n = len(keys)
                             if n > 0:
-                                cols = st.columns(min(n, 4))
+                                cols = st.columns(min(n, 3))
                                 for i, k in enumerate(keys):
-                                    with cols[i % 4]:
+                                    with cols[i % 3]:
                                         st.metric(k, indicators[k])
                         else:
                             st.write(indicators)
