@@ -192,13 +192,14 @@ def analyze_technical_indicators(ticker: str, industry: str = 'default', basis: 
         # --- ATR ---
         atr_val = safe_latest_value(hist, 'ATR_14')
         close_price = safe_latest_value(hist, 'close')
-        if atr_val is not None and close_price:
+        if atr_val is not None and close_price is not None and close_price != 0:
             atr_percent = (atr_val / close_price) * 100
             low, high = thresholds['ATR']
             scores['ATR_Vol'] = normalize_volatility(atr_percent, low, high)
         else:
             scores['ATR_Vol'] = 50.0
             notes.append("ATR Volatility could not be calculated.")
+
 
 
         # --- OBV ---
