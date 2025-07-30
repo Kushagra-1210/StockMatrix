@@ -18,19 +18,12 @@ def get_ticker_data(ticker_str: str) -> dict:
         logger.info(f"Fetching all data for {ticker_str} from yfinance...")
         stock = yf.Ticker(ticker_str)
 
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            info_future = executor.submit(lambda: stock.info)
-            hist_future = executor.submit(lambda: stock.history(period="max"))
-            financials_future = executor.submit(lambda: stock.financials)
-            balance_sheet_future = executor.submit(lambda: stock.balance_sheet)
-            cashflow_future = executor.submit(lambda: stock.cashflow)
-
-            # Get data from futures
-            info_data = info_future.result()
-            hist_data = hist_future.result()
-            financials_data = financials_future.result()
-            balance_sheet_data = balance_sheet_future.result()
-            cashflow_data = cashflow_future.result()
+        # Fetch data sequentially to avoid rate-limiting from too many parallel requests.
+        info_data = stock.info
+        hist_data = stock.history(period="max")
+        financials_data = stock.financials
+        balance_sheet_data = stock.balance_sheet
+        cashflow_data = stock.cashflow
 
         # Validate data availability
         if hist_data is None or hist_data.empty:
