@@ -84,15 +84,16 @@ def reset_analysis_data():
     st.session_state.pdf_report = None
 
 # --- Backend & NLP Module Imports ---
-from backend.technical_analysis import technical_analysis as ta_mod
-from backend.fundamental_analysis import fundamental_analysis as fa_mod
-from backend.sentiment_analysis import sentiment_analysis as sentiment_mod
-from backend.news_risk_analyzer import news_risk_analyzer as news_mod
-from backend.leaderboard_engine import leaderboard_engine
-from backend.screener_engine import screener_engine
-from backend.report_generator import report_generator
-from backend.market_selector import market_selector
-
+from backend import (
+    technical_analysis as ta_mod,
+    fundamental_analysis as fa_mod,
+    sentiment_analysis as sentiment_mod,
+    news_risk_analyzer as news_mod,
+    leaderboard_engine,
+    screener_engine,
+    report_generator,
+    market_selector
+)
 from nlp.chat_router import handle_chat_command
 from backend.report_generator import generate_pdf_report, generate_csv_report
 
