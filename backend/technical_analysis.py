@@ -17,6 +17,55 @@ INDUSTRY_THRESHOLDS = {
     'Banking': {'RSI': (38, 62), 'Stoch': (38, 62), 'MACD': (-0.2, 0.2), 'ADX': (22, 30), 'ATR': (1.8, 6.0)}
 }
 
+def industry_benchmark_zones(ticker_str: str) -> dict:
+    """
+    Calculate industry benchmark zones for a given stock ticker.
+    """
+    data = get_ticker_data(ticker_str)
+    if 'error' in data:
+        return data
+
+    hist_data = pd.DataFrame(data['history'])
+    info_data = data['info']
+
+    # Check for missing values in hist_data
+    if hist_data.isnull().values.any():
+        logger.warning(f"Missing values detected in historical data for {ticker_str}")
+        return {"error": "Missing values detected in historical data"}
+
+    # Check for outliers in hist_data
+    hist_data = hist_data[(np.abs(hist_data['Close'] - hist_data['Close'].mean()) < (3 * hist_data['Close'].std()))]
+    if hist_data.empty:
+        logger.warning(f"Outliers detected in historical data for {ticker_str}")
+        return {"error": "Outliers detected in historical data"}
+
+    # Calculate technical indicators
+    try:
+        hist_data['RSI'] = ta.rsi(hist_data['Close'], length=14)
+        hist_data['Stoch'] = ta.stoch(hist_data['High'], hist_data['Low'], hist_data['Close'], length=14)
+        hist_data['MACD'] = ta.macd(hist_data['Close'], fast=12, slow=26, signal=9)
+        hist_data['ADX'] = ta.adx(hist_data['High'], hist_data['Low'], hist_data['Close'], length=14)
+        hist_data['ATR'] = ta.atr(hist_data['High'], hist_data['Low'], hist_data['Close'], length=14)
+    except Exception as e:
+        logger.error(f"Error calculating technical indicators for {ticker_str}: {e}")
+        return {"error": f"Error calculating technical indicators: {e}"}
+
+    # Get industry thresholds
+    industry = info_data.get('industry', 'default')
+    thresholds = INDUSTRY_THRESHOLDS[industry]
+
+    # Calculate benchmark zones
+    benchmark_zones = {}
+    for indicator, (lower, upper) in thresholds.items():
+        benchmark_zones[indicator] = (hist_data[indicator].min(), hist_data[indicator].max())
+
+    # Check for missing values in benchmark_zones
+    if any(pd.isnull(benchmark_zones.values())):
+        logger.warning(f"Missing values detected in benchmark zones for {ticker_str}")
+        return {"error": "Missing values detected in benchmark zones"}
+
+    return benchmark_zones
+
 # --- NORMALIZATION HELPERS ---
 def get_thresholds(industry: str):
     return INDUSTRY_THRESHOLDS.get(industry, INDUSTRY_THRESHOLDS['default'])

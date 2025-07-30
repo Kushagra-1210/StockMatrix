@@ -1,14 +1,14 @@
-# backend/sentiment_analysis.py
 import yfinance as yf
 import requests
 import logging
 from bs4 import BeautifulSoup
-from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
-
+from textblob import TextBlob
+import nltk
+nltk.download('vader_lexicon')
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
 logger = logging.getLogger(__name__)
 
-# --- PART A: Market Sentiment Score ---
-
+# --- Main Orchestrator Function ---
 def get_market_sentiment_score(ticker: str):
     """
     Fetches Google News headlines and calculates a sentiment score from 0-10.
@@ -27,34 +27,33 @@ def get_market_sentiment_score(ticker: str):
         # 2. Run VADER Sentiment Analysis
         analyzer = SentimentIntensityAnalyzer()
         positive_count, neutral_count, negative_count = 0, 0, 0
+        # Error was happening because TextBlob was not installed
+        # Fixed by adding `python -m textblob.download_corpora` to Dockerfile
         negative_headlines = []
-        for h in headlines:
-            score = analyzer.polarity_scores(h)['compound']
-            if score >= 0.05:
-                positive_count += 1
-            elif score <= -0.05:
-                negative_count += 1
-                negative_headlines.append(h)
-            else:
+
+        for headline in headlines:
+            blob = TextBlob(headline)
+            sentiment = blob.sentiment
+
+            # Check for neutral sentiment scores
+            if abs(sentiment.polarity) < 0.1:
                 neutral_count += 1
-        total = len(headlines)
+            elif sentiment.polarity > 0:
+                positive_count += 1
+            elif sentiment.polarity < 0:
+                negative_count += 1
+                negative_headlines.append(headline)
 
-        # 3. Aggregate to 0-10 scale
-        score = (positive_count - negative_count + neutral_count * 0.5) / total * 10
+        # Calculate sentiment score
+        sentiment_score = (positive_count - negative_count) / len(headlines) * 10
 
-        # Fallback: if no negative headlines, show general headlines and add a note
-        if not negative_headlines and headlines:
-            fallback_headlines = headlines[:3]
-            return max(0, min(10, score)), {
-                "headlines": fallback_headlines,
-                "note": "Not much negative news found related to the company."
-            }
-        else:
-            return max(0, min(10, score)), sorted(negative_headlines, reverse=True)[:3]
+        return sentiment_score, negative_headlines
 
     except Exception as e:
-        logger.error(f"Market sentiment analysis failed for {ticker}: {e}")
-        return 5.0, [f"Failed to fetch news: {e}"] # Return neutral score on error
+        logger.error(f"Error calculating market sentiment score: {e}")
+        return 5.0, ["Error calculating market sentiment score"]
+
+# --- Other functions remain the same ---
 
 # --- PART B: Management Quality Score ---
 

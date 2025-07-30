@@ -1,5 +1,3 @@
-# backend/data_fetcher.py
-
 import yfinance as yf
 import pandas as pd
 import logging
@@ -32,13 +30,13 @@ def get_ticker_data(ticker_str: str) -> dict:
 
             # Validate data availability
             if hist_data is None or hist_data.empty:
-                return {"error": f"❌ No historical price data found for {ticker_str}. Ticker may be invalid or delisted."}
+                return {"error": f" No historical price data found for {ticker_str}. Ticker may be invalid or delisted."}
 
             # --- CRITICAL CHANGE: Save the date index to a column ---
             hist_data.reset_index(inplace=True)
 
             if not info_data:
-                return {"error": f"❌ No company info found for {ticker_str}. Ticker may be invalid or restricted."}
+                return {"error": f" No company info found for {ticker_str}. Ticker may be invalid or restricted."}
 
             # Convert data to a robust serializable format
             return {
@@ -49,15 +47,25 @@ def get_ticker_data(ticker_str: str) -> dict:
                 "cashflow": cashflow_data.to_dict('list') if not cashflow_data.empty else {},
             }
 
+        except yf.TickerError as e:
+            logger.error(f"Error fetching data for {ticker_str}: {e}")
+            error_msg = str(e)
+            if "No data found" in error_msg:
+                return {"error": f" No data found for {ticker_str}. Ticker may be invalid or delisted."}
+            elif "Invalid ticker symbol" in error_msg:
+                return {"error": f" Invalid ticker symbol: {ticker_str}"}
+            else:
+                return {"error": f" Unknown error fetching data for {ticker_str}: {error_msg}"}
+
         except Exception as e:
-            logger.error(f"Error fetching data for {ticker_str}: {e}", exc_info=True)
+            logger.error(f"Error fetching data for {ticker_str}: {e}")
             error_msg = str(e)
             if "Rate limited" in error_msg or "Too Many Requests" in error_msg:
                 if attempt < max_retries - 1:
                     logger.info(f"Rate limit error. Retrying in {retry_delay} seconds...")
                     time.sleep(retry_delay)
                 else:
-                    error_msg = "The data provider (Yahoo Finance) has rate-limited our requests. This can happen when many stocks are analyzed at once. Please wait a moment and try again."
-                    return {"error": f"❌ Data fetching failed for {ticker_str}. Reason: {error_msg}"}
+                    error_msg = "The data provider (Yahoo Finance) has rate-limited our requests. This is a temporary error. Please try again later."
+                    return {"error": error_msg}
             else:
-                return {"error": f"❌ Data fetching failed for {ticker_str}. Reason: {error_msg}"}
+                return {"error": f" Unknown error fetching data for {ticker_str}: {error_msg}"}
