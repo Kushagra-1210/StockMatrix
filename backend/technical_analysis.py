@@ -118,8 +118,9 @@ def analyze_technical_indicators(ticker: str, industry: str = 'default', basis: 
             scores['ADX_Strength'] = 50.0; notes.append("ADX could not be calculated.")
 
         # --- ATR ---
-        if 'ATRr_14' in hist.columns:
-            atr_percent = hist['ATRr_14'].iloc[-1]
+        if 'ATR_14' in hist.columns:
+            atr_percent = hist['ATR_14'].iloc[-1]
+            atr_percent = (atr_percent / hist['close'].iloc[-1]) * 100
             low, high = thresholds['ATR']
             scores['ATR_Vol'] = normalize_volatility(atr_percent, low, high)
         else:
