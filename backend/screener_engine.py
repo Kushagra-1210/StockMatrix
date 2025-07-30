@@ -5,6 +5,8 @@ import numpy as np
 import logging
 from .fundamental_analysis import analyze_fundamentals
 from .technical_analysis import analyze_technical_indicators
+from .news_risk_analyzer import fetch_news_risk
+
 
 # In backend/screener_engine.py
 
@@ -30,6 +32,7 @@ def screen_stocks(tickers: list, min_upside: float = 0, min_ta: float = 0, max_v
             # Using the new, more powerful fundamental analysis function
             fa = analyze_fundamentals(ticker, basis="annual")
             ta = analyze_technical_indicators(ticker, industry=industry, basis="annual")
+
             vol = calculate_volatility(ticker)
 
             if any(isinstance(r, dict) and "error" in r for r in [fa, ta]) or vol is None:

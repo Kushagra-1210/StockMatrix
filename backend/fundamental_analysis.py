@@ -284,6 +284,17 @@ def analyze_fundamentals(ticker: str, basis: str = "annual"):
         else:
             verdict = "🔴 High Risk / Avoid: Poor fundamentals, significant risk."
     
+    # --- Extract additional key ratios for screener/strategies ---
+    info = stock.info
+    key_ratios = {
+        "pe_ratio": info.get('trailingPE'),
+        "pb_ratio": info.get('priceToBook'),
+        "de_ratio": info.get('debtToEquity'),
+        "roe": info.get('returnOnEquity'),
+        "revenue_growth": info.get('revenueGrowth'),
+        "free_cash_flow": info.get('freeCashflow')
+    }
+
     return {
         "Fundamental Score": round(final_score, 2),
         "Verdict": verdict,
