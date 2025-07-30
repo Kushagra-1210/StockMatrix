@@ -53,4 +53,7 @@ def get_ticker_data(ticker_str: str) -> dict:
 
     except Exception as e:
         logger.error(f"Error fetching data for {ticker_str}: {e}", exc_info=True)
-        return {"error": f"❌ Data fetching failed for {ticker_str}. Exception: {str(e)}"}
+        error_msg = str(e)
+        if "Rate limited" in error_msg or "Too Many Requests" in error_msg:
+            error_msg = "The data provider (Yahoo Finance) has rate-limited our requests. This can happen when many stocks are analyzed at once. Please wait a moment and try again."
+        return {"error": f"❌ Data fetching failed for {ticker_str}. Reason: {error_msg}"}

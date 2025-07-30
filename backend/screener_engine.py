@@ -2,6 +2,7 @@
 import yfinance as yf
 import pandas as pd
 import numpy as np
+import time
 import logging
 from .fundamental_analysis import analyze_fundamentals
 from .technical_analysis import analyze_technical_indicators
@@ -21,6 +22,7 @@ def screen_stocks(tickers: list, min_upside: float = 0, min_ta: float = 0, max_v
     results = []
 
     for ticker in tickers:
+        time.sleep(0.2) # Add a 200ms delay to avoid rate-limiting
         try:
             ticker_data = get_ticker_data(ticker)
             if "error" in ticker_data:

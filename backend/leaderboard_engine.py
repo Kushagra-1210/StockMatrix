@@ -1,5 +1,6 @@
 # backend/leaderboard_engine.py
 import pandas as pd
+import time
 import logging
 from .technical_analysis import analyze_technical_indicators
 from .fundamental_analysis import analyze_fundamentals
@@ -18,6 +19,7 @@ def get_leaderboard(exchange: str):
     results = []
     
     for ticker in tickers:
+        time.sleep(0.2) # Add a 200ms delay to avoid rate-limiting
         try:
             ticker_data = get_ticker_data(ticker)
             if "error" in ticker_data:
