@@ -5,6 +5,7 @@ import numpy as np
 import logging
 from backend.data_fetcher import get_ticker_data
 import pandas_ta as ta
+from datetime import datetime
 
 
 logger = logging.getLogger(__name__)
@@ -82,10 +83,18 @@ def normalize_indicator(value, neutral_low, neutral_high, bullish_is_high=True):
         return 25 + ((value - neutral_low) / (neutral_high - neutral_low)) * 50.0
 
 def normalize_volatility(vol_percent, low=1.5, high=7.0):
+    
     if pd.isna(vol_percent): return 50.0
     score = 100 - ((vol_percent - low) / (high - low)) * 100
     return max(0.0, min(100.0, score))
 
+def safe_latest_value(df, column_name):
+    """Get last non-NaN value from a column, or return None."""
+    if column_name in df.columns:
+        series = df[column_name].dropna()
+        if not series.empty:
+            return series.iloc[-1]
+    return None
 
 # --- MAIN ANALYSIS FUNCTION ---
 def analyze_technical_indicators(ticker: str, industry: str = 'default', basis: str = "annual") -> dict:
@@ -96,94 +105,113 @@ def analyze_technical_indicators(ticker: str, industry: str = 'default', basis: 
         if not isinstance(ticker_data, dict) or "history" not in ticker_data or not ticker_data["history"]:
             return {"error": "❌ No valid historical data for TA."}
 
-        hist = pd.DataFrame(ticker_data["history"])
+        # Step 1: Force daily frequency and forward-fill missing days (holidays, weekends)
         hist['Date'] = pd.to_datetime(hist['Date'])
         hist.set_index('Date', inplace=True)
-        # Rename columns for pandas_ta compatibility
+        hist = hist.asfreq('B')  # Business day frequency
+        hist = hist.ffill()
+
+        # Step 2: Round OHLC prices to 2 decimals to reduce floating-point drift
+        hist[['Open', 'High', 'Low', 'Close']] = hist[['Open', 'High', 'Low', 'Close']].round(2)
+
+        # Step 3: Rename columns to lowercase (pandas_ta standard)
         hist.rename(columns={"Open": "open", "High": "high", "Low": "low", "Close": "close", "Volume": "volume"}, inplace=True)
 
-        # --- Use pandas_ta to calculate only the required indicators ---
-        custom_strategy = ta.Strategy(
-            name="Custom TA Strategy",
-            description="Calculates only the indicators required for the analysis.",
-            ta=[
-                {"kind": "sma", "length": 50},
-                {"kind": "sma", "length": 200},
-                {"kind": "macd", "fast": 12, "slow": 26, "signal": 9},
-                {"kind": "rsi", "length": 14},
-                {"kind": "stoch", "k": 14, "d": 3, "smooth_k": 3},
-                {"kind": "adx", "length": 14},
-                {"kind": "atr", "length": 14},
-                {"kind": "obv"},
-            ]
-        )
-        hist.ta.strategy(custom_strategy)
+        # --- Apply individual indicators manually for better precision
+        hist['RSI_14'] = ta.rsi(hist['close'], length=14)
+        macd = ta.macd(hist['close'], fast=12, slow=26, signal=9)
+        hist = pd.concat([hist, macd], axis=1)
+        stoch = ta.stoch(hist['high'], hist['low'], hist['close'], k=14, d=3, smooth_k=3)
+        hist = pd.concat([hist, stoch], axis=1)
+        hist['ADX_14'] = ta.adx(hist['high'], hist['low'], hist['close'], length=14)['ADX_14']
+        hist['ATR_14'] = ta.atr(hist['high'], hist['low'], hist['close'], length=14)
+        hist['OBV'] = ta.obv(hist['close'], hist['volume'])
+        hist['SMA_50'] = ta.sma(hist['close'], length=50)
+        hist['SMA_200'] = ta.sma(hist['close'], length=200)
 
         notes, scores = [], {}
 
         # --- SMA Trend ---
-        if 'SMA_50' in hist.columns and 'SMA_200' in hist.columns:
-            price = hist['close'].iloc[-1]
-            sma50 = hist['SMA_50'].iloc[-1]
-            sma200 = hist['SMA_200'].iloc[-1]
-            if price > sma50 > sma200: scores['SMA_Trend'] = 100.0
-            elif sma50 > price > sma200: scores['SMA_Trend'] = 70.0
-            elif sma50 > sma200: scores['SMA_Trend'] = 60.0
-            elif price < sma50 < sma200: scores['SMA_Trend'] = 0.0
-            elif sma50 < price < sma200: scores['SMA_Trend'] = 30.0
-            else: scores['SMA_Trend'] = 50.0
+        price = safe_latest_value(hist, 'close')
+        sma50 = safe_latest_value(hist, 'SMA_50')
+        sma200 = safe_latest_value(hist, 'SMA_200')
+
+        if price is not None and sma50 is not None and sma200 is not None:
+            if price > sma50 > sma200:
+                scores['SMA_Trend'] = 100.0
+            elif sma50 > price > sma200:
+                scores['SMA_Trend'] = 70.0
+            elif sma50 > sma200:
+                scores['SMA_Trend'] = 60.0
+            elif price < sma50 < sma200:
+                scores['SMA_Trend'] = 0.0
+            elif sma50 < price < sma200:
+                scores['SMA_Trend'] = 30.0
+            else:
+                scores['SMA_Trend'] = 50.0
         else:
-            scores['SMA_Trend'] = 50.0; notes.append("SMA trend could not be calculated.")
+            scores['SMA_Trend'] = 50.0
+            notes.append("SMA trend could not be calculated.")
+
 
         # --- MACD ---
-        if 'MACDh_12_26_9' in hist.columns:
-            latest_hist = hist['MACDh_12_26_9'].iloc[-1]
+        macd_val = safe_latest_value(hist, 'MACDh_12_26_9')
+        if macd_val is not None:
             low, high = thresholds['MACD']
-            scores['MACD'] = normalize_indicator(latest_hist, low, high, bullish_is_high=True)
+            scores['MACD'] = normalize_indicator(macd_val, low, high, bullish_is_high=True)
         else:
-            scores['MACD'] = 50.0; notes.append("MACD could not be calculated.")
+            scores['MACD'] = 50.0
+            notes.append("MACD could not be calculated (NaN or missing).")
 
         # --- RSI & Stochastic ---
-        if 'RSI_14' in hist.columns:
-            rsi = hist['RSI_14'].iloc[-1]
+        rsi = safe_latest_value(hist, 'RSI_14')
+        if rsi is not None:
             low, high = thresholds['RSI']
             scores['RSI'] = normalize_indicator(rsi, low, high, bullish_is_high=False)
         else:
-            scores['RSI'] = 50.0; notes.append("RSI could not be calculated.")
+            scores['RSI'] = 50.0
+            notes.append("RSI could not be calculated (NaN or missing).")
 
-        if 'STOCHk_14_3_3' in hist.columns:
-            stoch = hist['STOCHk_14_3_3'].iloc[-1]
+        stoch = safe_latest_value(hist, 'STOCHk_14_3_3')
+        if stoch is not None:
             low, high = thresholds['Stoch']
             scores['Stoch'] = normalize_indicator(stoch, low, high, bullish_is_high=False)
         else:
-            scores['Stoch'] = 50.0; notes.append("Stochastic could not be calculated.")
+            scores['Stoch'] = 50.0
+            notes.append("Stochastic could not be calculated.")
 
         # --- ADX ---
-        if 'ADX_14' in hist.columns:
-            adx = hist['ADX_14'].iloc[-1]
+        adx = safe_latest_value(hist, 'ADX_14')
+        if adx is not None:
             low, high = thresholds['ADX']
             scores['ADX_Strength'] = normalize_indicator(adx, low, high, bullish_is_high=True)
         else:
-            scores['ADX_Strength'] = 50.0; notes.append("ADX could not be calculated.")
+            scores['ADX_Strength'] = 50.0
+            notes.append("ADX could not be calculated.")
 
         # --- ATR ---
-        if 'ATR_14' in hist.columns:
-            atr_percent = hist['ATR_14'].iloc[-1]
-            atr_percent = (atr_percent / hist['close'].iloc[-1]) * 100
+        atr_val = safe_latest_value(hist, 'ATR_14')
+        close_price = safe_latest_value(hist, 'close')
+        if atr_val is not None and close_price:
+            atr_percent = (atr_val / close_price) * 100
             low, high = thresholds['ATR']
             scores['ATR_Vol'] = normalize_volatility(atr_percent, low, high)
         else:
-            scores['ATR_Vol'] = 50.0; notes.append("ATR Volatility could not be calculated.")
+            scores['ATR_Vol'] = 50.0
+            notes.append("ATR Volatility could not be calculated.")
+
 
         # --- OBV ---
         if 'OBV' in hist.columns:
-            obv_series = hist['OBV'].tail(10)
+            obv_series = hist['OBV'].dropna().tail(10)
             if len(obv_series) > 1 and obv_series.iloc[-1] != obv_series.iloc[0]:
                 scores['OBV_Trend'] = 100.0 if obv_series.iloc[-1] > obv_series.iloc[0] else 0.0
             else:
                 scores['OBV_Trend'] = 50.0
         else:
-            scores['OBV_Trend'] = 50.0; notes.append("OBV trend could not be calculated.")
+            scores['OBV_Trend'] = 50.0
+            notes.append("OBV trend could not be calculated.")
+
 
         # --- Final Score & Verdict ---
         final_score = np.mean(list(scores.values()))
