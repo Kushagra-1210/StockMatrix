@@ -151,7 +151,7 @@ def safe_latest_value(df, column_name):
 # --- MAIN ANALYSIS FUNCTION ---
 def analyze_technical_indicators(ticker: str, industry: str = 'default', basis: str = "annual") -> dict:
     
-    hist = None
+    hist = pd.DataFrame()
     try:
         thresholds = get_thresholds(industry)
         ticker_data = get_ticker_data(ticker)
