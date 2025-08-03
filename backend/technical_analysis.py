@@ -10,6 +10,58 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
+# --- DYNAMIC EXPLANATIONS ---
+def get_dynamic_explanation(indicator: str, score: float, **kwargs) -> str:
+    """Generates a dynamic explanation based on the indicator and its score."""
+    if indicator == "SMA_Trend":
+        if score >= 95: return "Strong Uptrend: Price is well above both the 50-day and 200-day moving averages, indicating strong bullish momentum."
+        if score >= 65: return "Uptrend: Price is above its moving averages, suggesting positive market sentiment."
+        if score >= 45: return "Neutral Trend: Price is hovering around its moving averages, indicating a lack of a clear trend."
+        if score >= 25: return "Downtrend: Price is below its moving averages, suggesting negative market sentiment."
+        return "Strong Downtrend: Price is well below both moving averages, indicating strong bearish momentum."
+
+    if indicator == "MACD":
+        if score >= 75: return "Strong Bullish Momentum: The MACD line is significantly above the signal line, indicating strong buying pressure."
+        if score >= 55: return "Bullish Momentum: The MACD is positive, suggesting upward price momentum."
+        if score > 45: return "Neutral: The MACD is near the signal line, indicating a balance between buyers and sellers."
+        if score > 25: return "Bearish Momentum: The MACD is negative, suggesting downward price momentum."
+        return "Strong Bearish Momentum: The MACD line is significantly below the signal line, indicating strong selling pressure."
+
+    if indicator == "RSI": # Note: Score is inverted (lower score is more overbought/bearish)
+        if score <= 25: return "Overbought: The RSI is high, suggesting the stock may be overvalued and due for a pullback. This is a bearish signal."
+        if score <= 45: return "Approaching Overbought: The RSI is in the upper range, indicating potential for a reversal."
+        if score < 55: return "Neutral: The RSI is in a neutral range, not indicating a strong bias."
+        if score < 75: return "Approaching Oversold: The RSI is in the lower range, suggesting the stock may be undervalued."
+        return "Oversold: The RSI is low, suggesting the stock may be undervalued and due for a rally. This is a bullish signal."
+
+    if indicator == "Stoch": # Note: Score is inverted
+        if score <= 25: return "Overbought: The Stochastic Oscillator is high, indicating the price is near the top of its recent range and could reverse."
+        if score <= 45: return "High in Range: The price is in the upper part of its recent trading range."
+        if score < 55: return "Neutral: The price is in the middle of its recent trading range."
+        if score < 75: return "Low in Range: The price is in the lower part of its recent trading range."
+        return "Oversold: The Stochastic Oscillator is low, indicating the price is near the bottom of its recent range and could rally."
+
+    if indicator == "ADX_Strength":
+        if score >= 75: return "Very Strong Trend: The ADX indicates a very strong trend is in place (either up or down)."
+        if score >= 55: return "Strong Trend: The ADX shows a clear and strong trend."
+        if score > 45: return "Developing Trend: The trend is starting to show some strength."
+        return "Weak or No Trend: The market is likely ranging or the trend is very weak."
+
+    if indicator == "ATR_Vol": # Note: Score is inverted (lower score = higher volatility)
+        if score <= 25: return "High Volatility: The ATR is high relative to the price, indicating large price swings and higher risk."
+        if score <= 45: return "Moderate Volatility: Price swings are noticeable."
+        if score < 55: return "Average Volatility: Typical price movement for this stock."
+        if score < 75: return "Low Volatility: Price swings are smaller than usual."
+        return "Very Low Volatility: The ATR is low, indicating very small price swings and lower risk."
+
+    if indicator == "OBV_Trend":
+        if score >= 95: return "Strong Buying Pressure: On-Balance Volume is in a strong uptrend, suggesting accumulation."
+        if score <= 5: return "Strong Selling Pressure: On-Balance Volume is in a strong downtrend, suggesting distribution."
+        return "Neutral Volume: Volume flow does not indicate a strong buying or selling trend."
+
+    return "No specific explanation available for this score."
+
+
 # --- INDUSTRY BENCHMARK ZONES ---
 INDUSTRY_THRESHOLDS = {
     'default': {'RSI': (40, 60), 'Stoch': (40, 60), 'MACD': (-0.15, 0.15), 'ADX': (20, 25), 'ATR': (1.5, 7.0)},
@@ -105,6 +157,8 @@ def analyze_technical_indicators(ticker: str, industry: str = 'default', basis: 
         if not isinstance(ticker_data, dict) or "history" not in ticker_data or not ticker_data["history"]:
             return {"error": "❌ No valid historical data for TA."}
 
+        hist = pd.DataFrame(ticker_data['history'])
+
         # Step 1: Force daily frequency and forward-fill missing days (holidays, weekends)
         hist['Date'] = pd.to_datetime(hist['Date'])
         hist.set_index('Date', inplace=True)
@@ -129,7 +183,7 @@ def analyze_technical_indicators(ticker: str, industry: str = 'default', basis: 
         hist['SMA_50'] = ta.sma(hist['close'], length=50)
         hist['SMA_200'] = ta.sma(hist['close'], length=200)
 
-        notes, scores = [], {}
+        notes, scores, explanations = [], {}, {}
 
         # --- SMA Trend ---
         price = safe_latest_value(hist, 'close')
@@ -152,7 +206,7 @@ def analyze_technical_indicators(ticker: str, industry: str = 'default', basis: 
         else:
             scores['SMA_Trend'] = 50.0
             notes.append("SMA trend could not be calculated.")
-
+        explanations['SMA_Trend'] = get_dynamic_explanation('SMA_Trend', scores['SMA_Trend'])
 
         # --- MACD ---
         macd_val = safe_latest_value(hist, 'MACDh_12_26_9')
@@ -162,6 +216,7 @@ def analyze_technical_indicators(ticker: str, industry: str = 'default', basis: 
         else:
             scores['MACD'] = 50.0
             notes.append("MACD could not be calculated (NaN or missing).")
+        explanations['MACD'] = get_dynamic_explanation('MACD', scores['MACD'])
 
         # --- RSI & Stochastic ---
         rsi = safe_latest_value(hist, 'RSI_14')
@@ -171,6 +226,7 @@ def analyze_technical_indicators(ticker: str, industry: str = 'default', basis: 
         else:
             scores['RSI'] = 50.0
             notes.append("RSI could not be calculated (NaN or missing).")
+        explanations['RSI'] = get_dynamic_explanation('RSI', scores['RSI'])
 
         stoch = safe_latest_value(hist, 'STOCHk_14_3_3')
         if stoch is not None:
@@ -179,6 +235,7 @@ def analyze_technical_indicators(ticker: str, industry: str = 'default', basis: 
         else:
             scores['Stoch'] = 50.0
             notes.append("Stochastic could not be calculated.")
+        explanations['Stoch'] = get_dynamic_explanation('Stoch', scores['Stoch'])
 
         # --- ADX ---
         adx = safe_latest_value(hist, 'ADX_14')
@@ -188,12 +245,11 @@ def analyze_technical_indicators(ticker: str, industry: str = 'default', basis: 
         else:
             scores['ADX_Strength'] = 50.0
             notes.append("ADX could not be calculated.")
+        explanations['ADX_Strength'] = get_dynamic_explanation('ADX_Strength', scores['ADX_Strength'])
 
         # --- ATR ---
         atr_val = safe_latest_value(hist, 'ATR_14')
         close_price = safe_latest_value(hist, 'close')
-        print("DEBUG - ATR:", atr_val)
-        print("DEBUG - CLOSE:", close_price)
         if atr_val is not None and close_price is not None and close_price != 0:
             atr_percent = (atr_val / close_price) * 100
             low, high = thresholds['ATR']
@@ -201,7 +257,7 @@ def analyze_technical_indicators(ticker: str, industry: str = 'default', basis: 
         else:
             scores['ATR_Vol'] = 50.0
             notes.append("ATR Volatility could not be calculated.")
-
+        explanations['ATR_Vol'] = get_dynamic_explanation('ATR_Vol', scores['ATR_Vol'])
 
         # --- OBV ---
         if 'OBV' in hist.columns:
@@ -213,7 +269,7 @@ def analyze_technical_indicators(ticker: str, industry: str = 'default', basis: 
         else:
             scores['OBV_Trend'] = 50.0
             notes.append("OBV trend could not be calculated.")
-
+        explanations['OBV_Trend'] = get_dynamic_explanation('OBV_Trend', scores['OBV_Trend'])
 
         # --- Final Score & Verdict ---
         final_score = np.mean(list(scores.values()))
@@ -229,7 +285,8 @@ def analyze_technical_indicators(ticker: str, industry: str = 'default', basis: 
             "verdict": verdict,
             "period": f"Adaptive ({len(hist)} days)",
             "notes": notes,
-            "indicators": {k: f"{v:.1f}/100" for k, v in scores.items()}
+            "indicators": {k: f"{v:.1f}/100" for k, v in scores.items()},
+            "explanations": explanations
         }
 
     except Exception as e:
