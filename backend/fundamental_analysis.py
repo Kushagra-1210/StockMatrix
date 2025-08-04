@@ -233,6 +233,7 @@ def analyze_fundamentals(ticker: str, basis: str = "annual"):
     piotroski_result = get_piotroski_score(stock)
     if "error" in piotroski_result:
         notes.append(f"Piotroski: {piotroski_result['error']}")
+        breakdown['Piotroski F-Score'] = "N/A"
     else:
         f_raw = piotroski_result["Piotroski F-Score"]
         successful_scores.append((f_raw / 9) * 10) # Add 0-10 score to list
@@ -242,25 +243,29 @@ def analyze_fundamentals(ticker: str, basis: str = "annual"):
     altman_result = get_altman_z_score(stock)
     if "error" in altman_result:
         notes.append(f"Altman Z: {altman_result['error']}")
+        breakdown['Altman Z-Score'] = "N/A"
+        breakdown['Risk'] = "N/A"
     else:
         z_raw = altman_result["Altman Z-Score"]
         z_score_10 = min(max((z_raw - 1.8) / (2.99 - 1.8) * 10, 0.0), 10.0)
         successful_scores.append(z_score_10) # Add 0-10 score to list
         breakdown['Altman Z-Score'] = f"{z_raw:.2f}"
-        if z_raw > 2.99: breakdown['Bankruptcy Risk'] = "Safe"
-        elif z_raw > 1.8: breakdown['Bankruptcy Risk'] = "Gray Zone"
-        else: breakdown['Bankruptcy Risk'] = "Distress Zone"
+        if z_raw > 2.99: breakdown['Risk'] = "Safe"
+        elif z_raw > 1.8: breakdown['Risk'] = "Gray Zone"
+        else: breakdown['Risk'] = "Distress Zone"
 
     # 3. Beneish M-Score
     beneish_result = get_beneish_m_score(stock)
     if "error" in beneish_result:
         notes.append(f"Beneish: {beneish_result['error']}")
+        breakdown['Beneish M-Score'] = "N/A"
+        breakdown['Risk'] = "N/A"
     else:
         m_raw = beneish_result["Beneish M-Score"]
         m_score_10 = min(max((-2.22 - m_raw) / 5 * 10, 0.0), 10.0)
         successful_scores.append(m_score_10) # Add 0-10 score to list
         breakdown['Beneish M-Score'] = f"{m_raw:.2f}"
-        breakdown['Manipulation Risk'] = "High" if m_raw > -2.22 else "Low"
+        breakdown['Risk'] = "High" if m_raw > -2.22 else "Low"
 
     # --- Final Composite Score and Verdict ---
     if not successful_scores:
