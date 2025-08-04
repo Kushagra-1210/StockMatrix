@@ -218,10 +218,11 @@ def analyze_fundamentals(ticker: str, basis: str = "annual"):
     class StockObject:
         def __init__(self, data):
             self.info = data.get("info", {})
-            self.financials = pd.DataFrame.from_dict(data.get("financials", {}))
-            self.balance_sheet = pd.DataFrame.from_dict(data.get("balance_sheet", {}))
-            self.cashflow = pd.DataFrame.from_dict(data.get("cashflow", {}))
             self.ticker = self.info.get("symbol", "N/A")
+            # Convert split dictionaries back to DataFrames
+            self.financials = pd.DataFrame(data['financials']['data'], columns=data['financials']['columns'], index=data['financials']['index']) if data.get("financials") else pd.DataFrame()
+            self.balance_sheet = pd.DataFrame(data['balance_sheet']['data'], columns=data['balance_sheet']['columns'], index=data['balance_sheet']['index']) if data.get("balance_sheet") else pd.DataFrame()
+            self.cashflow = pd.DataFrame(data['cashflow']['data'], columns=data['cashflow']['columns'], index=data['cashflow']['index']) if data.get("cashflow") else pd.DataFrame()
 
     stock = StockObject(ticker_data)
 

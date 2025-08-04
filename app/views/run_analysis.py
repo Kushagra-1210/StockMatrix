@@ -90,15 +90,26 @@ def show_run_analysis(st, user_prefs):
                 )
                 show_moving_avg = st.checkbox("Show Moving Average (20d)", value=False, key="run_analysis_ma")
                 show_volume = st.checkbox("Show Volume", value=False, key="run_analysis_vol")
-                if history and "Close" in history:
-                    close_series = pd.Series(history["Close"])
-                    df = pd.DataFrame({"Close": close_series})
-                    if "Open" in history and "High" in history and "Low" in history:
-                        df["Open"] = pd.Series(history["Open"])
-                        df["High"] = pd.Series(history["High"])
-                        df["Low"] = pd.Series(history["Low"])
-                    if "Volume" in history:
-                        df["Volume"] = pd.Series(history["Volume"])
+                if history and "Close" in history and history["Close"]:
+                    # Ensure all arrays are of the same length
+                    min_len = len(history["Close"])
+                    
+                    df_data = {"Close": history["Close"]}
+                    
+                    if "Open" in history and len(history["Open"]) == min_len:
+                        df_data["Open"] = history["Open"]
+                    if "High" in history and len(history["High"]) == min_len:
+                        df_data["High"] = history["High"]
+                    if "Low" in history and len(history["Low"]) == min_len:
+                        df_data["Low"] = history["Low"]
+                    if "Volume" in history and len(history["Volume"]) == min_len:
+                        df_data["Volume"] = history["Volume"]
+
+                    df = pd.DataFrame(df_data)
+                    
+                    # Use the 'Date' field for the index if it exists and matches length
+                    if "Date" in history and len(history["Date"]) == min_len:
+                        df.index = pd.to_datetime(history["Date"])
                     fig = go.Figure()
                     if chart_type == "Line":
                         fig.add_trace(go.Scatter(x=df.index, y=df["Close"], name="Close Price"))
