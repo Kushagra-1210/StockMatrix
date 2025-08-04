@@ -32,19 +32,20 @@ def get_ticker_data(ticker_str: str) -> dict:
             if hist_data is None or hist_data.empty:
                 return {"error": f" No historical price data found for {ticker_str}. Ticker may be invalid or delisted."}
 
-            # --- CRITICAL CHANGE: Save the date index to a column ---
-            hist_data.reset_index(inplace=True)
-
-            if not info_data:
-                return {"error": f" No company info found for {ticker_str}. Ticker may be invalid or restricted."}
-
             # Convert data to a robust serializable format
+            def to_split_dict(df):
+                return df.to_dict('split') if df is not None and not df.empty else {}
+
+            # CRITICAL: history uses 'list' for compatibility with TA module
+            hist_data.reset_index(inplace=True)
+            hist_dict = hist_data.to_dict('list') if not hist_data.empty else {}
+
             return {
                 "info": info_data or {},
-                "history": hist_data.to_dict('list') if not hist_data.empty else {},
-                "financials": financials_data.to_dict('list') if not financials_data.empty else {},
-                "balance_sheet": balance_sheet_data.to_dict('list') if not balance_sheet_data.empty else {},
-                "cashflow": cashflow_data.to_dict('list') if not cashflow_data.empty else {},
+                "history": hist_dict,
+                "financials": to_split_dict(financials_data),
+                "balance_sheet": to_split_dict(balance_sheet_data),
+                "cashflow": to_split_dict(cashflow_data),
             }
 
         except yf.TickerError as e:
