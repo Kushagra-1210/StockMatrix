@@ -172,10 +172,10 @@ def show_run_analysis(st, user_prefs):
                     if "error" not in st.session_state.fundamentals and "error" not in st.session_state.technicals:
                         user_weights = st.session_state.user_weights
                         final_score = round(
-                            (user_weights["fa"] / 100) * st.session_state.fundamentals.get("Fundamental Score", 0) +
-                            (user_weights["ta"] / 100) * st.session_state.technicals.get("ta_score", 0) +
-                            (user_weights["sentiment"] / 100) * st.session_state.perception.get("score", 0) +
-                            (user_weights["news"] / 100) * st.session_state.risk.get("risk_score", 50), 2
+                            (st.session_state.user_weights["fa"] / 100) * st.session_state.fundamentals.get("Fundamental Score", 0) +
+                            (st.session_state.user_weights["ta"] / 100) * st.session_state.technicals.get("ta_score", 0) +
+                            (st.session_state.user_weights["sentiment"] / 100) * st.session_state.perception.get("strategic_perception_score", 0) +
+                            (st.session_state.user_weights["news"] / 100) * st.session_state.risk.get("risk_score", 50), 2
                         )
                         final_verdict = ("Strong Buy" if final_score >= 80 else "Buy" if final_score >= 65 else "Hold" if final_score >= 50 else "Sell")
                         st.session_state.final_score = final_score
