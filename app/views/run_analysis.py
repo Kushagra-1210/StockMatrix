@@ -171,12 +171,29 @@ def show_run_analysis(st, user_prefs):
                     st.session_state.risk = news_mod.fetch_news_risk(selected_ticker, basis=basis.lower())
                     if "error" not in st.session_state.fundamentals and "error" not in st.session_state.technicals:
                         user_weights = st.session_state.user_weights
+                        
+                        # Get scores from session state, with defaults
+                        fundamental_score = st.session_state.fundamentals.get("Fundamental Score", 0)
+                        technical_score = st.session_state.technicals.get("ta_score", 0)
+                        # Perception score is out of 20, so we multiply by 5 to scale to 100
+                        perception_score = st.session_state.perception.get("strategic_perception_score", 0) * 5
+                        risk_score = st.session_state.risk.get("risk_score", 50)
+
+                        # Get weights from user preferences
+                        fa_weight = user_weights.get("fa", 0) / 100
+                        ta_weight = user_weights.get("ta", 0) / 100
+                        sentiment_weight = user_weights.get("sentiment", 0) / 100
+                        news_weight = user_weights.get("news", 0) / 100
+                        
+                        # Calculate weighted score
                         final_score = round(
-                            (st.session_state.user_weights["fa"] / 100) * st.session_state.fundamentals.get("Fundamental Score", 0) +
-                            (st.session_state.user_weights["ta"] / 100) * st.session_state.technicals.get("ta_score", 0) +
-                            (st.session_state.user_weights["sentiment"] / 100) * st.session_state.perception.get("strategic_perception_score", 0) +
-                            (st.session_state.user_weights["news"] / 100) * st.session_state.risk.get("risk_score", 50), 2
+                            (fa_weight * fundamental_score) +
+                            (ta_weight * technical_score) +
+                            (sentiment_weight * perception_score) +
+                            (news_weight * risk_score),
+                            2
                         )
+
                         final_verdict = ("Strong Buy" if final_score >= 80 else "Buy" if final_score >= 65 else "Hold" if final_score >= 50 else "Sell")
                         st.session_state.final_score = final_score
                         st.session_state.final_verdict = final_verdict
