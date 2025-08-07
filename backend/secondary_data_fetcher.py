@@ -1,5 +1,12 @@
 import requests
 import os
+import random
+import sys
+
+# Add the project root to the Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from config.ticker_lists import fallback_tickers
 
 class SecondaryDataFetcher:
     def __init__(self, api_key=None):
@@ -59,21 +66,30 @@ class SecondaryDataFetcher:
         endpoint = f"profile/{ticker}"
         return self._make_request(endpoint)
 
+    def get_historical_price_data(self, ticker):
+        """Fetches historical price data."""
+        endpoint = f"historical-price-full/{ticker}"
+        return self._make_request(endpoint)
+
 if __name__ == '__main__':
-    # Example Usage (replace with your actual API key or set as environment variable)
-    # You can get a free API key from https://financialmodelingprep.com/developer/docs/
-    # os.environ["FMP_API_KEY"] = "YOUR_FMP_API_KEY" 
+    # This block is for testing the FMP API key.
+    # It will pick a random stock from your ticker lists and try to fetch its data.
+    # To run this test, execute `python backend/secondary_data_fetcher.py` in your terminal.
     
     fetcher = SecondaryDataFetcher()
     if fetcher.api_key:
-        print("Fetching Apple Inc. (AAPL) income statement:")
-        income_statement = fetcher.get_income_statement("AAPL")
-        if income_statement:
-            print(income_statement[0] if income_statement else "No data")
-
-        print("\nFetching Apple Inc. (AAPL) key metrics:")
-        key_metrics = fetcher.get_key_metrics("AAPL")
-        if key_metrics:
-            print(key_metrics[0] if key_metrics else "No data")
+        # Flatten the dictionary of tickers into a single list
+        all_tickers = [ticker for market_tickers in fallback_tickers.values() for ticker in market_tickers]
+        if not all_tickers:
+            print("No tickers found in the ticker lists.")
+        else:
+            random_ticker = random.choice(all_tickers)
+            print(f"Testing FMP API key with a random stock: {random_ticker}")
+            profile = fetcher.get_company_profile(random_ticker)
+            if profile:
+                print("Successfully fetched data:")
+                print(profile[0] if profile else "No data")
+            else:
+                print("Failed to fetch data. Please check your FMP_API_KEY.")
     else:
-        print("FMP_API_KEY environment variable not set. Please set it to run the example.")
+        print("FMP_API_KEY environment variable not set. Please set it to run the test.")
