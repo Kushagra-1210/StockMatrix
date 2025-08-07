@@ -6,7 +6,7 @@ import logging
 logger = logging.getLogger(__name__)
 from backend.data_fetcher import get_ticker_data
 
-# --- Helper function to safely access financial data ---
+# --- Helper functions to safely access financial data ---
 def _safe_get(df, keys, year=0):
     """
     Safely gets a value from a DataFrame by trying multiple possible keys.
@@ -20,6 +20,14 @@ def _safe_get(df, keys, year=0):
             # Return the value itself if it's not NaN, otherwise continue the loop
             if pd.notna(value):
                 return value
+    return np.nan
+
+def _safe_fmp_get(fmp_data_dict, statement_type, key, year=0):
+    """
+    Safely gets a value from FMP data, handling missing keys or empty lists.
+    """
+    if statement_type in fmp_data_dict and len(fmp_data_dict[statement_type]) > year:
+        return fmp_data_dict[statement_type][year].get(key)
     return np.nan
 
 # --- Sub-Score Calculation Functions with Intelligent Fallbacks ---
@@ -36,70 +44,64 @@ def get_piotroski_score(stock):
                 return {"error": "Not enough historical data for Piotroski score from any source."}
 
         # --- Intelligent Data Extraction with FMP Fallbacks ---
-        fmp_income_y1 = stock.fmp_data.get('income_statement', [{}])[0]
-        fmp_income_y2 = stock.fmp_data.get('income_statement', [{}, {}])[1]
-        fmp_balance_y1 = stock.fmp_data.get('balance_sheet', [{}])[0]
-        fmp_balance_y2 = stock.fmp_data.get('balance_sheet', [{}, {}])[1]
-        fmp_cashflow_y1 = stock.fmp_data.get('cash_flow', [{}])[0]
-
         ni_y1 = _safe_get(fs, ['Net Income'], 0)
-        if pd.isna(ni_y1): ni_y1 = fmp_income_y1.get('netIncome')
+        if pd.isna(ni_y1): ni_y1 = _safe_fmp_get(stock.fmp_data, 'income_statement', 'netIncome', 0)
         
         assets_y1 = _safe_get(bs, ['Total Assets'], 0)
-        if pd.isna(assets_y1): assets_y1 = fmp_balance_y1.get('totalAssets')
+        if pd.isna(assets_y1): assets_y1 = _safe_fmp_get(stock.fmp_data, 'balance_sheet', 'totalAssets', 0)
         
         roa_y1 = ni_y1 / assets_y1 if assets_y1 and ni_y1 is not None else 0
 
         ni_y2 = _safe_get(fs, ['Net Income'], 1)
-        if pd.isna(ni_y2): ni_y2 = fmp_income_y2.get('netIncome')
+        if pd.isna(ni_y2): ni_y2 = _safe_fmp_get(stock.fmp_data, 'income_statement', 'netIncome', 1)
 
         assets_y2 = _safe_get(bs, ['Total Assets'], 1)
-        if pd.isna(assets_y2): assets_y2 = fmp_balance_y2.get('totalAssets')
+        if pd.isna(assets_y2): assets_y2 = _safe_fmp_get(stock.fmp_data, 'balance_sheet', 'totalAssets', 1)
 
         roa_y2 = ni_y2 / assets_y2 if assets_y2 and ni_y2 is not None else 0
         
         ocf_y1 = _safe_get(cf, ['Operating Cash Flow', 'Cash Flow from Operations'], 0)
-        if pd.isna(ocf_y1): ocf_y1 = fmp_cashflow_y1.get('operatingCashFlow')
+        if pd.isna(ocf_y1): ocf_y1 = _safe_fmp_get(stock.fmp_data, 'cash_flow', 'operatingCashFlow', 0)
 
         rev_y1 = _safe_get(fs, ['Total Revenue'], 0)
-        if pd.isna(rev_y1): rev_y1 = fmp_income_y1.get('revenue')
+        if pd.isna(rev_y1): rev_y1 = _safe_fmp_get(stock.fmp_data, 'income_statement', 'revenue', 0)
         
         gp_y1 = _safe_get(fs, ['Gross Profit'], 0)
         if pd.isna(gp_y1):
             cogs_y1 = _safe_get(fs, ['Cost Of Revenue'], 0)
-            if pd.isna(cogs_y1): cogs_y1 = fmp_income_y1.get('costOfRevenue')
+            if pd.isna(cogs_y1): cogs_y1 = _safe_fmp_get(stock.fmp_data, 'income_statement', 'costOfRevenue', 0)
             gp_y1 = rev_y1 - cogs_y1 if rev_y1 is not None and cogs_y1 is not None else None
         gm_y1 = gp_y1 / rev_y1 if rev_y1 and gp_y1 is not None else 0
 
         rev_y2 = _safe_get(fs, ['Total Revenue'], 1)
-        if pd.isna(rev_y2): rev_y2 = fmp_income_y2.get('revenue')
+        if pd.isna(rev_y2): rev_y2 = _safe_fmp_get(stock.fmp_data, 'income_statement', 'revenue', 1)
 
         gp_y2 = _safe_get(fs, ['Gross Profit'], 1)
         if pd.isna(gp_y2):
             cogs_y2 = _safe_get(fs, ['Cost Of Revenue'], 1)
-            if pd.isna(cogs_y2): cogs_y2 = fmp_income_y2.get('costOfRevenue')
+            if pd.isna(cogs_y2): cogs_y2 = _safe_fmp_get(stock.fmp_data, 'income_statement', 'costOfRevenue', 1)
             gp_y2 = rev_y2 - cogs_y2 if rev_y2 is not None and cogs_y2 is not None else None
         gm_y2 = gp_y2 / rev_y2 if rev_y2 and gp_y2 is not None else 0
         
         debt_y1 = _safe_get(bs, ['Total Debt', 'Long Term Debt'], 0)
-        if pd.isna(debt_y1): debt_y1 = fmp_balance_y1.get('totalDebt')
+        if pd.isna(debt_y1): debt_y1 = _safe_fmp_get(stock.fmp_data, 'balance_sheet', 'totalDebt', 0)
 
         debt_y2 = _safe_get(bs, ['Total Debt', 'Long Term Debt'], 1)
-        if pd.isna(debt_y2): debt_y2 = fmp_balance_y2.get('totalDebt')
+        if pd.isna(debt_y2): debt_y2 = _safe_fmp_get(stock.fmp_data, 'balance_sheet', 'totalDebt', 1)
 
         curr_assets_y1 = _safe_get(bs, ['Current Assets'], 0)
-        if pd.isna(curr_assets_y1): curr_assets_y1 = fmp_balance_y1.get('totalCurrentAssets')
+        if pd.isna(curr_assets_y1): curr_assets_y1 = _safe_fmp_get(stock.fmp_data, 'balance_sheet', 'totalCurrentAssets', 0)
 
         curr_liab_y1 = _safe_get(bs, ['Current Liabilities'], 0)
-        if pd.isna(curr_liab_y1): curr_liab_y1 = fmp_balance_y1.get('totalCurrentLiabilities')
+        if pd.isna(curr_liab_y1): curr_liab_y1 = _safe_fmp_get(stock.fmp_data, 'balance_sheet', 'totalCurrentLiabilities', 0)
 
         cr_y1 = curr_assets_y1 / curr_liab_y1 if curr_liab_y1 and curr_assets_y1 is not None else 0
 
         curr_assets_y2 = _safe_get(bs, ['Current Assets'], 1)
-        if pd.isna(curr_assets_y2): curr_assets_y2 = fmp_balance_y2.get('totalCurrentAssets')
+        if pd.isna(curr_assets_y2): curr_assets_y2 = _safe_fmp_get(stock.fmp_data, 'balance_sheet', 'totalCurrentAssets', 1)
 
         curr_liab_y2 = _safe_get(bs, ['Current Liabilities'], 1)
-        if pd.isna(curr_liab_y2): curr_liab_y2 = fmp_balance_y2.get('totalCurrentLiabilities')
+        if pd.isna(curr_liab_y2): curr_liab_y2 = _safe_fmp_get(stock.fmp_data, 'balance_sheet', 'totalCurrentLiabilities', 1)
 
         cr_y2 = curr_assets_y2 / curr_liab_y2 if curr_liab_y2 and curr_assets_y2 is not None else 0
         
@@ -150,7 +152,7 @@ def get_altman_z_score(stock):
 
         ta = _safe_get(bs, ['Total Assets'])
         if pd.isna(ta):
-            ta = fmp_balance.get('totalAssets')
+            ta = _safe_fmp_get(stock.fmp_data, 'balance_sheet', 'totalAssets', 0)
 
         # Working Capital Fallback
         wc = _safe_get(bs, ['Working Capital'])
@@ -160,12 +162,12 @@ def get_altman_z_score(stock):
             current_liabilities = _safe_get(bs, ['Current Liabilities'])
             wc = current_assets - current_liabilities
         if pd.isna(wc):
-            wc = fmp_balance.get('totalCurrentAssets') - fmp_balance.get('totalCurrentLiabilities')
+            wc = _safe_fmp_get(stock.fmp_data, 'balance_sheet', 'totalCurrentAssets', 0) - _safe_fmp_get(stock.fmp_data, 'balance_sheet', 'totalCurrentLiabilities', 0)
             
         # Retained Earnings (no reliable fallback, get directly)
         re = _safe_get(bs, ['Retained Earnings'])
         if pd.isna(re):
-            re = fmp_balance.get('retainedEarnings')
+            re = _safe_fmp_get(stock.fmp_data, 'balance_sheet', 'retainedEarnings', 0)
         
         # EBIT Fallback
         ebit = _safe_get(fs, ['EBIT', 'Operating Income'])
@@ -176,21 +178,21 @@ def get_altman_z_score(stock):
             taxes = _safe_get(fs, ['Tax Provision'], 0)
             ebit = ni + interest + taxes
         if pd.isna(ebit):
-            ebit = fmp_income.get('ebitda') # FMP often provides EBITDA, which is close to EBIT for this purpose
+            ebit = _safe_fmp_get(stock.fmp_data, 'income_statement', 'ebitda', 0) # FMP often provides EBITDA, which is close to EBIT for this purpose
             if pd.isna(ebit):
-                ebit = fmp_income.get('operatingIncome')
+                ebit = _safe_fmp_get(stock.fmp_data, 'income_statement', 'operatingIncome', 0)
             
         mve = stock.info.get('marketCap')
         if pd.isna(mve):
-            mve = fmp_profile.get('mktCap')
+            mve = _safe_fmp_get(stock.fmp_data, 'company_profile', 'mktCap', 0)
 
         tl = _safe_get(bs, ['Total Liab', 'Total Liabilities'])
         if pd.isna(tl):
-            tl = fmp_balance.get('totalLiabilities')
+            tl = _safe_fmp_get(stock.fmp_data, 'balance_sheet', 'totalLiabilities', 0)
 
         sales = _safe_get(fs, ['Total Revenue', 'Revenue'])
         if pd.isna(sales):
-            sales = fmp_income.get('revenue')
+            sales = _safe_fmp_get(stock.fmp_data, 'income_statement', 'revenue', 0)
 
         if any(pd.isna(v) for v in [wc, ta, re, ebit, mve, tl, sales]):
             return {"error": "Missing non-calculable data for Z-Score."}
@@ -230,77 +232,77 @@ def get_beneish_m_score(stock):
 
         rec_y1 = _safe_get(bs, ['Accounts Receivable'], 0)
         if pd.isna(rec_y1):
-            rec_y1 = fmp_balance.get('netReceivables')
+            rec_y1 = _safe_fmp_get(stock.fmp_data, 'balance_sheet', 'netReceivables', 0)
         sales_y1 = _safe_get(fs, ['Total Revenue'], 0)
         if pd.isna(sales_y1):
-            sales_y1 = fmp_income.get('revenue')
+            sales_y1 = _safe_fmp_get(stock.fmp_data, 'income_statement', 'revenue', 0)
 
         rec_y2 = _safe_get(bs, ['Accounts Receivable'], 1)
         if pd.isna(rec_y2):
-            rec_y2 = stock.fmp_data.get('balance_sheet', [{},{}])[1].get('netReceivables')
+            rec_y2 = _safe_fmp_get(stock.fmp_data, 'balance_sheet', 'netReceivables', 1)
         sales_y2 = _safe_get(fs, ['Total Revenue'], 1)
         if pd.isna(sales_y2):
-            sales_y2 = stock.fmp_data.get('income_statement', [{},{}])[1].get('revenue')
+            sales_y2 = _safe_fmp_get(stock.fmp_data, 'income_statement', 'revenue', 1)
 
         cogs_y1 = _safe_get(fs, ['Cost Of Revenue'], 0)
         if pd.isna(cogs_y1):
-            cogs_y1 = fmp_income.get('costOfRevenue')
+            cogs_y1 = _safe_fmp_get(stock.fmp_data, 'income_statement', 'costOfRevenue', 0)
         cogs_y2 = _safe_get(fs, ['Cost Of Revenue'], 1)
         if pd.isna(cogs_y2):
-            cogs_y2 = stock.fmp_data.get('income_statement', [{},{}])[1].get('costOfRevenue')
+            cogs_y2 = _safe_fmp_get(stock.fmp_data, 'income_statement', 'costOfRevenue', 1)
 
         assets_y1 = _safe_get(bs, ['Total Assets'], 0)
         if pd.isna(assets_y1):
-            assets_y1 = fmp_balance.get('totalAssets')
+            assets_y1 = _safe_fmp_get(stock.fmp_data, 'balance_sheet', 'totalAssets', 0)
         assets_y2 = _safe_get(bs, ['Total Assets'], 1)
         if pd.isna(assets_y2):
-            assets_y2 = stock.fmp_data.get('balance_sheet', [{},{}])[1].get('totalAssets')
+            assets_y2 = _safe_fmp_get(stock.fmp_data, 'balance_sheet', 'totalAssets', 1)
 
         curr_assets_y1 = _safe_get(bs, ['Current Assets'], 0)
         if pd.isna(curr_assets_y1):
-            curr_assets_y1 = fmp_balance.get('totalCurrentAssets')
+            curr_assets_y1 = _safe_fmp_get(stock.fmp_data, 'balance_sheet', 'totalCurrentAssets', 0)
         curr_assets_y2 = _safe_get(bs, ['Current Assets'], 1)
         if pd.isna(curr_assets_y2):
-            curr_assets_y2 = stock.fmp_data.get('balance_sheet', [{},{}])[1].get('totalCurrentAssets')
+            curr_assets_y2 = _safe_fmp_get(stock.fmp_data, 'balance_sheet', 'totalCurrentAssets', 1)
 
         ppe_y1 = _safe_get(bs, ['Property Plant And Equipment', 'Net Property, Plant and Equipment'], 0)
         if pd.isna(ppe_y1):
-            ppe_y1 = fmp_balance.get('propertyPlantAndEquipmentNet')
+            ppe_y1 = _safe_fmp_get(stock.fmp_data, 'balance_sheet', 'propertyPlantAndEquipmentNet', 0)
         ppe_y2 = _safe_get(bs, ['Property Plant And Equipment', 'Net Property, Plant and Equipment'], 1)
         if pd.isna(ppe_y2):
-            ppe_y2 = stock.fmp_data.get('balance_sheet', [{},{}])[1].get('propertyPlantAndEquipmentNet')
+            ppe_y2 = _safe_fmp_get(stock.fmp_data, 'balance_sheet', 'propertyPlantAndEquipmentNet', 1)
 
         dep_y1 = _safe_get(cf, ['Depreciation And Amortization', 'Depreciation'], 0)
         if pd.isna(dep_y1):
-            dep_y1 = fmp_cashflow.get('depreciationAndAmortization')
+            dep_y1 = _safe_fmp_get(stock.fmp_data, 'cash_flow', 'depreciationAndAmortization', 0)
         dep_y2 = _safe_get(cf, ['Depreciation And Amortization', 'Depreciation'], 1)
         if pd.isna(dep_y2):
-            dep_y2 = stock.fmp_data.get('cash_flow', [{},{}])[1].get('depreciationAndAmortization')
+            dep_y2 = _safe_fmp_get(stock.fmp_data, 'cash_flow', 'depreciationAndAmortization', 1)
 
         sga_y1 = _safe_get(fs, ['Selling General And Administration'], 0)
         if pd.isna(sga_y1):
-            sga_y1 = fmp_income.get('sellingAndMarketingExpenses') # FMP often combines SGA
+            sga_y1 = _safe_fmp_get(stock.fmp_data, 'income_statement', 'sellingAndMarketingExpenses', 0) # FMP often combines SGA
             if pd.isna(sga_y1):
-                sga_y1 = fmp_income.get('generalAndAdministrativeExpenses') + fmp_income.get('sellingExpenses') if fmp_income.get('generalAndAdministrativeExpenses') and fmp_income.get('sellingExpenses') else np.nan
+                sga_y1 = _safe_fmp_get(stock.fmp_data, 'income_statement', 'generalAndAdministrativeExpenses', 0) + _safe_fmp_get(stock.fmp_data, 'income_statement', 'sellingExpenses', 0) if _safe_fmp_get(stock.fmp_data, 'income_statement', 'generalAndAdministrativeExpenses', 0) and _safe_fmp_get(stock.fmp_data, 'income_statement', 'sellingExpenses', 0) else np.nan
         sga_y2 = _safe_get(fs, ['Selling General And Administration'], 1)
         if pd.isna(sga_y2):
-            sga_y2 = stock.fmp_data.get('income_statement', [{},{}])[1].get('sellingAndMarketingExpenses')
+            sga_y2 = _safe_fmp_get(stock.fmp_data, 'income_statement', 'sellingAndMarketingExpenses', 1)
             if pd.isna(sga_y2):
-                sga_y2 = stock.fmp_data.get('income_statement', [{},{}])[1].get('generalAndAdministrativeExpenses') + stock.fmp_data.get('income_statement', [{},{}])[1].get('sellingExpenses') if stock.fmp_data.get('income_statement', [{},{}])[1].get('generalAndAdministrativeExpenses') and stock.fmp_data.get('income_statement', [{},{}])[1].get('sellingExpenses') else np.nan
+                sga_y2 = _safe_fmp_get(stock.fmp_data, 'income_statement', 'generalAndAdministrativeExpenses', 1) + _safe_fmp_get(stock.fmp_data, 'income_statement', 'sellingExpenses', 1) if _safe_fmp_get(stock.fmp_data, 'income_statement', 'generalAndAdministrativeExpenses', 1) and _safe_fmp_get(stock.fmp_data, 'income_statement', 'sellingExpenses', 1) else np.nan
 
         debt_y1 = _safe_get(bs, ['Total Debt'], 0)
         if pd.isna(debt_y1):
-            debt_y1 = fmp_balance.get('totalDebt')
+            debt_y1 = _safe_fmp_get(stock.fmp_data, 'balance_sheet', 'totalDebt', 0)
         debt_y2 = _safe_get(bs, ['Total Debt'], 1)
         if pd.isna(debt_y2):
-            debt_y2 = stock.fmp_data.get('balance_sheet', [{},{}])[1].get('totalDebt')
+            debt_y2 = _safe_fmp_get(stock.fmp_data, 'balance_sheet', 'totalDebt', 1)
 
         ni_y1 = _safe_get(fs, ['Net Income'], 0)
         if pd.isna(ni_y1):
-            ni_y1 = fmp_income.get('netIncome')
+            ni_y1 = _safe_fmp_get(stock.fmp_data, 'income_statement', 'netIncome', 0)
         cfo_y1 = _safe_get(cf, ['Operating Cash Flow'], 0)
         if pd.isna(cfo_y1):
-            cfo_y1 = fmp_cashflow.get('operatingCashFlow')
+            cfo_y1 = _safe_fmp_get(stock.fmp_data, 'cash_flow', 'operatingCashFlow', 0)
         
         # Check for missing data
         data_points = [rec_y1, sales_y1, rec_y2, sales_y2, cogs_y1, cogs_y2, assets_y1, assets_y2,
@@ -339,7 +341,7 @@ def analyze_fundamentals(ticker: str, basis: str = "annual"):
         logger.debug(f"Piotroski result: {piotroski_result}")
         altman_result = get_altman_z_score(stock)
         logger.debug(f"Altman result: {altman_result}")
-        beneish_result = get_beneish_score(stock)
+        beneish_result = get_beneish_m_score(stock)
         logger.debug(f"Beneish result: {beneish_result}")
         # ... rest of the function remains the same ...
     except Exception as e:
