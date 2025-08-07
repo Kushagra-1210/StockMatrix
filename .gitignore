@@ -40,3 +40,6 @@ var/
 # Python cache
 __pycache__/
 *.pyc
+
+# Keep API keys and other secrets out of version control
+config/settings.py 
