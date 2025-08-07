@@ -333,6 +333,18 @@ def get_beneish_m_score(stock):
 
 
 def analyze_fundamentals(ticker: str, basis: str = "annual"):
+    logger = logging.getLogger(__name__)
+    try:
+        piotroski_result = get_piotroski_score(stock)
+        logger.debug(f"Piotroski result: {piotroski_result}")
+        altman_result = get_altman_z_score(stock)
+        logger.debug(f"Altman result: {altman_result}")
+        beneish_result = get_beneish_score(stock)
+        logger.debug(f"Beneish result: {beneish_result}")
+        # ... rest of the function remains the same ...
+    except Exception as e:
+        logger.error(f"Error during fundamental analysis: {e}")
+
     """
     Orchestrates the 3-factor fundamental analysis model.
     """
