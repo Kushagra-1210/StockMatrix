@@ -20,7 +20,6 @@ class DataProvider:
             ValueError: If the initial data fetch fails and returns an error.
         """
         self.ticker = ticker
-        # Fetch data using a specific period to ensure consistency
         self._data = get_ticker_data(ticker) 
         
         if "error" in self._data:
@@ -44,9 +43,9 @@ class DataProvider:
     def get_history(self) -> pd.DataFrame:
         """
         Provides sanitized and standardized historical price data.
-        - Fetches a 2.5-year window to ensure accurate 200-day SMA.
         - Drops any rows with missing OHLC data or zero volume.
-        - Sorts data chronologically.
+        - For stocks with >2 years of history, it returns the last 2 years.
+        - For stocks with <2 years of history, it returns the maximum available data.
         """
         history_dict = self._data.get("history", {})
         if not history_dict:
@@ -54,34 +53,33 @@ class DataProvider:
         
         df = pd.DataFrame(history_dict)
         
-        # --- DATA SANITIZATION (CRITICAL FIX) ---
+        # --- DATA SANITIZATION ---
         ohlc_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
         if not all(col in df.columns for col in ohlc_cols):
             return pd.DataFrame()
         
-        # 1. Drop rows with any missing price/volume data
         df.dropna(subset=ohlc_cols, inplace=True)
-        
-        # 2. Convert to numeric, coercing errors, and drop if conversion fails
         for col in ohlc_cols:
             df[col] = pd.to_numeric(df[col], errors='coerce')
         df.dropna(subset=ohlc_cols, inplace=True)
-
-        # 3. Remove rows with zero volume, as they are not valid trading days
         df = df[df['Volume'] > 0]
 
         if df.empty:
             return pd.DataFrame()
 
-        # 4. Handle dates and sort
         df['Date'] = pd.to_datetime(df['Date'])
         if df['Date'].dt.tz is not None:
             df['Date'] = df['Date'].dt.tz_localize(None)
         
         df.sort_values(by='Date', inplace=True)
         
-        # --- STANDARDIZE LOOKBACK PERIOD ---
+        # --- INTELLIGENT LOOKBACK PERIOD (CRITICAL FIX) ---
         two_years_ago = datetime.now() - timedelta(days=730)
-        df = df[df['Date'] >= two_years_ago]
+        
+        # Only slice the data if the stock's history is longer than 2 years.
+        if not df.empty and df['Date'].iloc[0] < two_years_ago:
+            df = df[df['Date'] >= two_years_ago]
+        
+        # If history is shorter than 2 years, we use the full, clean dataset.
         
         return df
