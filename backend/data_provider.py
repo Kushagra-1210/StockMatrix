@@ -5,8 +5,8 @@ from backend.data_fetcher import get_ticker_data
 class DataProvider:
     """
     A data abstraction layer that provides a clean, consistent interface 
-    for accessing stock data from various sources. It handles fetching, 
-    caching (via get_ticker_data), and initial processing.
+    for accessing stock data. It handles fetching, caching, sanitizing, 
+    and standardizing the lookback period of the data.
     """
     def __init__(self, ticker: str):
         """
@@ -19,7 +19,6 @@ class DataProvider:
             ValueError: If the initial data fetch fails and returns an error.
         """
         self.ticker = ticker
-        # The complex data is fetched only once and stored internally.
         self._data = get_ticker_data(ticker)
         
         if "error" in self._data:
@@ -30,13 +29,7 @@ class DataProvider:
         return self._data.get("info", {})
 
     def get_financial_statements(self) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-        """
-        Provides clean, ready-to-use financial statement DataFrames.
-
-        Returns:
-            tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]: A tuple containing
-            the financials (Income Statement), balance sheet, and cash flow DataFrames.
-        """
+        """Provides clean, ready-to-use financial statement DataFrames."""
         financials = pd.DataFrame(self._data['financials']['data'], columns=self._data['financials']['columns'], index=self._data['financials']['index']) if self._data.get("financials") else pd.DataFrame()
         balance_sheet = pd.DataFrame(self._data['balance_sheet']['data'], columns=self._data['balance_sheet']['columns'], index=self._data['balance_sheet']['index']) if self._data.get("balance_sheet") else pd.DataFrame()
         cashflow = pd.DataFrame(self._data['cashflow']['data'], columns=self._data['cashflow']['columns'], index=self._data['cashflow']['index']) if self._data.get("cashflow") else pd.DataFrame()
@@ -48,8 +41,9 @@ class DataProvider:
 
     def get_history(self) -> pd.DataFrame:
         """
-        Provides historical price data. 
-        - For stocks with >2 years of history, it returns the last 2 years to standardize calculations.
+        Provides sanitized and standardized historical price data.
+        - Drops any rows with missing OHLC data to ensure calculation accuracy.
+        - For stocks with >2 years of history, it returns the last 2 years.
         - For stocks with <2 years of history, it returns the maximum available data.
         """
         history_dict = self._data.get("history", {})
@@ -57,22 +51,25 @@ class DataProvider:
             return pd.DataFrame()
         
         df = pd.DataFrame(history_dict)
+        
+        # --- DATA SANITIZATION (CRITICAL FIX) ---
+        # Ensure essential columns exist and drop any row with missing price data.
+        ohlc_cols = ['Open', 'High', 'Low', 'Close']
+        if not all(col in df.columns for col in ohlc_cols):
+            return pd.DataFrame() # Return empty if data is malformed
+        df.dropna(subset=ohlc_cols, inplace=True)
+
         df['Date'] = pd.to_datetime(df['Date'])
         
-        # --- THIS IS THE KEY FIX ---
-        # Ensure the 'Date' column from the API is timezone-naive.
+        # Ensure the 'Date' column is timezone-naive.
         if df['Date'].dt.tz is not None:
             df['Date'] = df['Date'].dt.tz_localize(None)
         
-        # Make the current timestamp timezone-naive to allow for comparison.
+        # --- STANDARDIZE LOOKBACK PERIOD (CRITICAL FIX) ---
         two_years_ago = pd.Timestamp.now().tz_localize(None) - pd.DateOffset(years=2)
         
-        # Check if the earliest data point is before the 2-year cutoff
         if not df.empty and df['Date'].iloc[0] < two_years_ago:
-            # If so, slice the DataFrame to only include the last 2 years
             df = df[df['Date'] >= two_years_ago]
-        
-        # Otherwise, if the stock has less than 2 years of data, we use all of it.
         
         return df
 
