@@ -6,6 +6,7 @@ from backend.data_fetcher import get_ticker_data
 from datetime import datetime
 import plotly.graph_objs as go
 import pandas as pd
+import streamlit as st
 
 # Run Analysis view logic for StockMatrix
 
@@ -91,7 +92,6 @@ def show_run_analysis(st, user_prefs):
                 show_moving_avg = st.checkbox("Show Moving Average (20d)", value=False, key="run_analysis_ma")
                 show_volume = st.checkbox("Show Volume", value=False, key="run_analysis_vol")
                 if history and "Close" in history and history["Close"]:
-                    # Ensure all arrays are of the same length
                     min_len = len(history["Close"])
                     
                     df_data = {"Close": history["Close"]}
@@ -107,7 +107,6 @@ def show_run_analysis(st, user_prefs):
 
                     df = pd.DataFrame(df_data)
                     
-                    # Use the 'Date' field for the index if it exists and matches length
                     if "Date" in history and len(history["Date"]) == min_len:
                         df.index = pd.to_datetime(history["Date"])
                     fig = go.Figure()
@@ -172,20 +171,16 @@ def show_run_analysis(st, user_prefs):
                     if "error" not in st.session_state.fundamentals and "error" not in st.session_state.technicals:
                         user_weights = st.session_state.user_weights
                         
-                        # Get scores from session state, with defaults
                         fundamental_score = st.session_state.fundamentals.get("Fundamental Score", 0)
                         technical_score = st.session_state.technicals.get("ta_score", 0)
-                        # Perception score is out of 20, so we multiply by 5 to scale to 100
                         perception_score = st.session_state.perception.get("strategic_perception_score", 0) * 5
                         risk_score = st.session_state.risk.get("risk_score", 50)
 
-                        # Get weights from user preferences
                         fa_weight = user_weights.get("fa", 0) / 100
                         ta_weight = user_weights.get("ta", 0) / 100
                         sentiment_weight = user_weights.get("sentiment", 0) / 100
                         news_weight = user_weights.get("news", 0) / 100
                         
-                        # Calculate weighted score
                         final_score = round(
                             (fa_weight * fundamental_score) +
                             (ta_weight * technical_score) +
@@ -202,7 +197,7 @@ def show_run_analysis(st, user_prefs):
                     st.error(f"Analysis failed: {str(e)}")
         st.divider()
         weights = st.session_state.user_weights
-        if st.session_state.technicals and weights.get("ta", 0) > 0:
+        if st.session_state.get("technicals") and weights.get("ta", 0) > 0:
             with st.expander("🧪 Technical Analysis", expanded=True):
                 data = st.session_state.technicals
                 if "error" in data:
@@ -215,22 +210,26 @@ def show_run_analysis(st, user_prefs):
                         st.markdown("---")
                         st.markdown("#### Key Technical Indicators:")
                         if isinstance(indicators, dict):
-                            keys = list(indicators.keys())
-                            n = len(keys)
-                            if n > 0:
-                                cols = st.columns(min(n, 2))
-                                for i, k in enumerate(keys):
-                                    with cols[i % 2]:
-                                        st.metric(k, indicators[k])
+                            # Create a DataFrame for better layout
+                            df_indicators = pd.DataFrame(list(indicators.items()), columns=['Indicator', 'Value'])
+                            st.table(df_indicators)
                         else:
                             st.write(indicators)
+                    
+                    # --- THIS IS THE NEWLY ADDED NOTE ---
+                    if data.get("methodology_note"):
+                        st.caption(f"📝 {data['methodology_note']}")
+                    # --- END OF NEW CODE ---
+
                     notes = data.get('notes', [])
                     if notes:
                         st.markdown("**Technical Analysis Notes:**")
                         for note in notes:
                             st.caption(f"📝 {note}")
-        if st.session_state.fundamentals and weights.get("fa", 0) > 0:
+                            
+        if st.session_state.get("fundamentals") and weights.get("fa", 0) > 0:
             with st.expander("📊 Fundamental Analysis", expanded=True):
+                # ... (rest of the fundamental analysis display logic)
                 data = st.session_state.fundamentals
                 final_score = data.get("Fundamental Score")
                 verdict = data.get("Verdict")
@@ -255,8 +254,10 @@ def show_run_analysis(st, user_prefs):
                     st.markdown("#### Analysis Notes:")
                     for note in notes:
                         st.caption(f"📝 {note}")
-        if st.session_state.perception and weights.get("sentiment", 0) > 0:
+
+        if st.session_state.get("perception") and weights.get("sentiment", 0) > 0:
             with st.expander("🔎 Strategic Perception Analysis", expanded=True):
+                # ... (rest of the perception analysis display logic)
                 data = st.session_state.perception
                 score_20 = data.get('strategic_perception_score', 0)
                 score_100 = round(score_20 * 5, 2)
@@ -279,8 +280,10 @@ def show_run_analysis(st, user_prefs):
                     st.markdown("**Sample Headlines Analyzed:**")
                     for headline in headlines:
                         st.caption(f"- {headline}")
-        if st.session_state.risk and weights.get("news", 0) > 0:
+
+        if st.session_state.get("risk") and weights.get("news", 0) > 0:
             with st.expander("🛡️ News & Geopolitical Risk", expanded=True):
+                # ... (rest of the news/risk display logic)
                 data = st.session_state.risk
                 if "error" in data:
                     st.error(f"Analysis Failed: {data['error']}")
@@ -300,9 +303,8 @@ def show_run_analysis(st, user_prefs):
                             for h in headlines[:3]:
                                 st.markdown(f"- {h}")
                     else:
-                        st.info("No headlines found. (Debug: headlines field is empty or missing)")
-                        with st.expander("Show raw news risk data (debug)"):
-                            st.write(data)
+                        st.info("No headlines found.")
+
         if "final_score" in st.session_state and st.session_state.final_score is not None:
             st.markdown("### 📌 Final Investment Decision")
             weights = st.session_state.final_weights
