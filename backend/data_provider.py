@@ -44,7 +44,7 @@ class DataProvider:
         """
         Provides sanitized and standardized historical price data.
         - Drops any rows with missing OHLC data or zero volume.
-        - For stocks with >2 years of history, it returns the last 2 years.
+        - For stocks with >2 years of history, it returns the last 2 years plus a buffer.
         - For stocks with <2 years of history, it returns the maximum available data.
         """
         history_dict = self._data.get("history", {})
@@ -74,12 +74,14 @@ class DataProvider:
         df.sort_values(by='Date', inplace=True)
         
         # --- INTELLIGENT LOOKBACK PERIOD (CRITICAL FIX) ---
-        two_years_ago = datetime.now() - timedelta(days=730)
+        # Use a slightly longer period to provide a "warm-up" buffer for indicators.
+        lookback_period = datetime.now() - timedelta(days=780) 
         
-        # Only slice the data if the stock's history is longer than 2 years.
-        if not df.empty and df['Date'].iloc[0] < two_years_ago:
-            df = df[df['Date'] >= two_years_ago]
+        # Only slice the data if the stock's history is longer than our lookback period.
+        if not df.empty and df['Date'].iloc[0] < lookback_period:
+            df = df[df['Date'] >= lookback_period]
         
-        # If history is shorter than 2 years, we use the full, clean dataset.
+        # If history is shorter, we use the full, clean dataset.
         
         return df
+
