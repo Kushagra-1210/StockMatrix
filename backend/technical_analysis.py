@@ -37,6 +37,7 @@ def normalize_oscillator(value, oversold=30, overbought=70):
     elif value > overbought:
         return 25 - min(25, (value - overbought) * 1.5)
     else:
+        # --- THIS IS THE FIX ---
         return 25 + ((value - oversold) / (overbought - oversold)) * 50.0
 
 def normalize_volatility(vol_percent, low=1.5, high=7.0):
@@ -66,21 +67,15 @@ def analyze_technical_indicators(ticker: str, industry: str = 'default', basis: 
         hist.set_index('Date', inplace=True)
         hist.rename(columns={"Open": "open", "High": "high", "Low": "low", "Close": "close", "Volume": "volume"}, inplace=True)
         
-        # --- Indicator Calculations using pandas_ta ---
-        # Use the imported 'ta' alias for clarity and explicit calculations
-        
-        # Calculate all indicators
-        rsi = ta.rsi(hist['close'], length=14)
-        macd = ta.macd(hist['close'], fast=12, slow=26, signal=9)
-        stoch = ta.stoch(hist['high'], hist['low'], hist['close'], k=14, d=3, smooth_k=3)
-        adx = ta.adx(hist['high'], hist['low'], hist['close'], length=14)
-        atr = ta.atr(hist['high'], hist['low'], hist['close'], length=14)
-        obv = ta.obv(hist['close'], hist['volume'])
-        sma50 = ta.sma(hist['close'], length=50)
-        sma200 = ta.sma(hist['close'], length=200)
-
-        # Combine all indicator results with the historical data
-        hist = pd.concat([hist, rsi, macd, stoch, adx, atr, obv, sma50, sma200], axis=1)
+        # --- Indicator Calculations using Standard Parameters ---
+        hist.ta.rsi(length=14, append=True)
+        hist.ta.macd(fast=12, slow=26, signal=9, append=True)
+        hist.ta.stoch(k=14, d=3, smooth_k=3, append=True)
+        hist.ta.adx(length=14, append=True)
+        hist.ta.atr(length=14, append=True)
+        hist.ta.obv(append=True)
+        hist.ta.sma(length=50, append=True)
+        hist.ta.sma(length=200, append=True)
 
         # --- Store RAW VALUES for UI Display ---
         raw_values = {
@@ -88,7 +83,7 @@ def analyze_technical_indicators(ticker: str, industry: str = 'default', basis: 
             'Stoch': safe_latest_value(hist, 'STOCHk_14_3_3'),
             'MACD': safe_latest_value(hist, 'MACDh_12_26_9'),
             'ADX': safe_latest_value(hist, 'ADX_14'),
-            'ATR': safe_latest_value(hist, 'ATRr_14'), # ATR as a percentage for volatility scoring
+            'ATR': safe_latest_value(hist, 'ATR_14'),
             'OBV': safe_latest_value(hist, 'OBV'),
             'SMA_50': safe_latest_value(hist, 'SMA_50'),
             'SMA_200': safe_latest_value(hist, 'SMA_200'),
@@ -115,9 +110,10 @@ def analyze_technical_indicators(ticker: str, industry: str = 'default', basis: 
         scores['RSI'] = normalize_oscillator(raw_values['RSI'], 30, 70)
         scores['Stoch'] = normalize_oscillator(raw_values['Stoch'], 20, 80)
         scores['ADX_Strength'] = normalize_momentum(raw_values['ADX'], thresholds['ADX'][0], thresholds['ADX'][1])
-        scores['ATR_Vol'] = normalize_volatility(raw_values['ATR'], thresholds['ATR'][0], thresholds['ATR'][1])
         
-        # OBV Trend Score
+        atr_percent = (raw_values['ATR'] / raw_values['Price']) * 100 if pd.notna(raw_values['ATR']) and pd.notna(raw_values['Price']) and raw_values['Price'] != 0 else np.nan
+        scores['ATR_Vol'] = normalize_volatility(atr_percent, thresholds['ATR'][0], thresholds['ATR'][1])
+        
         obv_series = hist['OBV'].dropna().tail(10)
         if len(obv_series) > 1 and obv_series.iloc[-1] != obv_series.iloc[0]:
             scores['OBV_Trend'] = 100.0 if obv_series.iloc[-1] > obv_series.iloc[0] else 0.0
@@ -134,13 +130,17 @@ def analyze_technical_indicators(ticker: str, industry: str = 'default', basis: 
 
         # --- Format Raw Values for Display ---
         display_values = {k: f"{v:.2f}" if pd.notna(v) else "N/A" for k, v in raw_values.items()}
+        
+        # --- THIS IS THE NEW NOTE ---
+        methodology_note = "Note: Values are calculated using standard formulas on end-of-day data. Minor discrepancies with other platforms may occur due to differences in data sources or calculation nuances."
 
         return {
             "ta_score": round(final_score, 2),
             "verdict": verdict,
             "notes": notes,
-            "indicators": display_values, # This now contains the REAL values
-            "scores": {k: f"{v:.1f}/100" for k, v in scores.items()} # Internal scores (optional to show)
+            "indicators": display_values,
+            "scores": {k: f"{v:.1f}/100" for k, v in scores.items()},
+            "methodology_note": methodology_note # Add the note to the output
         }
 
     except Exception as e:
