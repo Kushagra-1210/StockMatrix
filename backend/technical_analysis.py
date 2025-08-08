@@ -3,14 +3,13 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import logging
-from backend.data_fetcher import get_ticker_data
+from backend.data_provider import DataProvider # Using the new DataProvider
 import pandas_ta as ta
 from datetime import datetime
 
-
 logger = logging.getLogger(__name__)
 
-# --- DYNAMIC EXPLANATIONS ---
+# --- DYNAMIC EXPLANATIONS (Updated for new logic) ---
 def get_dynamic_explanation(indicator: str, score: float, **kwargs) -> str:
     """Generates a dynamic explanation based on the indicator and its score."""
     if indicator == "SMA_Trend":
@@ -27,32 +26,27 @@ def get_dynamic_explanation(indicator: str, score: float, **kwargs) -> str:
         if score > 25: return "Bearish Momentum: The MACD is negative, suggesting downward price momentum."
         return "Strong Bearish Momentum: The MACD line is significantly below the signal line, indicating strong selling pressure."
 
-    if indicator == "RSI": # Note: Score is inverted (lower score is more overbought/bearish)
-        if score <= 25: return "Overbought: The RSI is high, suggesting the stock may be overvalued and due for a pullback. This is a bearish signal."
-        if score <= 45: return "Approaching Overbought: The RSI is in the upper range, indicating potential for a reversal."
-        if score < 55: return "Neutral: The RSI is in a neutral range, not indicating a strong bias."
-        if score < 75: return "Approaching Oversold: The RSI is in the lower range, suggesting the stock may be undervalued."
-        return "Oversold: The RSI is low, suggesting the stock may be undervalued and due for a rally. This is a bullish signal."
+    if indicator == "RSI":
+        raw_rsi = kwargs.get('value', 50)
+        if raw_rsi > 70: return f"Overbought ({raw_rsi:.1f}): The RSI is in overbought territory, suggesting the stock may be overvalued and due for a pullback. This is a bearish sign, hence the lower score."
+        if raw_rsi < 30: return f"Oversold ({raw_rsi:.1f}): The RSI is low, suggesting the stock may be undervalued and due for a rally. This is a bullish reversal signal."
+        return f"Neutral ({raw_rsi:.1f}): The RSI is in a neutral range, not indicating a strong directional bias."
 
-    if indicator == "Stoch": # Note: Score is inverted
-        if score <= 25: return "Overbought: The Stochastic Oscillator is high, indicating the price is near the top of its recent range and could reverse."
-        if score <= 45: return "High in Range: The price is in the upper part of its recent trading range."
-        if score < 55: return "Neutral: The price is in the middle of its recent trading range."
-        if score < 75: return "Low in Range: The price is in the lower part of its recent trading range."
-        return "Oversold: The Stochastic Oscillator is low, indicating the price is near the bottom of its recent range and could rally."
+    if indicator == "Stoch":
+        raw_stoch = kwargs.get('value', 50)
+        if raw_stoch > 80: return f"Overbought ({raw_stoch:.1f}): The Stochastic is high, indicating the price is near the top of its recent range and could reverse. This is a bearish sign."
+        if raw_stoch < 20: return f"Oversold ({raw_stoch:.1f}): The Stochastic is low, indicating the price is near the bottom of its recent range and could rally. This is a bullish reversal signal."
+        return f"Neutral ({raw_stoch:.1f}): The price is in the middle of its recent trading range."
 
     if indicator == "ADX_Strength":
         if score >= 75: return "Very Strong Trend: The ADX indicates a very strong trend is in place (either up or down)."
         if score >= 55: return "Strong Trend: The ADX shows a clear and strong trend."
-        if score > 45: return "Developing Trend: The trend is starting to show some strength."
         return "Weak or No Trend: The market is likely ranging or the trend is very weak."
 
-    if indicator == "ATR_Vol": # Note: Score is inverted (lower score = higher volatility)
-        if score <= 25: return "High Volatility: The ATR is high relative to the price, indicating large price swings and higher risk."
-        if score <= 45: return "Moderate Volatility: Price swings are noticeable."
-        if score < 55: return "Average Volatility: Typical price movement for this stock."
-        if score < 75: return "Low Volatility: Price swings are smaller than usual."
-        return "Very Low Volatility: The ATR is low, indicating very small price swings and lower risk."
+    if indicator == "ATR_Vol":
+        if score <= 30: return "High Volatility: The ATR is high relative to the price, indicating large price swings and higher risk."
+        if score <= 60: return "Moderate Volatility: Price swings are noticeable."
+        return "Low Volatility: The ATR is low, indicating very small price swings and lower risk."
 
     if indicator == "OBV_Trend":
         if score >= 95: return "Strong Buying Pressure: On-Balance Volume is in a strong uptrend, suggesting accumulation."
@@ -70,73 +64,42 @@ INDUSTRY_THRESHOLDS = {
     'Banking': {'RSI': (38, 62), 'Stoch': (38, 62), 'MACD': (-0.2, 0.2), 'ADX': (22, 30), 'ATR': (1.8, 6.0)}
 }
 
-def industry_benchmark_zones(ticker_str: str) -> dict:
-    """
-    Calculate industry benchmark zones for a given stock ticker.
-    """
-    data = get_ticker_data(ticker_str)
-    if 'error' in data:
-        return data
-
-    hist_data = pd.DataFrame(data['history'])
-    info_data = data['info']
-
-    # Check for missing values in hist_data
-    if hist_data.isnull().values.any():
-        logger.warning(f"Missing values detected in historical data for {ticker_str}")
-        return {"error": "Missing values detected in historical data"}
-
-    # Check for outliers in hist_data
-    hist_data = hist_data[(np.abs(hist_data['Close'] - hist_data['Close'].mean()) < (3 * hist_data['Close'].std()))]
-    if hist_data.empty:
-        logger.warning(f"Outliers detected in historical data for {ticker_str}")
-        return {"error": "Outliers detected in historical data"}
-
-    # Calculate technical indicators
-    try:
-        hist_data['RSI'] = ta.rsi(hist_data['Close'], length=14)
-        hist_data['Stoch'] = ta.stoch(hist_data['High'], hist_data['Low'], hist_data['Close'], length=14)
-        hist_data['MACD'] = ta.macd(hist_data['Close'], fast=12, slow=26, signal=9)
-        hist_data['ADX'] = ta.adx(hist_data['High'], hist_data['Low'], hist_data['Close'], length=14)
-        hist_data['ATR'] = ta.atr(hist_data['High'], hist_data['Low'], hist_data['Close'], length=14)
-    except Exception as e:
-        logger.error(f"Error calculating technical indicators for {ticker_str}: {e}")
-        return {"error": f"Error calculating technical indicators: {e}"}
-
-    # Get industry thresholds
-    industry = info_data.get('industry', 'default')
-    thresholds = INDUSTRY_THRESHOLDS[industry]
-
-    # Calculate benchmark zones
-    benchmark_zones = {}
-    for indicator, (lower, upper) in thresholds.items():
-        benchmark_zones[indicator] = (hist_data[indicator].min(), hist_data[indicator].max())
-
-    # Check for missing values in benchmark_zones
-    if any(pd.isnull(benchmark_zones.values())):
-        logger.warning(f"Missing values detected in benchmark zones for {ticker_str}")
-        return {"error": "Missing values detected in benchmark zones"}
-
-    return benchmark_zones
-
-# --- NORMALIZATION HELPERS ---
+# --- NORMALIZATION HELPERS (Updated Logic) ---
 def get_thresholds(industry: str):
     return INDUSTRY_THRESHOLDS.get(industry, INDUSTRY_THRESHOLDS['default'])
 
-def normalize_indicator(value, neutral_low, neutral_high, bullish_is_high=True):
+def normalize_momentum(value, neutral_low, neutral_high):
+    """Normalizes momentum indicators like MACD where higher is more bullish."""
     if pd.isna(value): return 50.0
     if value > neutral_high:
-        score = 75 + min(25, (value - neutral_high) * 2.5)
-        return score if bullish_is_high else 100 - score
+        score = 75 + min(25, (value - neutral_high) * 5) # More sensitive scaling
     elif value < neutral_low:
-        score = 25 - min(25, (neutral_low - value) * 2.5)
-        return score if bullish_is_high else 100 - score
+        score = 25 - min(25, (neutral_low - value) * 5)
     else:
-        return 25 + ((value - neutral_low) / (neutral_high - neutral_low)) * 50.0
+        # Scale score between 25 and 75 in the neutral zone
+        score = 25 + ((value - neutral_low) / (neutral_high - neutral_low)) * 50.0
+    return max(0.0, min(100.0, score))
+
+def normalize_oscillator(value, oversold=30, overbought=70):
+    """
+    Normalizes oscillators like RSI and Stochastics.
+    Treats oversold as bullish (high score) and overbought as bearish (low score).
+    """
+    if pd.isna(value): return 50.0
+    
+    if value < oversold:
+        # Strong bullish signal as it's oversold
+        return 75 + min(25, (oversold - value) * 1.5)
+    elif value > overbought:
+        # Strong bearish signal as it's overbought
+        return 25 - min(25, (value - overbought) * 1.5)
+    else:
+        # Neutral zone, scales linearly between 25 and 75
+        return 25 + ((value - oversold) / (overbought - oversold)) * 50.0
 
 def normalize_volatility(vol_percent, low=1.5, high=7.0):
-    
     if pd.isna(vol_percent): return 50.0
+    # Lower volatility gets a higher score
     score = 100 - ((vol_percent - low) / (high - low)) * 100
     return max(0.0, min(100.0, score))
 
@@ -150,127 +113,79 @@ def safe_latest_value(df, column_name):
 
 # --- MAIN ANALYSIS FUNCTION ---
 def analyze_technical_indicators(ticker: str, industry: str = 'default', basis: str = "annual") -> dict:
-    
-    hist = pd.DataFrame()
     try:
+        provider = DataProvider(ticker)
         thresholds = get_thresholds(industry)
-        ticker_data = get_ticker_data(ticker)
-        if "error" in ticker_data: return ticker_data
-        if not isinstance(ticker_data, dict) or "history" not in ticker_data or not ticker_data["history"]:
+        hist = provider.get_history()
+
+        if hist.empty:
             return {"error": "❌ No valid historical data for TA."}
 
-        hist = pd.DataFrame(ticker_data['history'])
-
-        # Step 1: Force daily frequency and forward-fill missing days (holidays, weekends)
+        # --- Data Preparation (CORRECTED) ---
+        # We will work directly with the provided trading data without resampling.
         hist['Date'] = pd.to_datetime(hist['Date'])
         hist.set_index('Date', inplace=True)
-        hist = hist.asfreq('B')  # Business day frequency
-        hist = hist.ffill()
-
-        # Step 2: Round OHLC prices to 2 decimals to reduce floating-point drift
-        hist[['Open', 'High', 'Low', 'Close']] = hist[['Open', 'High', 'Low', 'Close']].round(2)
-
-        # Step 3: Rename columns to lowercase (pandas_ta standard)
         hist.rename(columns={"Open": "open", "High": "high", "Low": "low", "Close": "close", "Volume": "volume"}, inplace=True)
+        hist[['open', 'high', 'low', 'close']] = hist[['open', 'high', 'low', 'close']].round(2)
 
-        # --- Apply individual indicators manually for better precision
-        hist['RSI_14'] = ta.rsi(hist['close'], length=14)
-        macd = ta.macd(hist['close'], fast=12, slow=26, signal=9)
-        hist = pd.concat([hist, macd], axis=1)
-        stoch = ta.stoch(hist['high'], hist['low'], hist['close'], k=14, d=3, smooth_k=3)
-        hist = pd.concat([hist, stoch], axis=1)
-        hist['ADX_14'] = ta.adx(hist['high'], hist['low'], hist['close'], length=14)['ADX_14']
-        hist['ATR_14'] = ta.atr(hist['high'], hist['low'], hist['close'], length=14)
-        hist['OBV'] = ta.obv(hist['close'], hist['volume'])
-        hist['SMA_50'] = ta.sma(hist['close'], length=50)
-        hist['SMA_200'] = ta.sma(hist['close'], length=200)
+        # --- Indicator Calculations ---
+        # The pandas-ta library correctly handles non-continuous dates (weekends/holidays)
+        hist.ta.rsi(length=14, append=True)
+        hist.ta.macd(fast=12, slow=26, signal=9, append=True)
+        hist.ta.stoch(k=14, d=3, smooth_k=3, append=True)
+        hist.ta.adx(length=14, append=True)
+        hist.ta.atr(length=14, append=True)
+        hist.ta.obv(append=True)
+        hist.ta.sma(length=50, append=True)
+        hist.ta.sma(length=200, append=True)
 
         notes, scores, explanations = [], {}, {}
-
-        # --- SMA Trend ---
+        
+        # --- Scoring Logic ---
         price = safe_latest_value(hist, 'close')
         sma50 = safe_latest_value(hist, 'SMA_50')
         sma200 = safe_latest_value(hist, 'SMA_200')
 
-        if price is not None and sma50 is not None and sma200 is not None:
-            if price > sma50 > sma200:
-                scores['SMA_Trend'] = 100.0
-            elif sma50 > price > sma200:
-                scores['SMA_Trend'] = 70.0
-            elif sma50 > sma200:
-                scores['SMA_Trend'] = 60.0
-            elif price < sma50 < sma200:
-                scores['SMA_Trend'] = 0.0
-            elif sma50 < price < sma200:
-                scores['SMA_Trend'] = 30.0
-            else:
-                scores['SMA_Trend'] = 50.0
+        if all(v is not None for v in [price, sma50, sma200]):
+            if price > sma50 > sma200: scores['SMA_Trend'] = 100.0
+            elif price > sma50 and price > sma200: scores['SMA_Trend'] = 70.0
+            elif price < sma50 < sma200: scores['SMA_Trend'] = 0.0
+            elif price < sma50 and price < sma200: scores['SMA_Trend'] = 30.0
+            else: scores['SMA_Trend'] = 50.0
         else:
             scores['SMA_Trend'] = 50.0
             notes.append("SMA trend could not be calculated.")
         explanations['SMA_Trend'] = get_dynamic_explanation('SMA_Trend', scores['SMA_Trend'])
 
-        # --- MACD ---
         macd_val = safe_latest_value(hist, 'MACDh_12_26_9')
-        if macd_val is not None:
-            low, high = thresholds['MACD']
-            scores['MACD'] = normalize_indicator(macd_val, low, high, bullish_is_high=True)
-        else:
-            scores['MACD'] = 50.0
-            notes.append("MACD could not be calculated (NaN or missing).")
-        explanations['MACD'] = get_dynamic_explanation('MACD', scores['MACD'])
+        scores['MACD'] = normalize_momentum(macd_val, thresholds['MACD'][0], thresholds['MACD'][1])
+        explanations['MACD'] = get_dynamic_explanation('MACD', scores['MACD'], value=macd_val)
 
-        # --- RSI & Stochastic ---
-        rsi = safe_latest_value(hist, 'RSI_14')
-        if rsi is not None:
-            low, high = thresholds['RSI']
-            scores['RSI'] = normalize_indicator(rsi, low, high, bullish_is_high=False)
-        else:
-            scores['RSI'] = 50.0
-            notes.append("RSI could not be calculated (NaN or missing).")
-        explanations['RSI'] = get_dynamic_explanation('RSI', scores['RSI'])
+        rsi_val = safe_latest_value(hist, 'RSI_14')
+        scores['RSI'] = normalize_oscillator(rsi_val, 30, 70)
+        explanations['RSI'] = get_dynamic_explanation('RSI', scores['RSI'], value=rsi_val)
 
-        stoch = safe_latest_value(hist, 'STOCHk_14_3_3')
-        if stoch is not None:
-            low, high = thresholds['Stoch']
-            scores['Stoch'] = normalize_indicator(stoch, low, high, bullish_is_high=False)
-        else:
-            scores['Stoch'] = 50.0
-            notes.append("Stochastic could not be calculated.")
-        explanations['Stoch'] = get_dynamic_explanation('Stoch', scores['Stoch'])
+        stoch_val = safe_latest_value(hist, 'STOCHk_14_3_3')
+        scores['Stoch'] = normalize_oscillator(stoch_val, 20, 80)
+        explanations['Stoch'] = get_dynamic_explanation('Stoch', scores['Stoch'], value=stoch_val)
+        
+        adx_val = safe_latest_value(hist, 'ADX_14')
+        scores['ADX_Strength'] = normalize_momentum(adx_val, thresholds['ADX'][0], thresholds['ADX'][1])
+        explanations['ADX_Strength'] = get_dynamic_explanation('ADX_Strength', scores['ADX_Strength'], value=adx_val)
 
-        # --- ADX ---
-        adx = safe_latest_value(hist, 'ADX_14')
-        if adx is not None:
-            low, high = thresholds['ADX']
-            scores['ADX_Strength'] = normalize_indicator(adx, low, high, bullish_is_high=True)
-        else:
-            scores['ADX_Strength'] = 50.0
-            notes.append("ADX could not be calculated.")
-        explanations['ADX_Strength'] = get_dynamic_explanation('ADX_Strength', scores['ADX_Strength'])
-
-        # --- ATR ---
-        atr_val = safe_latest_value(hist, 'ATR_14')
-        close_price = safe_latest_value(hist, 'close')
-        if atr_val is not None and close_price is not None and close_price != 0:
-            atr_percent = (atr_val / close_price) * 100
-            low, high = thresholds['ATR']
-            scores['ATR_Vol'] = normalize_volatility(atr_percent, low, high)
+        atr_val = safe_latest_value(hist, 'ATRr_14')
+        if atr_val is not None:
+            scores['ATR_Vol'] = normalize_volatility(atr_val, thresholds['ATR'][0], thresholds['ATR'][1])
         else:
             scores['ATR_Vol'] = 50.0
             notes.append("ATR Volatility could not be calculated.")
-        explanations['ATR_Vol'] = get_dynamic_explanation('ATR_Vol', scores['ATR_Vol'])
+        explanations['ATR_Vol'] = get_dynamic_explanation('ATR_Vol', scores['ATR_Vol'], value=atr_val)
 
-        # --- OBV ---
-        if 'OBV' in hist.columns:
-            obv_series = hist['OBV'].dropna().tail(10)
-            if len(obv_series) > 1 and obv_series.iloc[-1] != obv_series.iloc[0]:
-                scores['OBV_Trend'] = 100.0 if obv_series.iloc[-1] > obv_series.iloc[0] else 0.0
-            else:
-                scores['OBV_Trend'] = 50.0
+        obv_series = hist['OBV'].dropna().tail(10)
+        if len(obv_series) > 1:
+            scores['OBV_Trend'] = 100.0 if obv_series.iloc[-1] > obv_series.iloc[0] else 0.0
         else:
             scores['OBV_Trend'] = 50.0
-            notes.append("OBV trend could not be calculated.")
         explanations['OBV_Trend'] = get_dynamic_explanation('OBV_Trend', scores['OBV_Trend'])
 
         # --- Final Score & Verdict ---
