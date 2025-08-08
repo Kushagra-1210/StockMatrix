@@ -47,8 +47,27 @@ class DataProvider:
         return self._data.get("fmp_data", {})
 
     def get_history(self) -> pd.DataFrame:
-        """Provides the historical price data as a DataFrame."""
+        """
+        Provides historical price data. 
+        - For stocks with >2 years of history, it returns the last 2 years to standardize calculations.
+        - For stocks with <2 years of history, it returns the maximum available data.
+        """
         history_dict = self._data.get("history", {})
         if not history_dict:
             return pd.DataFrame()
-        return pd.DataFrame(history_dict)
+        
+        df = pd.DataFrame(history_dict)
+        df['Date'] = pd.to_datetime(df['Date'])
+        
+        # --- THIS IS THE KEY LOGIC CHANGE ---
+        two_years_ago = pd.Timestamp.now() - pd.DateOffset(years=2)
+        
+        # Check if the earliest data point is before the 2-year cutoff
+        if not df.empty and df['Date'].iloc[0] < two_years_ago:
+            # If so, slice the DataFrame to only include the last 2 years
+            df = df[df['Date'] >= two_years_ago]
+        
+        # Otherwise, if the stock has less than 2 years of data, we use all of it.
+        
+        return df
+
