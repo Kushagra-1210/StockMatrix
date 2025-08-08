@@ -37,7 +37,6 @@ def normalize_oscillator(value, oversold=30, overbought=70):
     elif value > overbought:
         return 25 - min(25, (value - overbought) * 1.5)
     else:
-        # --- THIS IS THE FIX ---
         return 25 + ((value - oversold) / (overbought - oversold)) * 50.0
 
 def normalize_volatility(vol_percent, low=1.5, high=7.0):
@@ -80,7 +79,8 @@ def analyze_technical_indicators(ticker: str, industry: str = 'default', basis: 
         # --- Store RAW VALUES for UI Display ---
         raw_values = {
             'RSI': safe_latest_value(hist, 'RSI_14'),
-            'Stoch': safe_latest_value(hist, 'STOCHk_14_3_3'),
+            # --- THIS IS THE FIX ---
+            'Stoch': safe_latest_value(hist, 'STOCHd_14_3_3'), # Using the smoother %D line
             'MACD': safe_latest_value(hist, 'MACDh_12_26_9'),
             'ADX': safe_latest_value(hist, 'ADX_14'),
             'ATR': safe_latest_value(hist, 'ATR_14'),
@@ -131,7 +131,6 @@ def analyze_technical_indicators(ticker: str, industry: str = 'default', basis: 
         # --- Format Raw Values for Display ---
         display_values = {k: f"{v:.2f}" if pd.notna(v) else "N/A" for k, v in raw_values.items()}
         
-        # --- THIS IS THE NEW NOTE ---
         methodology_note = "Note: Values are calculated using standard formulas on end-of-day data. Minor discrepancies with other platforms may occur due to differences in data sources or calculation nuances."
 
         return {
@@ -140,7 +139,7 @@ def analyze_technical_indicators(ticker: str, industry: str = 'default', basis: 
             "notes": notes,
             "indicators": display_values,
             "scores": {k: f"{v:.1f}/100" for k, v in scores.items()},
-            "methodology_note": methodology_note # Add the note to the output
+            "methodology_note": methodology_note
         }
 
     except Exception as e:
