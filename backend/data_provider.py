@@ -59,7 +59,11 @@ class DataProvider:
         df = pd.DataFrame(history_dict)
         df['Date'] = pd.to_datetime(df['Date'])
         
-        # --- THIS IS THE KEY LOGIC CHANGE ---
+        # --- THIS IS THE KEY FIX ---
+        # Ensure the 'Date' column from the API is timezone-naive.
+        if df['Date'].dt.tz is not None:
+            df['Date'] = df['Date'].dt.tz_localize(None)
+        
         # Make the current timestamp timezone-naive to allow for comparison.
         two_years_ago = pd.Timestamp.now().tz_localize(None) - pd.DateOffset(years=2)
         
