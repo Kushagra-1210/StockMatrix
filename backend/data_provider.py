@@ -71,3 +71,4 @@ class DataProvider:
         # Otherwise, if the stock has less than 2 years of data, we use all of it.
         
         return df
+
