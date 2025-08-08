@@ -60,7 +60,8 @@ class DataProvider:
         df['Date'] = pd.to_datetime(df['Date'])
         
         # --- THIS IS THE KEY LOGIC CHANGE ---
-        two_years_ago = pd.Timestamp.now() - pd.DateOffset(years=2)
+        # Make the current timestamp timezone-naive to allow for comparison.
+        two_years_ago = pd.Timestamp.now().tz_localize(None) - pd.DateOffset(years=2)
         
         # Check if the earliest data point is before the 2-year cutoff
         if not df.empty and df['Date'].iloc[0] < two_years_ago:
@@ -70,4 +71,3 @@ class DataProvider:
         # Otherwise, if the stock has less than 2 years of data, we use all of it.
         
         return df
-
