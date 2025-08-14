@@ -1,5 +1,7 @@
 import streamlit as st
-from backend.report_generator import generate_report
+# --- THIS IS THE FIX ---
+# Import the correctly named function for generating PDFs.
+from backend.report_generator import generate_pdf_report
 from datetime import datetime
 import os
 
@@ -20,28 +22,26 @@ def show_report(st, user_prefs):
         with st.spinner("Generating report..."):
             try:
                 ticker = st.session_state.get('run_analysis_ticker', 'N/A')
-                basis = st.session_state.get('run_analysis_basis', 'quarterly')
-                weights = st.session_state.get('final_weights', {})
-                report_path = generate_report(
-                    ticker=ticker,
-                    basis=basis,
-                    weights=weights,
-                    fundamentals=st.session_state.get('fundamentals'),
-                    technicals=st.session_state.get('technicals'),
-                    perception=st.session_state.get('perception'),
-                    risk=st.session_state.get('risk'),
-                    final_score=st.session_state.get('final_score'),
-                    verdict=st.session_state.get('final_verdict'),
+                # --- THIS IS THE FIX ---
+                # Call the correctly named function.
+                report_path = generate_pdf_report(
+                    stock_info={'ticker': ticker}, # Pass a dictionary for stock_info
+                    technical_analysis=st.session_state.get('technicals', {}),
+                    fundamental_analysis=st.session_state.get('fundamentals', {}),
+                    sentiment_analysis=st.session_state.get('perception', {}),
+                    news_risk=st.session_state.get('risk', {}),
+                    final_score=st.session_state.get('final_score', 0),
+                    final_verdict=st.session_state.get('final_verdict', 'N/A'),
                 )
-                if report_path and os.path.exists(report_path):
-                    with open(report_path, "rb") as f:
-                        st.download_button(
-                            label="Download Report (PDF)",
-                            data=f,
-                            file_name=os.path.basename(report_path),
-                            mime="application/pdf"
-                        )
+                if report_path:
+                    st.download_button(
+                        label="Download Report (PDF)",
+                        data=report_path,
+                        file_name=f"{ticker}_StockMatrix_Report.pdf",
+                        mime="application/pdf"
+                    )
                 else:
                     st.error("Failed to generate report file.")
             except Exception as e:
                 st.error(f"Error generating report: {str(e)}")
+
