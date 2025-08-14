@@ -19,10 +19,10 @@ def generate_pdf_report(
     news_risk,
     final_score,
     final_verdict,
-    historical_data # New argument to receive price history
+    historical_data
 ):
     """
-    Generates a comprehensive PDF report with a dynamic layout and price chart.
+    Generates a comprehensive PDF report with a professional, dynamic layout.
     """
     pdf = FPDF()
     pdf.add_page()
@@ -42,114 +42,67 @@ def generate_pdf_report(
     pdf.cell(0, 8, f"Verdict: {final_verdict}", 0, 1, 'L')
     pdf.ln(10)
 
-    # --- NEW: Price Chart Section ---
+    # --- Price Chart Section ---
     if historical_data is not None and not historical_data.empty:
         pdf.set_font("Arial", 'B', 12)
         pdf.cell(0, 10, '6-Month Price Trend', "B", 1, 'L')
         
-        # Ensure 'Date' is the index for plotting
         if 'Date' in historical_data.columns:
             historical_data = historical_data.set_index('Date')
 
         fig = go.Figure(data=go.Scatter(x=historical_data.index, y=historical_data['Close']))
         fig.update_layout(
             title_text=f"{stock_info.get('ticker', 'N/A')} Price Chart",
-            xaxis_title="Date",
-            yaxis_title="Price",
-            template="plotly_white",
-            height=300,
-            width=500
+            xaxis_title="Date", yaxis_title="Price",
+            template="plotly_white", height=300, width=500
         )
         
-        # Save the figure to a bytes buffer
         img_bytes = fig.to_image(format="png")
-        
-        # Embed the image in the PDF
         with io.BytesIO(img_bytes) as img_file:
             pdf.image(img_file, x=pdf.w / 4, y=pdf.get_y() + 5, w=pdf.w / 2)
-        pdf.ln(60) # Adjust spacing after the image
+        pdf.ln(60)
 
-    # --- Analysis Sections (Dynamic Two-column layout) ---
+    # --- Analysis Sections ---
     col_width = pdf.w / 2 - 15
     
-    # Store the starting Y position for the columns
-    col_start_y = pdf.get_y()
+    def draw_section(title, data, is_left_col=True):
+        pdf.set_font("Arial", 'B', 12)
+        pdf.cell(col_width, 10, title, "B", 1, 'L')
+        pdf.set_font("Arial", '', 9)
+        
+        if "error" in data:
+            pdf.set_text_color(255, 0, 0)
+            pdf.multi_cell(col_width, 5, sanitize(data['error']), 0, 'L')
+            pdf.set_text_color(0, 0, 0)
+        else:
+            for key, value in data.items():
+                pdf.cell(col_width - 30, 5, sanitize(key.replace('_', ' ').title()), 0, 0, 'L')
+                pdf.cell(30, 5, sanitize(value), 0, 1, 'R')
+        pdf.ln(5)
 
     # --- Column 1 ---
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(col_width, 10, 'Technical Analysis', "B", 1, 'L')
-    pdf.set_font("Arial", '', 9)
-    if "error" in technical_analysis:
-        pdf.set_text_color(255, 0, 0)
-        pdf.multi_cell(col_width, 5, sanitize(technical_analysis['error']), 0, 'L')
-        pdf.set_text_color(0, 0, 0)
-    else:
-        indicators = technical_analysis.get('indicators', {})
-        for key, value in indicators.items():
-            pdf.cell(col_width - 30, 5, sanitize(key.replace('_', ' ').title()), 0, 0, 'L')
-            pdf.cell(30, 5, sanitize(value), 0, 1, 'R')
-    pdf.ln(5)
-
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(col_width, 10, 'News & Sentiment', "B", 1, 'L')
-    pdf.set_font("Arial", '', 9)
-    if "error" in sentiment_analysis:
-        pdf.set_text_color(255, 0, 0)
-        pdf.multi_cell(col_width, 5, sanitize(sentiment_analysis['error']), 0, 'L')
-        pdf.set_text_color(0, 0, 0)
-    else:
-        pdf.cell(col_width - 30, 5, "Sentiment Score", 0, 0, 'L')
-        pdf.cell(30, 5, f"{sentiment_analysis.get('score', 0) * 10:.1f}/100", 0, 1, 'R')
-        pdf.cell(col_width - 30, 5, "Sentiment Label", 0, 0, 'L')
-        pdf.cell(30, 5, sanitize(sentiment_analysis.get('label')), 0, 1, 'R')
-    pdf.ln(5)
-
+    y_before_col1 = pdf.get_y()
+    draw_section('Technical Analysis', technical_analysis.get('indicators', {}))
+    draw_section('News & Sentiment', {
+        "Sentiment Score": f"{sentiment_analysis.get('score', 0) * 10:.1f}/100",
+        "Sentiment Label": sentiment_analysis.get('label', 'N/A')
+    })
+    y_after_col1 = pdf.get_y()
 
     # --- Column 2 ---
-    pdf.set_xy(pdf.w / 2, col_start_y) 
-
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(col_width, 10, 'Fundamental Analysis', "B", 1, 'L')
-    pdf.set_font("Arial", '', 9)
-    if "error" in fundamental_analysis:
-        pdf.set_text_color(255, 0, 0)
-        pdf.multi_cell(col_width, 5, sanitize(fundamental_analysis['error']), 0, 'L')
-        pdf.set_text_color(0, 0, 0)
-    else:
-        breakdown = fundamental_analysis.get("Breakdown", {})
-        pdf.cell(col_width - 30, 5, "Piotroski F-Score", 0, 0, 'L')
-        pdf.cell(30, 5, sanitize(breakdown.get("Piotroski F-Score")), 0, 1, 'R')
-        pdf.cell(col_width - 30, 5, "Altman Z-Score", 0, 0, 'L')
-        pdf.cell(30, 5, sanitize(breakdown.get("Altman Z-Score")), 0, 1, 'R')
-        pdf.cell(col_width - 30, 5, "Beneish M-Score", 0, 0, 'L')
-        pdf.cell(30, 5, sanitize(breakdown.get("Beneish M-Score")), 0, 1, 'R')
-    pdf.ln(5)
+    pdf.set_xy(pdf.w / 2, y_before_col1)
+    draw_section('Fundamental Analysis', fundamental_analysis.get("Breakdown", {}))
+    draw_section('Strategic Perception', {
+        "Market Sentiment": f"{sentiment_analysis.get('market_sentiment_score', 0):.1f}/10",
+        "Management Quality": f"{sentiment_analysis.get('management_quality_score', 0):.1f}/10"
+    })
+    y_after_col2 = pdf.get_y()
 
     # --- Footer ---
+    pdf.set_y(max(y_after_col1, y_after_col2) + 10) # Position footer below the longest column
     pdf.set_y(-15)
     pdf.set_font('Arial', 'I', 8)
     pdf.cell(0, 10, 'Page %s' % pdf.page_no(), 0, 0, 'C')
     pdf.cell(0, 10, 'Generated by StockMatrix - For informational purposes only.', 0, 0, 'R')
 
     return bytes(pdf.output())
-
-def generate_csv_report(data_list):
-    if not data_list:
-        return ""
-    
-    flat_data = []
-    for entry in data_list:
-        row = {}
-        for key, value in entry.items():
-            if isinstance(value, dict):
-                for sub_key, sub_value in value.items():
-                    row[f"{key}_{sub_key}"] = sub_value
-            else:
-                row[key] = value
-        flat_data.append(row)
-        
-    df = pd.DataFrame(flat_data)
-    
-    csv_buffer = io.StringIO()
-    df.to_csv(csv_buffer, index=False)
-    return csv_buffer.getvalue().encode('utf-8')
