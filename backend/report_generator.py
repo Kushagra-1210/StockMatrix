@@ -83,19 +83,23 @@ def generate_pdf_report(
     # --- Column 1 ---
     y_before_col1 = pdf.get_y()
     draw_section('Technical Analysis', technical_analysis.get('indicators', {}))
-    draw_section('News & Sentiment', {
-        "Sentiment Score": f"{sentiment_analysis.get('score', 0) * 10:.1f}/100",
-        "Sentiment Label": sentiment_analysis.get('label', 'N/A')
-    })
+    # Corrected data for News & Sentiment
+    news_sentiment_data = {
+        "News Risk Score": f"{news_risk.get('risk_score', 0):.1f}/100",
+        "News Verdict": news_risk.get('verdict', 'N/A')
+    }
+    draw_section('News & Risk', news_sentiment_data)
     y_after_col1 = pdf.get_y()
 
     # --- Column 2 ---
     pdf.set_xy(pdf.w / 2, y_before_col1)
     draw_section('Fundamental Analysis', fundamental_analysis.get("Breakdown", {}))
-    draw_section('Strategic Perception', {
+    # Corrected data for Strategic Perception
+    perception_data = {
         "Market Sentiment": f"{sentiment_analysis.get('market_sentiment_score', 0):.1f}/10",
         "Management Quality": f"{sentiment_analysis.get('management_quality_score', 0):.1f}/10"
-    })
+    }
+    draw_section('Strategic Perception', perception_data)
     y_after_col2 = pdf.get_y()
 
     # --- Footer ---
