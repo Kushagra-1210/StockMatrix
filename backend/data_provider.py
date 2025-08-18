@@ -43,9 +43,8 @@ class DataProvider:
     def get_history(self) -> pd.DataFrame:
         """
         Provides sanitized and standardized historical price data.
-        - Drops any rows with missing OHLC data or zero volume.
-        - For stocks with >2 years of history, it returns the last 2 years plus a buffer.
-        - For stocks with <2 years of history, it returns the maximum available data.
+        - Slices the data to the relevant lookback period first.
+        - Then, sanitizes the sliced data to ensure calculation accuracy.
         """
         history_dict = self._data.get("history", {})
         if not history_dict:
@@ -53,7 +52,20 @@ class DataProvider:
         
         df = pd.DataFrame(history_dict)
         
-        # --- DATA SANITIZATION ---
+        # --- CORRECTED ORDER OF OPERATIONS ---
+
+        # 1. Handle dates and sort first to establish a clean timeline.
+        df['Date'] = pd.to_datetime(df['Date'])
+        if df['Date'].dt.tz is not None:
+            df['Date'] = df['Date'].dt.tz_localize(None)
+        df.sort_values(by='Date', inplace=True)
+
+        # 2. Intelligently slice the lookback period.
+        two_years_ago = datetime.now() - timedelta(days=730)
+        if not df.empty and df['Date'].iloc[0] < two_years_ago:
+            df = df[df['Date'] >= two_years_ago]
+        
+        # 3. Sanitize the relevant (sliced) data.
         ohlc_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
         if not all(col in df.columns for col in ohlc_cols):
             return pd.DataFrame()
@@ -64,24 +76,4 @@ class DataProvider:
         df.dropna(subset=ohlc_cols, inplace=True)
         df = df[df['Volume'] > 0]
 
-        if df.empty:
-            return pd.DataFrame()
-
-        df['Date'] = pd.to_datetime(df['Date'])
-        if df['Date'].dt.tz is not None:
-            df['Date'] = df['Date'].dt.tz_localize(None)
-        
-        df.sort_values(by='Date', inplace=True)
-        
-        # --- INTELLIGENT LOOKBACK PERIOD (CRITICAL FIX) ---
-        # Use a slightly longer period to provide a "warm-up" buffer for indicators.
-        lookback_period = datetime.now() - timedelta(days=780) 
-        
-        # Only slice the data if the stock's history is longer than our lookback period.
-        if not df.empty and df['Date'].iloc[0] < lookback_period:
-            df = df[df['Date'] >= lookback_period]
-        
-        # If history is shorter, we use the full, clean dataset.
-        
         return df
-
