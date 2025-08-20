@@ -11,7 +11,7 @@ from backend.data_fetcher import get_ticker_data
 
 logger = logging.getLogger(__name__)
 
-# --- NEW: Worker function for concurrent leaderboard processing ---
+# --- NEW: Worker function with improved, specific logging ---
 def _process_ticker_for_leaderboard(ticker: str) -> dict | None:
     """
     Analyzes a single ticker for the leaderboard. Designed to be run in a separate thread.
@@ -31,9 +31,18 @@ def _process_ticker_for_leaderboard(ticker: str) -> dict | None:
         perception = analyze_perception(ticker)
         news_risk = fetch_news_risk(ticker)
 
-        # 2. Robustly check if any analysis failed
-        if "error" in fa or "error" in ta or "error" in perception or "error" in news_risk:
-            logging.warning(f"Skipping {ticker} for leaderboard due to an analysis error.")
+        # 2. --- IMPROVED: Check each analysis module individually for errors ---
+        if "error" in fa:
+            logging.warning(f"Skipping {ticker} for leaderboard: Fundamental Analysis failed. Reason: {fa['error']}")
+            return None
+        if "error" in ta:
+            logging.warning(f"Skipping {ticker} for leaderboard: Technical Analysis failed. Reason: {ta['error']}")
+            return None
+        if "error" in perception:
+            logging.warning(f"Skipping {ticker} for leaderboard: Perception Analysis failed. Reason: {perception['error']}")
+            return None
+        if "error" in news_risk:
+            logging.warning(f"Skipping {ticker} for leaderboard: News & Risk Analysis failed. Reason: {news_risk['error']}")
             return None
 
         # 3. Extract and scale scores
