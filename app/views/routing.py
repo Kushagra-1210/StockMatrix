@@ -19,7 +19,9 @@ def get_view(mode):
     elif mode == "strategic_insights":
         from .strategic_insights import show_strategic_insights
         return show_strategic_insights
+    elif mode == "backtesting": # New route
+        from .backtesting import show_backtesting
+        return show_backtesting
     else:
         from .watchlist import show_watchlist
         return show_watchlist
-
