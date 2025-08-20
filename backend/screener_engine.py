@@ -1,71 +1,86 @@
 # backend/screener_engine.py
-import yfinance as yf
 import pandas as pd
 import numpy as np
-import time
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from .fundamental_analysis import analyze_fundamentals
 from .technical_analysis import analyze_technical_indicators
 from .news_risk_analyzer import fetch_news_risk
+from backend.data_fetcher import get_ticker_data
 
-
-# In backend/screener_engine.py
-
-# Add this helper function at the top of the file
+# --- Helper function to parse percentage strings ---
 def _parse_percentage(pct_string):
     """Converts a percentage string like '25.50%' to a float 25.50."""
     if isinstance(pct_string, str):
-        return float(pct_string.strip().replace('%', ''))
-    return pct_string # Return as is if it's already a number
-
-def screen_stocks(tickers: list, min_upside: float = 0, min_ta: float = 0, max_volatility: float = 100) -> list:
-    results = []
-
-    for ticker in tickers:
-        time.sleep(0.2) # Add a 200ms delay to avoid rate-limiting
         try:
-            ticker_data = get_ticker_data(ticker)
-            if "error" in ticker_data:
-                logging.warning(f"Skipping {ticker} in screener: Could not fetch data.")
-                continue
-            # Get the industry from the 'sector' field, defaulting to 'default'
-            industry = ticker_data.get("info", {}).get("sector", "default")
+            return float(pct_string.strip().replace('%', ''))
+        except (ValueError, TypeError):
+            return -999 # Return a value that will fail checks
+    return pct_string if isinstance(pct_string, (int, float)) else -999
 
-            # Using the new, more powerful fundamental analysis function
-            fa = analyze_fundamentals(ticker, basis="annual")
-            ta = analyze_technical_indicators(ticker, industry=industry, basis="annual")
+# --- NEW: Worker function for concurrent processing ---
+def _process_ticker_for_screener(ticker: str, min_upside: float, min_ta: float, max_volatility: float) -> dict | None:
+    """
+    Processes a single ticker for the screener. This function is designed to be run in a separate thread.
+    Returns a dictionary with the stock data if it passes the screen, otherwise None.
+    """
+    try:
+        ticker_data = get_ticker_data(ticker)
+        if "error" in ticker_data:
+            logging.warning(f"Skipping {ticker} in screener: Could not fetch initial data.")
+            return None
+            
+        industry = ticker_data.get("info", {}).get("sector", "default")
 
-            vol = calculate_volatility(ticker)
+        # Run analyses
+        fa = analyze_fundamentals(ticker, basis="annual")
+        ta = analyze_technical_indicators(ticker, industry=industry, basis="annual")
+        vol = calculate_volatility(ticker)
 
-            if any(isinstance(r, dict) and "error" in r for r in [fa, ta]) or vol is None:
-                logging.warning(f"Skipping {ticker} in screener due to analysis error.")
-                continue
+        if any(isinstance(r, dict) and "error" in r for r in [fa, ta]) or vol is None:
+            logging.warning(f"Skipping {ticker} in screener due to an analysis error.")
+            return None
 
-            # --- CORRECTED FILTERING LOGIC ---
-            # Use the helper function to convert the 'Upside' string to a number
-            upside_value = None
-            if fa.get("Upside"): # Check if the key exists before parsing
-                upside_value = _parse_percentage(fa.get("Upside"))
+        # --- Filtering Logic ---
+        upside_value = _parse_percentage(fa.get("Upside"))
 
-            if upside_value is not None and upside_value >= min_upside and ta["ta_score"] >= min_ta and vol <= max_volatility:
-                results.append({
-                    "Ticker": ticker,
-                    "Upside (%)": fa.get("Upside", "N/A"),
-                    "TA Score": ta.get("ta_score", "N/A"),
-                    "Volatility (%)": vol,
-                    "Piotroski Score": fa.get("Piotroski F-Score", "N/A"),
-                    "Beneish Score": fa.get("Beneish M-Score", "N/A")
-                })
+        if upside_value >= min_upside and ta.get("ta_score", 0) >= min_ta and vol <= max_volatility:
+            return {
+                "Ticker": ticker,
+                "Upside (%)": fa.get("Upside", "N/A"),
+                "TA Score": ta.get("ta_score", "N/A"),
+                "Volatility (%)": vol,
+                "Piotroski Score": fa.get("Piotroski F-Score", "N/A"),
+                "Beneish Score": fa.get("Beneish M-Score", "N/A")
+            }
+        return None # Return None if it doesn't meet criteria
+    except Exception as e:
+        logging.critical(f"An unexpected error in screener worker for {ticker}: {e}", exc_info=True)
+        return None
 
-        except Exception as e:
-            logging.critical(f"An unexpected error in screener for {ticker}: {e}", exc_info=True)
-            continue
+# --- REFACTORED: Main screener function using ThreadPoolExecutor ---
+def screen_stocks(tickers: list, min_upside: float = 0, min_ta: float = 0, max_volatility: float = 100) -> list:
+    """
+    Screens stocks concurrently using a thread pool for significantly faster execution.
+    """
+    results = []
+    # Using max_workers=10 to balance performance and avoid overwhelming the API provider.
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        # Submit all ticker processing tasks to the executor
+        future_to_ticker = {
+            executor.submit(_process_ticker_for_screener, ticker, min_upside, min_ta, max_volatility): ticker 
+            for ticker in tickers
+        }
+        
+        for future in as_completed(future_to_ticker):
+            result = future.result()
+            if result:  # The worker function returns a dict if the stock passes, otherwise None
+                results.append(result)
 
+    # Sort the final results by upside percentage
     return sorted(results, key=lambda x: _parse_percentage(x["Upside (%)"]), reverse=True)
 
-from backend.data_fetcher import get_ticker_data
-
-def calculate_volatility(ticker: str) -> float:
+def calculate_volatility(ticker: str) -> float | None:
     """Calculates volatility using centralized data fetcher."""
     try:
         ticker_data = get_ticker_data(ticker)
@@ -82,6 +97,3 @@ def calculate_volatility(ticker: str) -> float:
     except Exception as e:
         logging.warning(f"Could not calculate volatility for {ticker}: {e}")
         return None
-
-# Note: This code assumes that the analyze_fundamentals and analyze_technical_indicators functions
-# are defined in the backend/fundamental_analysis.py and backend/technical_analysis.py files respectively
