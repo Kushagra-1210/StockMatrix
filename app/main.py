@@ -395,7 +395,9 @@ if not st.session_state.greeted:
 
         What would you like to do today?
 
-        - 📊 **Run Analysis** - 🧾 **Generate a Report** - 💡 **Get Insights**
+        - 📊 **Run Analysis**
+        - 🧾 **Generate a Report**
+        - 💡 **Get Insights**
 
         Type your choice below to begin:
         """)
