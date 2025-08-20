@@ -4,17 +4,25 @@ import logging
 from bs4 import BeautifulSoup
 from textblob import TextBlob
 import nltk
-nltk.download('vader_lexicon')
+from datetime import datetime
+
+# Ensure NLTK data is available
+try:
+    nltk.data.find('sentiment/vader_lexicon.zip')
+except nltk.downloader.DownloadError:
+    nltk.download('vader_lexicon')
+
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
+from backend.secondary_data_fetcher import SecondaryDataFetcher # Import the FMP fetcher
+
 logger = logging.getLogger(__name__)
 
-# --- Main Orchestrator Function ---
+# --- PART A: Market Sentiment Score ---
 def get_market_sentiment_score(ticker: str):
     """
     Fetches Google News headlines and calculates a sentiment score from 0-10.
     """
     try:
-        # 1. Fetch Google News RSS
         url = f"https://news.google.com/rss/search?q={ticker}+stock+market&hl=en-US&gl=US&ceid=US:en"
         response = requests.get(url, timeout=10)
         response.raise_for_status()
@@ -22,86 +30,98 @@ def get_market_sentiment_score(ticker: str):
         headlines = [item.title.text.strip() for item in soup.findAll('item')[:20]]
 
         if not headlines:
-            return 5.0, ["No market news found."] # Return neutral score
+            return 5.0, ["No market news found."]
 
-        # 2. Run VADER Sentiment Analysis
         analyzer = SentimentIntensityAnalyzer()
-        positive_count, neutral_count, negative_count = 0, 0, 0
-        # Error was happening because TextBlob was not installed
-        # Fixed by adding `python -m textblob.download_corpora` to Dockerfile
-        negative_headlines = []
-
-        for headline in headlines:
-            blob = TextBlob(headline)
-            sentiment = blob.sentiment
-
-            # Check for neutral sentiment scores
-            if abs(sentiment.polarity) < 0.1:
-                neutral_count += 1
-            elif sentiment.polarity > 0:
-                positive_count += 1
-            elif sentiment.polarity < 0:
-                negative_count += 1
-                negative_headlines.append(headline)
-
-        # Calculate sentiment score
-        sentiment_score = (positive_count - negative_count) / len(headlines) * 10
-
-        return sentiment_score, negative_headlines
+        scores = [analyzer.polarity_scores(h)['compound'] for h in headlines]
+        
+        # Normalize compound score (-1 to 1) to a 0-10 scale
+        # (score + 1) -> maps to 0-2 range
+        # * 5 -> maps to 0-10 range
+        sentiment_score = (sum(scores) / len(scores) + 1) * 5
+        
+        return sentiment_score, headlines
 
     except Exception as e:
-        logger.error(f"Error calculating market sentiment score: {e}")
+        logger.error(f"Error calculating market sentiment score for {ticker}: {e}")
         return 5.0, ["Error calculating market sentiment score"]
 
-# --- Other functions remain the same ---
-
-# --- PART B: Management Quality Score ---
-
+# --- PART B: Management Quality Score (NOW WITH REAL DATA) ---
 def get_management_quality_score(ticker: str, info: dict):
     """
-    Calculates a management quality score (0-10) based on governance metrics.
+    Calculates a management quality score (0-10) using real governance data from FMP.
     """
-    try:
-        notes = []
-        # 1. Insider Holding (%) -> Score 0-2
-        held_pct_insiders = info.get('heldPercentInsiders', 0) * 100
-        insider_score = 2 if held_pct_insiders > 15 else (held_pct_insiders / 15) * 2
+    notes = []
+    fmp_fetcher = SecondaryDataFetcher()
+    governance_data = fmp_fetcher._make_request(f"governance/{ticker}")
 
-        # 2. CEO Tenure -> Score 0-1.5 (This data is not available in yfinance, so we use a neutral default)
-        ceo_score = 0.75 
-        notes.append("CEO tenure data not available via yfinance, using neutral score.")
+    # --- Default scores if API fails ---
+    ceo_score = 0.75
+    board_score = 0.75
+    
+    if governance_data:
+        # 1. CEO Tenure -> Score 0-2
+        ceo_tenure_years = 0
+        for exec in governance_data:
+            if exec.get('title') and ('chief executive officer' in exec['title'].lower() or 'ceo' in exec['title'].lower()):
+                tenure_since = exec.get('since')
+                if tenure_since:
+                    try:
+                        ceo_tenure_years = (datetime.now().year - int(tenure_since))
+                        if ceo_tenure_years > 10:
+                            ceo_score = 2.0 # Long, stable leadership
+                        elif ceo_tenure_years > 3:
+                            ceo_score = 1.5 # Established leader
+                        else:
+                            ceo_score = 0.5 # New leader, potential instability
+                        notes.append(f"CEO tenure: {ceo_tenure_years} years.")
+                    except (ValueError, TypeError):
+                        notes.append("Could not parse CEO tenure date.")
+                break # Found the CEO
+        
+        # 2. Board Independence -> Score 0-2
+        board_members = governance_data
+        if board_members:
+            independent_directors = sum(1 for member in board_members if member.get('independent_director', False))
+            total_directors = len(board_members)
+            independence_pct = (independent_directors / total_directors) * 100 if total_directors > 0 else 0
+            
+            if independence_pct > 75:
+                board_score = 2.0 # Highly independent
+            elif independence_pct > 50:
+                board_score = 1.5 # Majority independent
+            else:
+                board_score = 0.5 # Lacks independent oversight
+            notes.append(f"Board independence: {independence_pct:.1f}%.")
+        else:
+            notes.append("Board composition data not available.")
+    else:
+        notes.append("Governance data not available via FMP, using neutral scores.")
 
-        # 3. Board Independence -> Score 0-1.5 (Not available, use neutral default)
-        board_score = 0.75
-        notes.append("Board independence data not available, using neutral score.")
+    # 3. Insider Holding (%) -> Score 0-2 (from yfinance)
+    held_pct_insiders = info.get('heldPercentInsiders', 0) * 100
+    insider_score = 2 if held_pct_insiders > 15 else (held_pct_insiders / 15) * 2
+    if held_pct_insiders > 0:
+        notes.append(f"Insider holdings: {held_pct_insiders:.1f}%.")
 
-        # 4. Auditor Change Frequency -> Score 0-1 (Not available, use neutral default)
-        auditor_score = 0.5
-        notes.append("Auditor change data not available, using neutral score.")
+    # 4. Executive Compensation vs EPS -> Score 0-2 (from yfinance)
+    total_comp = info.get('totalPay', {}).get('raw', 0) if info.get('companyOfficers') else 0
+    trailing_eps = info.get('trailingEps', 0)
+    comp_vs_eps_score = 1.0 # Start neutral
+    if total_comp > 15_000_000 and trailing_eps < 1.0:
+        comp_vs_eps_score = 0
+        notes.append("Note: High executive compensation relative to low EPS.")
+    elif total_comp < 10_000_000 and trailing_eps > 3.0:
+        comp_vs_eps_score = 2
+        notes.append("Note: Reasonable executive compensation relative to high EPS.")
 
-        # 5. Governance Red Flags -> Score 0-2 (Based on news, a more complex integration)
-        # For simplicity, we assume no red flags unless a more advanced news scan is built.
-        red_flag_penalty = 0 # This would be a negative score
+    # Sum all scores and normalize to a 0-10 scale
+    # Max possible raw score is 2(CEO) + 2(Board) + 2(Insider) + 2(Comp) = 8
+    raw_total = ceo_score + board_score + insider_score + comp_vs_eps_score
+    final_score = (raw_total / 8) * 10
 
-        # 6. Executive Compensation vs EPS -> Score 0-2
-        total_comp = info.get('totalPay', {}).get('raw', 0) if info.get('companyOfficers') else 0
-        trailing_eps = info.get('trailingEps', 0)
-        comp_vs_eps_score = 1.0 # Start neutral
-        if total_comp > 15_000_000 and trailing_eps < 1.0: # Example logic: High comp, low EPS
-            comp_vs_eps_score = 0
-        elif total_comp < 10_000_000 and trailing_eps > 3.0: # Example logic: Reasonable comp, high EPS
-            comp_vs_eps_score = 2
+    return max(0, min(10, final_score)), notes
 
-        # Sum all scores and normalize to a 0-10 scale
-        raw_total = insider_score + ceo_score + board_score + auditor_score + red_flag_penalty + comp_vs_eps_score
-        # Max possible score is 2 + 1.5 + 1.5 + 1 + 0 + 2 = 8
-        final_score = (raw_total / 8) * 10
-
-        return max(0, min(10, final_score)), notes
-
-    except Exception as e:
-        logger.error(f"Management quality analysis failed for {ticker}: {e}")
-        return 5.0, [f"An error occurred: {e}"] # Return neutral score on error
 
 # --- Main Orchestrator Function ---
 from backend.data_fetcher import get_ticker_data
@@ -122,7 +142,7 @@ def analyze_perception(ticker: str):
 
     # Determine verdict
     if total_score > 16:
-        verdict = "🌟 Strong Perception: Market and management sentiment are highly positive."
+        verdict = "✅ Strong Perception: Market and management sentiment are highly positive."
     elif total_score > 10:
         verdict = "🟢 Positive Perception: Generally favorable sentiment with minor concerns."
     elif total_score > 6:
@@ -132,12 +152,10 @@ def analyze_perception(ticker: str):
     else:
         verdict = "🔴 Negative Perception: Predominantly negative sentiment detected."
 
-    # If headlines is a dict (fallback), unpack for UI compatibility
-    sample_headlines = headlines["headlines"] if isinstance(headlines, dict) else headlines
-    note = headlines.get("note") if isinstance(headlines, dict) else None
+    sample_headlines = headlines[:5] if isinstance(headlines, list) else []
 
     result = {
-        "score": round(total_score / 2, 2),  # Add a 'score' out of 10 for compatibility
+        "score": round(total_score / 2, 2),
         "strategic_perception_score": round(total_score, 2),
         "verdict": verdict,
         "market_sentiment_score": round(market_score, 2),
@@ -145,6 +163,5 @@ def analyze_perception(ticker: str):
         "sample_headlines": sample_headlines,
         "management_notes": mgmt_notes
     }
-    if note:
-        result["note"] = note
     return result
+
