@@ -91,11 +91,11 @@ from backend import (
     news_risk_analyzer as news_mod,
     leaderboard_engine,
     screener_engine,
-    report_generator,
     market_selector
 )
 from nlp.chat_router import handle_chat_command
-from backend.report_generator import generate_pdf_report, generate_csv_report
+# The import for report generation is handled by the report view itself.
+# Removing it from main.py resolves the circular import error.
 
 
 from collections import OrderedDict
@@ -395,9 +395,7 @@ if not st.session_state.greeted:
 
         What would you like to do today?
 
-        - 📊 **Run Analysis**  
-        - 🧾 **Generate a Report**  
-        - 💡 **Get Insights**
+        - 📊 **Run Analysis** - 🧾 **Generate a Report** - 💡 **Get Insights**
 
         Type your choice below to begin:
         """)
@@ -421,15 +419,12 @@ with st.expander("💡 Quick Tips", expanded=False):
 user_input = st.chat_input("How can I help you today?", key="main_user_input")
 
 # --- Command Processing ---
-# --- Command Processing ---
 if user_input:
     st.session_state.show_insight_buttons = False
     
-    # Initialize all variables with default values
     response = None
     screener_data = None
 
-    # Handle special commands
     if user_input.lower() == "screener":
         st.session_state.chat_mode = "screener"
         st.rerun()
@@ -440,7 +435,6 @@ if user_input:
     st.session_state.chat_history.append({"role": "user", "content": user_input})
     cmd = user_input.lower().strip().replace(" ", "")
 
-    # Process commands
     if cmd in ["ra", "runanalysis"]:
         st.session_state.chat_mode = "run_analysis"
         response = "You selected Run Analysis. Please proceed."
@@ -457,16 +451,10 @@ if user_input:
         if "chat_mode" not in st.session_state:
             st.session_state.chat_mode = None
 
-    # Safe response handling
     if response:
-        # Only show if we're not in a specific mode
         if st.session_state.get("chat_mode") in [None, ""]:
             st.chat_message("assistant").markdown(response)
-        # For specific modes, let their sections handle the display
 
-
-    # Handle screener data if present and valid
-    import pandas as pd
     if screener_data is not None:
         if isinstance(screener_data, pd.DataFrame):
             try:
@@ -481,7 +469,6 @@ if user_input:
         else:
             st.info(str(screener_data))
 
-    # Handle invalid commands
     if (not response and 
         st.session_state.get("chat_mode") in [None, ""]):
         st.chat_message("assistant").markdown(
@@ -506,8 +493,6 @@ if st.session_state.get("chat_mode") == "insight_generation":
             st.session_state.chat_mode = "stock_leaderboard"
             st.session_state.show_insight_buttons = False
             st.rerun()
-    # Optionally add more insight options here
-    # Reset flag after showing
     st.session_state.show_insight_buttons = False
 # --- Main Content Rendering -
 from app.views.routing import get_view
