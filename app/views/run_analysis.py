@@ -216,10 +216,8 @@ def show_run_analysis(st, user_prefs):
                         else:
                             st.write(indicators)
                     
-                    # --- THIS IS THE NEWLY ADDED NOTE ---
                     if data.get("methodology_note"):
                         st.caption(f"📝 {data['methodology_note']}")
-                    # --- END OF NEW CODE ---
 
                     notes = data.get('notes', [])
                     if notes:
@@ -229,7 +227,6 @@ def show_run_analysis(st, user_prefs):
                             
         if st.session_state.get("fundamentals") and weights.get("fa", 0) > 0:
             with st.expander("📊 Fundamental Analysis", expanded=True):
-                # ... (rest of the fundamental analysis display logic)
                 data = st.session_state.fundamentals
                 final_score = data.get("Fundamental Score")
                 verdict = data.get("Verdict")
@@ -257,7 +254,6 @@ def show_run_analysis(st, user_prefs):
 
         if st.session_state.get("perception") and weights.get("sentiment", 0) > 0:
             with st.expander("🔎 Strategic Perception Analysis", expanded=True):
-                # ... (rest of the perception analysis display logic)
                 data = st.session_state.perception
                 score_20 = data.get('strategic_perception_score', 0)
                 score_100 = round(score_20 * 5, 2)
@@ -283,17 +279,19 @@ def show_run_analysis(st, user_prefs):
 
         if st.session_state.get("risk") and weights.get("news", 0) > 0:
             with st.expander("🛡️ News & Geopolitical Risk", expanded=True):
-                # ... (rest of the news/risk display logic)
                 data = st.session_state.risk
                 if "error" in data:
                     st.error(f"Analysis Failed: {data['error']}")
                 else:
-                    st.metric(label="Risk Score", value=f"{data.get('risk_score', 0):.1f}/100")
+                    risk_score = data.get('risk_score', 50)
+                    st.metric(label="Risk Score", value=f"{risk_score:.1f}/100")
                     st.markdown(f"**Verdict:** `{data.get('verdict', 'N/A')}`")
+                    
+                    # --- ADDED CONTEXTUAL NOTE FOR ZERO SCORE ---
+                    if risk_score == 0.0:
+                        st.caption("📝 *Note: A score of 0.0 indicates that in the last few weeks, no major, publicly reported news events matched the system's dictionary of critical risk terms.*")
+
                     st.markdown("**Recent Risk Headlines:**")
-                    note = data.get("note")
-                    if note:
-                        st.info(note)
                     headlines = data.get("headlines", [])
                     if headlines:
                         if isinstance(headlines[0], dict):
@@ -303,7 +301,7 @@ def show_run_analysis(st, user_prefs):
                             for h in headlines[:3]:
                                 st.markdown(f"- {h}")
                     else:
-                        st.info("No headlines found.")
+                        st.info("No risky headlines found.")
 
         if "final_score" in st.session_state and st.session_state.final_score is not None:
             st.markdown("### 📌 Final Investment Decision")
