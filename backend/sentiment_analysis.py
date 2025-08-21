@@ -1,4 +1,3 @@
-import yfinance as yf
 import requests
 import logging
 from bs4 import BeautifulSoup
@@ -148,7 +147,7 @@ def analyze_perception(ticker: str):
     elif total_score > 6:
         verdict = "🟡 Neutral Perception: Mixed or balanced sentiment."
     elif total_score > 3:
-        verdict = "� Cautious Perception: Some negative sentiment or red flags present."
+        verdict = "🟠 Cautious Perception: Some negative sentiment or red flags present."
     else:
         verdict = "🔴 Negative Perception: Predominantly negative sentiment detected."
 
