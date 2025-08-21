@@ -2,8 +2,8 @@ import yfinance as yf
 import requests
 import logging
 from bs4 import BeautifulSoup
-from textblob import TextBlob
 import nltk
+import nltk.downloader # Explicitly import the submodule
 from datetime import datetime
 
 # Ensure NLTK data is available
@@ -148,7 +148,7 @@ def analyze_perception(ticker: str):
     elif total_score > 6:
         verdict = "🟡 Neutral Perception: Mixed or balanced sentiment."
     elif total_score > 3:
-        verdict = "🟠 Cautious Perception: Some negative sentiment or red flags present."
+        verdict = "� Cautious Perception: Some negative sentiment or red flags present."
     else:
         verdict = "🔴 Negative Perception: Predominantly negative sentiment detected."
 
@@ -164,4 +164,3 @@ def analyze_perception(ticker: str):
         "management_notes": mgmt_notes
     }
     return result
-
