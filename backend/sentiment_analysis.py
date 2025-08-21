@@ -2,13 +2,12 @@ import requests
 import logging
 from bs4 import BeautifulSoup
 import nltk
-import nltk.downloader # Explicitly import the submodule
 from datetime import datetime
 
 # Ensure NLTK data is available
 try:
     nltk.data.find('sentiment/vader_lexicon.zip')
-except nltk.downloader.DownloadError:
+except LookupError: # Corrected the exception type
     nltk.download('vader_lexicon')
 
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
