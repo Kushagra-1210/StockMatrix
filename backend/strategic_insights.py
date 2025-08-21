@@ -5,8 +5,8 @@ from . import technical_analysis as ta_mod
 from . import news_risk_analyzer as news_mod
 from .data_fetcher import get_ticker_data
 
-# --- NEW: Single Stock Profile Checker ---
-def check_single_stock_strategies(ticker: str):
+# --- UPDATED: Single Stock Profile Checker ---
+def check_single_stock_strategies(ticker: str, industry: str = 'default'):
     """
     Analyzes a single stock against all predefined strategies.
     Returns a list of matched strategies and explanatory notes.
@@ -15,9 +15,9 @@ def check_single_stock_strategies(ticker: str):
     notes = []
 
     try:
-        # Step 1: Fetch all necessary analysis data
+        # Step 1: Fetch all necessary analysis data, passing the industry parameter
         fa_data = fa_mod.analyze_fundamentals(ticker)
-        ta_data = ta_mod.analyze_technical_indicators(ticker)
+        ta_data = ta_mod.analyze_technical_indicators(ticker, industry=industry) # Pass industry here
         news_data = news_mod.fetch_news_risk(ticker)
         info = get_ticker_data(ticker).get("info", {})
 
