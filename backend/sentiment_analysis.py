@@ -51,7 +51,10 @@ def get_management_quality_score(ticker: str, info: dict):
     """
     notes = []
     fmp_fetcher = SecondaryDataFetcher()
-    governance_data = fmp_fetcher._make_request(f"governance/{ticker}")
+    
+    # --- FIX: Clean the ticker for the FMP API call ---
+    fmp_ticker = ticker.split('.')[0]
+    governance_data = fmp_fetcher._make_request(f"governance/{fmp_ticker}")
 
     # --- Default scores if API fails ---
     ceo_score = 0.75
