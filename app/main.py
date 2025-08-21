@@ -373,6 +373,10 @@ if st.sidebar.button("📈 Strategic Insights"):
     st.session_state["chat_mode"] = "strategic_insights"
     st.rerun()
 
+if st.sidebar.button("🚀 Backtesting Engine"):
+    st.session_state["chat_mode"] = "backtesting"
+    st.rerun()
+
 
 # --- Export/Share Insights ---
 st.sidebar.markdown("---")
