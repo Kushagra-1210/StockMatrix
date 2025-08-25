@@ -19,9 +19,12 @@ def get_view(mode):
     elif mode == "strategic_insights":
         from .strategic_insights import show_strategic_insights
         return show_strategic_insights
-    elif mode == "backtesting": # New route
+    elif mode == "backtesting":
         from .backtesting import show_backtesting
         return show_backtesting
+    elif mode == "market_visualizer": # New route for the 3D view
+        from .market_visualizer import show_market_visualizer
+        return show_market_visualizer
     else:
         from .watchlist import show_watchlist
         return show_watchlist

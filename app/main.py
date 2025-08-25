@@ -377,6 +377,11 @@ if st.sidebar.button("🚀 Backtesting Engine"):
     st.session_state["chat_mode"] = "backtesting"
     st.rerun()
 
+if st.sidebar.button("🌌 3D Market Visualizer"):
+    st.session_state["chat_mode"] = "market_visualizer"
+    st.rerun()
+
+
 
 # --- Export/Share Insights ---
 st.sidebar.markdown("---")
