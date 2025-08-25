@@ -1,3 +1,77 @@
+# --- 3D Plot Data Fetcher ---
+import yfinance as yf
+import requests
+import numpy as np
+
+def get_market_data_for_plot(tickers=None):
+    """
+    Returns a list of dicts: {x: P/E ratio (0-1), y: TA score (0-1), z: Market Cap (0-1), Ticker: symbol}
+    Uses Yahoo Finance for primary, FMP for secondary data.
+    """
+    if tickers is None:
+        tickers = ['AAPL', 'MSFT', 'GOOG', 'AMZN', 'TSLA']  # Example, replace with your list
+
+    # Fetch data from Yahoo Finance
+    pe_ratios = []
+    market_caps = []
+    ta_scores = []
+    results = []
+    for t in tickers:
+        try:
+            stock = yf.Ticker(t)
+            info = stock.info
+            pe = info.get('trailingPE') or info.get('forwardPE') or 0
+            cap = info.get('marketCap') or 0
+            # Example TA score: use 50-day MA vs 200-day MA
+            hist = stock.history(period='1y')
+            ta = 0
+            if not hist.empty:
+                ma50 = hist['Close'].rolling(50).mean().iloc[-1]
+                ma200 = hist['Close'].rolling(200).mean().iloc[-1]
+                ta = (ma50 - ma200) / ma200 if ma200 else 0
+            pe_ratios.append(pe)
+            market_caps.append(cap)
+            ta_scores.append(ta)
+            results.append({'Ticker': t, 'pe': pe, 'cap': cap, 'ta': ta})
+        except Exception:
+            # Try FMP as fallback
+            try:
+                url = f'https://financialmodelingprep.com/api/v3/profile/{t}?apikey=demo'
+                resp = requests.get(url)
+                if resp.ok:
+                    data = resp.json()[0]
+                    pe = float(data.get('pe', 0))
+                    cap = float(data.get('mktCap', 0))
+                    ta = 0  # No TA from FMP in this example
+                    pe_ratios.append(pe)
+                    market_caps.append(cap)
+                    ta_scores.append(ta)
+                    results.append({'Ticker': t, 'pe': pe, 'cap': cap, 'ta': ta})
+            except Exception:
+                continue
+
+    # Normalize
+    pe_arr = np.array([r['pe'] for r in results])
+    cap_arr = np.array([r['cap'] for r in results])
+    ta_arr = np.array([r['ta'] for r in results])
+    def norm(arr):
+        arr = np.nan_to_num(arr)
+        if arr.max() == arr.min():
+            return np.zeros_like(arr)
+        return (arr - arr.min()) / (arr.max() - arr.min())
+    pe_norm = norm(pe_arr)
+    cap_norm = norm(cap_arr)
+    ta_norm = norm(ta_arr)
+
+    out = []
+    for i, r in enumerate(results):
+        out.append({
+            'x': float(pe_norm[i]),
+            'y': float(ta_norm[i]),
+            'z': float(cap_norm[i]),
+            'Ticker': r['Ticker']
+        })
+    return out
 import yfinance as yf
 import pandas as pd
 import logging
