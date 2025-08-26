@@ -25,225 +25,102 @@
     <script>
 
     // --- Fetch Data from Internet ---
-    fetch('http://localhost:5000/api/market_data') // <-- Local Flask API endpoint
-        .then(response => response.json())
-        .then(stockData => {
-            // --- Basic Scene Setup ---
-            const scene = new THREE.Scene();
-            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            const renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            document.body.appendChild(renderer.domElement);
+    // --- Data Injection Placeholder ---
+    const stockData = __PLOT_DATA__;
 
-            // --- Lighting ---
-            const ambientLight = new THREE.AmbientLight(0x404040, 2); // soft white light
-            scene.add(ambientLight);
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
-            directionalLight.position.set(5, 5, 5);
-            scene.add(directionalLight);
+    // --- Basic Scene Setup ---
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
 
-            // --- Data Visualization ---
-            const pointsGroup = new THREE.Group();
-            const geometry = new THREE.SphereGeometry(0.02, 16, 16); // Small sphere for each stock
+    // --- Lighting ---
+    const ambientLight = new THREE.AmbientLight(0x404040, 2); // soft white light
+    scene.add(ambientLight);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    directionalLight.position.set(5, 5, 5);
+    scene.add(directionalLight);
 
-            stockData.forEach(stock => {
-                // Map normalized data (0 to 1) to a 3D space (e.g., -5 to 5)
-                const x = stock.x * 10 - 5;
-                const y = stock.y * 10 - 5;
-                const z = stock.z * 10 - 5;
+    // --- Data Visualization ---
+    const pointsGroup = new THREE.Group();
+    const geometry = new THREE.SphereGeometry(0.02, 16, 16); // Small sphere for each stock
 
-                // Color based on Z-value (upside potential)
-                const color = new THREE.Color();
-                color.setHSL(0.7 - (stock.z * 0.7), 0.9, 0.6); // Blue (low) to Red (high)
+    stockData.forEach(stock => {
+        // Map normalized data (0 to 1) to a 3D space (e.g., -5 to 5)
+        const x = stock.x * 10 - 5;
+        const y = stock.y * 10 - 5;
+        const z = stock.z * 10 - 5;
 
-                const material = new THREE.MeshLambertMaterial({ color: color });
-                const point = new THREE.Mesh(geometry, material);
-                point.position.set(x, y, z);
-                point.userData = { ticker: stock.Ticker }; // Store ticker for tooltip
-                pointsGroup.add(point);
-            });
-            scene.add(pointsGroup);
+        // Color based on Z-value (upside potential)
+        const color = new THREE.Color();
+        color.setHSL(0.7 - (stock.z * 0.7), 0.9, 0.6); // Blue (low) to Red (high)
 
-            // --- Axes Helper ---
-            const axesHelper = new THREE.AxesHelper(6); // X=red, Y=green, Z=blue
-            scene.add(axesHelper);
+        const material = new THREE.MeshLambertMaterial({ color: color });
+        const point = new THREE.Mesh(geometry, material);
+        point.position.set(x, y, z);
+        point.userData = { ticker: stock.Ticker }; // Store ticker for tooltip
+        pointsGroup.add(point);
+    });
+    scene.add(pointsGroup);
 
-            // --- Camera Position ---
-            camera.position.z = 12;
+    // --- Axes Helper ---
+    const axesHelper = new THREE.AxesHelper(6); // X=red, Y=green, Z=blue
+    scene.add(axesHelper);
 
-            // --- Interactivity (Mouse Controls) ---
-            let isMouseDown = false;
-            let previousMousePosition = { x: 0, y: 0 };
-            document.addEventListener('mousedown', e => { isMouseDown = true; });
-            document.addEventListener('mouseup', e => { isMouseDown = false; });
-            document.addEventListener('mousemove', e => {
-                const deltaMove = {
-                    x: e.offsetX - previousMousePosition.x,
-                    y: e.offsetY - previousMousePosition.y
-                };
-                if (isMouseDown) {
-                    pointsGroup.rotation.y += deltaMove.x * 0.005;
-                    pointsGroup.rotation.x += deltaMove.y * 0.005;
-                }
-                previousMousePosition = { x: e.offsetX, y: e.offsetY };
-                // Tooltip logic
-                updateTooltip(e);
-            });
-            document.addEventListener('wheel', e => {
-                camera.position.z += e.deltaY * 0.01;
-                camera.position.z = Math.max(3, Math.min(25, camera.position.z)); // Clamp zoom
-            });
+    // --- Camera Position ---
+    camera.position.z = 12;
 
-            // --- Tooltip Logic ---
-            const raycaster = new THREE.Raycaster();
-            const mouse = new THREE.Vector2();
-            const tooltip = document.getElementById('tooltip');
-            function updateTooltip(event) {
-                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-                mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
-                raycaster.setFromCamera(mouse, camera);
-                const intersects = raycaster.intersectObjects(pointsGroup.children);
-                if (intersects.length > 0) {
-                    const ticker = intersects[0].object.userData.ticker;
-                    tooltip.style.display = 'block';
-                    tooltip.style.left = event.clientX + 15 + 'px';
-                    tooltip.style.top = event.clientY + 'px';
-                    tooltip.textContent = ticker;
-                } else {
-                    tooltip.style.display = 'none';
-                }
-            }
+    // --- Interactivity (Mouse Controls) ---
+    let isMouseDown = false;
+    let previousMousePosition = { x: 0, y: 0 };
+    document.addEventListener('mousedown', e => { isMouseDown = true; });
+    document.addEventListener('mouseup', e => { isMouseDown = false; });
+    document.addEventListener('mousemove', e => {
+        const deltaMove = {
+            x: e.offsetX - previousMousePosition.x,
+            y: e.offsetY - previousMousePosition.y
+        };
+        if (isMouseDown) {
+            pointsGroup.rotation.y += deltaMove.x * 0.005;
+            pointsGroup.rotation.x += deltaMove.y * 0.005;
+        }
+        previousMousePosition = { x: e.offsetX, y: e.offsetY };
+        // Tooltip logic
+        updateTooltip(e);
+    });
+    document.addEventListener('wheel', e => {
+        camera.position.z += e.deltaY * 0.01;
+        camera.position.z = Math.max(3, Math.min(25, camera.position.z)); // Clamp zoom
+    });
 
-            // --- Animation Loop ---
-            function animate() {
-                requestAnimationFrame(animate);
-                renderer.render(scene, camera);
-            }
-            animate();
-
-            // --- Window Resize Handler ---
-            window.addEventListener('resize', () => {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-            }, false);
-        })
-        .catch(error => {
-            const tooltip = document.getElementById('tooltip');
+    // --- Tooltip Logic ---
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    const tooltip = document.getElementById('tooltip');
+    function updateTooltip(event) {
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(pointsGroup.children);
+        if (intersects.length > 0) {
+            const ticker = intersects[0].object.userData.ticker;
             tooltip.style.display = 'block';
-            tooltip.style.left = '20px';
-            tooltip.style.top = '20px';
-            tooltip.textContent = 'Failed to load data.';
-        });
-
-        // --- Basic Scene Setup ---
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
-
-        // --- Lighting ---
-        const ambientLight = new THREE.AmbientLight(0x404040, 2); // soft white light
-        scene.add(ambientLight);
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
-        directionalLight.position.set(5, 5, 5);
-        scene.add(directionalLight);
-
-        // --- Data Visualization ---
-        const pointsGroup = new THREE.Group();
-        const geometry = new THREE.SphereGeometry(0.02, 16, 16); // Small sphere for each stock
-
-        stockData.forEach(stock => {
-            // Map normalized data (0 to 1) to a 3D space (e.g., -5 to 5)
-            const x = stock.x * 10 - 5;
-            const y = stock.y * 10 - 5;
-            const z = stock.z * 10 - 5;
-
-            // Color based on Z-value (upside potential)
-            const color = new THREE.Color();
-            color.setHSL(0.7 - (stock.z * 0.7), 0.9, 0.6); // Blue (low) to Red (high)
-
-            const material = new THREE.MeshLambertMaterial({ color: color });
-            const point = new THREE.Mesh(geometry, material);
-            point.position.set(x, y, z);
-            point.userData = { ticker: stock.Ticker }; // Store ticker for tooltip
-            pointsGroup.add(point);
-        });
-        scene.add(pointsGroup);
-
-        // --- Axes Helper ---
-        const axesHelper = new THREE.AxesHelper(6); // X=red, Y=green, Z=blue
-        scene.add(axesHelper);
-
-        // --- Camera Position ---
-        camera.position.z = 12;
-
-        // --- Interactivity (Mouse Controls) ---
-        let isMouseDown = false;
-        let previousMousePosition = { x: 0, y: 0 };
-        
-        document.addEventListener('mousedown', e => { isMouseDown = true; });
-        document.addEventListener('mouseup', e => { isMouseDown = false; });
-        
-        document.addEventListener('mousemove', e => {
-            const deltaMove = {
-                x: e.offsetX - previousMousePosition.x,
-                y: e.offsetY - previousMousePosition.y
-            };
-
-            if (isMouseDown) {
-                pointsGroup.rotation.y += deltaMove.x * 0.005;
-                pointsGroup.rotation.x += deltaMove.y * 0.005;
-            }
-            
-            previousMousePosition = { x: e.offsetX, y: e.offsetY };
-            
-            // Tooltip logic
-            updateTooltip(e);
-        });
-
-        document.addEventListener('wheel', e => {
-            camera.position.z += e.deltaY * 0.01;
-            camera.position.z = Math.max(3, Math.min(25, camera.position.z)); // Clamp zoom
-        });
-
-        // --- Tooltip Logic ---
-        const raycaster = new THREE.Raycaster();
-        const mouse = new THREE.Vector2();
-        const tooltip = document.getElementById('tooltip');
-
-        function updateTooltip(event) {
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
-            
-            raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObjects(pointsGroup.children);
-
-            if (intersects.length > 0) {
-                const ticker = intersects[0].object.userData.ticker;
-                tooltip.style.display = 'block';
-                tooltip.style.left = event.clientX + 15 + 'px';
-                tooltip.style.top = event.clientY + 'px';
-                tooltip.textContent = ticker;
-            } else {
-                tooltip.style.display = 'none';
-            }
+            tooltip.style.left = event.clientX + 15 + 'px';
+            tooltip.style.top = event.clientY + 'px';
+            tooltip.textContent = ticker;
+        } else {
+            tooltip.style.display = 'none';
         }
+    }
 
-        // --- Animation Loop ---
-        function animate() {
-            requestAnimationFrame(animate);
-            renderer.render(scene, camera);
-        }
-        animate();
+    // --- Animation Loop ---
+    function animate() {
+        requestAnimationFrame(animate);
+        renderer.render(scene, camera);
+    }
+    animate();
 
-        // --- Window Resize Handler ---
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }, false);
 
     </script>
 </body>
