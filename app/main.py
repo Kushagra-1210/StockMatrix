@@ -228,23 +228,34 @@ if contrast:
     </style>
     '''
 
+# --- Improved Top Banner: Always visible and styled for theme ---
+banner_color = "#FFD700"
+text_color = "#18191A"
+st.markdown("""
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@900&display=swap" rel="stylesheet">
+<style>
+.top-banner-title {
+    font-family: 'Poppins', sans-serif !important;
+    font-size: 3.2rem !important;
+    font-weight: 900 !important;
+    letter-spacing: 2px;
+    color: #18191A !important;
+    vertical-align: middle;
+    display: inline-block;
+}
+</style>
+<div class="top-banner" style="width:100%;padding:24px 0 16px 0;text-align:center;background:#FFD700;border-radius:0 0 18px 18px;box-shadow:0 4px 32px rgba(10,31,68,0.10);">
+    <span class="top-banner-title" style="background: #FFD700; padding: 0 16px; border-radius: 12px; color: #18191A !important;">🪙 StockMatrix</span>
 
-# --- Custom Header with Lucide Icon, No Emoji ---
-st.markdown('''
-<div class="stockmatrix-header" style="display: flex; justify-content: space-between; align-items: center; background: #181818; padding: 16px 32px 8px 32px; height: 56px;">
-    <div class="stockmatrix-logo" style="display: flex; align-items: center;">
-        <img src="https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/bar-chart-3.svg" alt="logo" style="height: 32px; margin-right: 12px;" />
-        <span class="stockmatrix-title" style="font-size: 22px; font-weight: bold; color: #FFD600; letter-spacing: 1px;">StockMatrix</span>
-    </div>
-    <div class="stockmatrix-nav" style="display: flex; gap: 32px;">
-        <button class="stockmatrix-nav-btn" style="background: none; border: none; color: #bbb; font-size: 16px; font-weight: 500; cursor: pointer; padding: 4px 12px; border-radius: 6px; transition: background 0.2s, color 0.2s;"><img src="https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/bar-chart-3.svg" width="18" style="vertical-align:middle;margin-right:6px;"/>Analysis</button>
-        <button class="stockmatrix-nav-btn" style="background: none; border: none; color: #bbb; font-size: 16px; font-weight: 500; cursor: pointer; padding: 4px 12px; border-radius: 6px; transition: background 0.2s, color 0.2s;"><img src="https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/file-text.svg" width="18" style="vertical-align:middle;margin-right:6px;"/>Reports</button>
-        <button class="stockmatrix-nav-btn" style="background: none; border: none; color: #bbb; font-size: 16px; font-weight: 500; cursor: pointer; padding: 4px 12px; border-radius: 6px; transition: background 0.2s, color 0.2s;"><img src="https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/lightbulb.svg" width="18" style="vertical-align:middle;margin-right:6px;"/>Insights</button>
-    </div>
 </div>
-''', unsafe_allow_html=True)
+""", unsafe_allow_html=True)
+
 st.markdown('<meta name="viewport" content="width=device-width, initial-scale=1">', unsafe_allow_html=True)
 st.markdown(css, unsafe_allow_html=True)
+
+st.markdown("""
+<div class='curated-footer' style='color: #FFFFFF; text-align: right;'>Curated and powered by Kushagra Bansal</div>
+""", unsafe_allow_html=True)
 
 
 
@@ -386,26 +397,28 @@ if st.session_state.get("final_score") is not None:
 # --- Initial Chat Message ---
 if not st.session_state.greeted:
     greeting_msg = ("""
-        **Welcome to StockMatrix** — your AI-powered stock research assistant.
+        👋 **Welcome to StockMatrix** — your AI-powered stock research assistant.
 
-        I analyze the top 50 stocks across major global exchanges:
-        NSE, NYSE, LSE, HKEX, and TSE.
+
+        I analyze the top 50 stocks across major global exchanges:  
+        🇮🇳 NSE, 🇺🇸 NYSE, 🇬🇧 LSE, 🇭🇰 HKEX, and 🇯🇵 TSE.
 
         What would you like to do today?
 
-        - **Run Analysis**
-        - **Generate a Report**
-        - **Get Insights**
+        - 📊 **Run Analysis**
+        - 🧾 **Generate a Report**
+        - 💡 **Get Insights**
 
         Type your choice below to begin:
         """)
+    
     st.session_state.chat_history.append({"role": "user", "content": greeting_msg})
     st.session_state.greeted = True
 
 for msg in st.session_state.chat_history:
     st.chat_message(msg["role"]).markdown(msg["content"])
 
-with st.expander("Quick Tips", expanded=False):
+with st.expander("💡 Quick Tips", expanded=False):
     st.markdown("""
     **You can type:**
     - `RA` or `Run Analysis` to analyze a stock
