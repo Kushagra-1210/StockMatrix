@@ -11,48 +11,6 @@ from datetime import datetime
 import logging
 import importlib
 
-# --- Custom CSS for UI/UX improvements ---
-st.markdown('''
-        <style>
-        /* Header */
-        .stockmatrix-header {display: flex; justify-content: space-between; align-items: center; background: #181818; padding: 16px 32px 8px 32px; height: 56px;}
-        .stockmatrix-logo {display: flex; align-items: center;}
-        .stockmatrix-logo img {height: 32px; margin-right: 12px;}
-        .stockmatrix-title {font-size: 22px; font-weight: bold; color: #FFD600; letter-spacing: 1px;}
-        .stockmatrix-nav {display: flex; gap: 32px;}
-        .stockmatrix-nav-btn {background: none; border: none; color: #bbb; font-size: 16px; font-weight: 500; cursor: pointer; padding: 4px 12px; border-radius: 6px; transition: background 0.2s, color 0.2s;}
-        .stockmatrix-nav-btn:hover {background: #222; color: #fff;}
-
-        /* Sidebar/Watchlist */
-        .watchlist-section {background: #181818; padding: 20px 16px 16px 16px; border-radius: 12px; margin-bottom: 24px;}
-        .watchlist-input {width: 100%; padding: 8px 12px; border: 1px solid #444; border-radius: 6px; background: #222; color: #fff; font-size: 14px; margin-bottom: 16px;}
-        .watchlist-list {list-style: none; padding: 0; margin: 0;}
-        .watchlist-item {display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #222;}
-        .watchlist-ticker {font-weight: 500; color: #fff;}
-        .watchlist-price {font-size: 14px; color: #bbb;}
-        .watchlist-change-pos {color: #4caf50; font-weight: 500;}
-        .watchlist-change-neg {color: #f44336; font-weight: 500;}
-        .watchlist-empty {text-align: center; color: #aaa; font-size: 14px; margin-top: 16px;}
-        .watchlist-empty-illustration {font-size: 32px; color: #2196f3; margin-bottom: 8px;}
-
-        /* Typography */
-        .header {font-size: 20px; font-weight: bold; color: #fff;}
-        .subheader {font-size: 16px; font-weight: 500; color: #aaa;}
-        .body {font-size: 14px; color: #bbb;}
-
-        /* Action Cards */
-        .action-cards {display: flex; gap: 32px; justify-content: center; margin: 32px 0;}
-        .action-card {width: 200px; background: #181818; border: 1px solid #333; border-radius: 14px; box-shadow: 0 2px 8px #0002; padding: 24px 16px 16px 16px; display: flex; flex-direction: column; align-items: center; transition: background 0.2s; cursor: pointer;}
-        .action-card:hover {background: #222;}
-        .action-card-icon {margin-bottom: 12px;}
-        .action-card-header {font-size: 18px; font-weight: bold; color: #fff; margin-bottom: 6px;}
-        .action-card-subtext {font-size: 14px; color: #bbb; text-align: center;}
-
-        /* Footer */
-        .stockmatrix-footer {position: fixed; left: 0; right: 0; bottom: 0; background: #111; color: #888; font-size: 12px; display: flex; justify-content: space-between; align-items: center; padding: 6px 24px; z-index: 100;}
-        </style>
-''', unsafe_allow_html=True)
-
 # --- Header ---
 st.markdown('''
 <div class="stockmatrix-header">
