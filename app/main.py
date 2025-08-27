@@ -11,6 +11,113 @@ from datetime import datetime
 import logging
 import importlib
 
+# --- Custom CSS for UI/UX improvements ---
+st.markdown('''
+        <style>
+        /* Header */
+        .stockmatrix-header {display: flex; justify-content: space-between; align-items: center; background: #181818; padding: 16px 32px 8px 32px; height: 56px;}
+        .stockmatrix-logo {display: flex; align-items: center;}
+        .stockmatrix-logo img {height: 32px; margin-right: 12px;}
+        .stockmatrix-title {font-size: 22px; font-weight: bold; color: #FFD600; letter-spacing: 1px;}
+        .stockmatrix-nav {display: flex; gap: 32px;}
+        .stockmatrix-nav-btn {background: none; border: none; color: #bbb; font-size: 16px; font-weight: 500; cursor: pointer; padding: 4px 12px; border-radius: 6px; transition: background 0.2s, color 0.2s;}
+        .stockmatrix-nav-btn:hover {background: #222; color: #fff;}
+
+        /* Sidebar/Watchlist */
+        .watchlist-section {background: #181818; padding: 20px 16px 16px 16px; border-radius: 12px; margin-bottom: 24px;}
+        .watchlist-input {width: 100%; padding: 8px 12px; border: 1px solid #444; border-radius: 6px; background: #222; color: #fff; font-size: 14px; margin-bottom: 16px;}
+        .watchlist-list {list-style: none; padding: 0; margin: 0;}
+        .watchlist-item {display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #222;}
+        .watchlist-ticker {font-weight: 500; color: #fff;}
+        .watchlist-price {font-size: 14px; color: #bbb;}
+        .watchlist-change-pos {color: #4caf50; font-weight: 500;}
+        .watchlist-change-neg {color: #f44336; font-weight: 500;}
+        .watchlist-empty {text-align: center; color: #aaa; font-size: 14px; margin-top: 16px;}
+        .watchlist-empty-illustration {font-size: 32px; color: #2196f3; margin-bottom: 8px;}
+
+        /* Typography */
+        .header {font-size: 20px; font-weight: bold; color: #fff;}
+        .subheader {font-size: 16px; font-weight: 500; color: #aaa;}
+        .body {font-size: 14px; color: #bbb;}
+
+        /* Action Cards */
+        .action-cards {display: flex; gap: 32px; justify-content: center; margin: 32px 0;}
+        .action-card {width: 200px; background: #181818; border: 1px solid #333; border-radius: 14px; box-shadow: 0 2px 8px #0002; padding: 24px 16px 16px 16px; display: flex; flex-direction: column; align-items: center; transition: background 0.2s; cursor: pointer;}
+        .action-card:hover {background: #222;}
+        .action-card-icon {margin-bottom: 12px;}
+        .action-card-header {font-size: 18px; font-weight: bold; color: #fff; margin-bottom: 6px;}
+        .action-card-subtext {font-size: 14px; color: #bbb; text-align: center;}
+
+        /* Footer */
+        .stockmatrix-footer {position: fixed; left: 0; right: 0; bottom: 0; background: #111; color: #888; font-size: 12px; display: flex; justify-content: space-between; align-items: center; padding: 6px 24px; z-index: 100;}
+        </style>
+''', unsafe_allow_html=True)
+
+# --- Header ---
+st.markdown('''
+<div class="stockmatrix-header">
+    <div class="stockmatrix-logo">
+        <img src="https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/bar-chart-3.svg" alt="logo" />
+        <span class="stockmatrix-title">StockMatrix</span>
+    </div>
+    <div class="stockmatrix-nav">
+        <button class="stockmatrix-nav-btn">Analysis</button>
+        <button class="stockmatrix-nav-btn">Reports</button>
+        <button class="stockmatrix-nav-btn">Insights</button>
+    </div>
+</div>
+''', unsafe_allow_html=True)
+
+# --- Sidebar / Watchlist ---
+with st.sidebar:
+        st.markdown('<div class="watchlist-section">', unsafe_allow_html=True)
+        st.markdown('<input class="watchlist-input" placeholder="Enter ticker (e.g., AAPL, TCS)" />', unsafe_allow_html=True)
+        # Dummy watchlist for empty state
+        dummy_watchlist = [
+                {"ticker": "AAPL", "price": "$189.20", "change": "+1.2%"},
+                {"ticker": "TCS", "price": "₹3,456.75", "change": "-0.5%"},
+        ]
+        st.markdown('<ul class="watchlist-list">', unsafe_allow_html=True)
+        for stock in dummy_watchlist:
+                change_class = 'watchlist-change-pos' if '-' not in stock['change'] else 'watchlist-change-neg'
+                st.markdown(f'<li class="watchlist-item"><span class="watchlist-ticker">{stock["ticker"]}</span> <span class="watchlist-price">{stock["price"]} <span class="{change_class}">{stock["change"]}</span></span></li>', unsafe_allow_html=True)
+        st.markdown('</ul>', unsafe_allow_html=True)
+        st.markdown('<div class="watchlist-empty"><div class="watchlist-empty-illustration">★</div>Your watchlist is empty. Add your first stock to start tracking performance.</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+# --- Main Content ---
+st.markdown('<div class="header">Run Analysis</div>', unsafe_allow_html=True)
+st.markdown('<div class="body" style="margin-bottom: 24px;">Analyze stocks, generate reports, and get actionable insights.</div>', unsafe_allow_html=True)
+
+# --- Action Cards ---
+st.markdown('<div class="action-cards">', unsafe_allow_html=True)
+st.markdown('''
+    <div class="action-card">
+        <div class="action-card-icon"> <img src="https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/bar-chart-3.svg" width="36" /> </div>
+        <div class="action-card-header">Run Analysis</div>
+        <div class="action-card-subtext">Start a new market or stock analysis session.</div>
+    </div>
+    <div class="action-card">
+        <div class="action-card-icon"> <img src="https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/file-text.svg" width="36" /> </div>
+        <div class="action-card-header">Generate Report</div>
+        <div class="action-card-subtext">Create a detailed report of your selected stocks.</div>
+    </div>
+    <div class="action-card">
+        <div class="action-card-icon"> <img src="https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/lightbulb.svg" width="36" /> </div>
+        <div class="action-card-header">Get Insights</div>
+        <div class="action-card-subtext">Discover trends and strategic insights from the market.</div>
+    </div>
+''', unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
+
+# --- Footer ---
+st.markdown('''
+<div class="stockmatrix-footer">
+    <span>Powered by StockMatrix</span>
+    <span>&copy; 2025 Kushagra Bansal</span>
+</div>
+''', unsafe_allow_html=True)
+
 
 # --- CONFIGURATION (MUST BE AT THE TOP) ---
 st.set_page_config(page_title="StockMatrix", layout="centered")
