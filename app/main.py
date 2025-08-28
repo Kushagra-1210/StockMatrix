@@ -129,11 +129,11 @@ css = '''
         box-shadow: none;
     }
 
-    /* Specific style for the "Add" button */
-    div[data-testid="stSidebarUserContent"] .stButton:nth-of-type(1) button {
+    /* Specific style for the "Add" button using its key */
+    .stSidebar .stButton button[data-testid="stButton-Add"] {
          background: linear-gradient(90deg, var(--primary-accent-start), var(--primary-accent-end));
     }
-    div[data-testid="stSidebarUserContent"] .stButton:nth-of-type(1) button:hover {
+    .stSidebar .stButton button[data-testid="stButton-Add"]:hover {
         box-shadow: 0 0 15px 0 var(--primary-accent-end);
     }
 
@@ -224,16 +224,14 @@ with st.sidebar:
     
     # Display watchlist items as buttons
     for ticker in watchlist:
-        company_name = TICKER_TO_NAME.get(ticker.upper(), "Unknown Company")
-        label = f"{ticker} - {company_name}"
-        if st.button(label, key=f"watchlist_{ticker}"):
+        if st.button(ticker, key=f"watchlist_{ticker}", use_container_width=True):
             st.session_state["run_analysis_ticker"] = ticker
             st.session_state["chat_mode"] = "run_analysis"
             st.rerun()
 
     st.markdown('<div style="margin-top: 1rem;"></div>', unsafe_allow_html=True)
-    add_ticker = st.text_input("Add Ticker to Watchlist", "", key="add_watchlist", placeholder="Add Ticker")
-    if st.button("Add", key="add_watchlist_btn"):
+    add_ticker = st.text_input("Add Ticker", key="add_watchlist", placeholder="Add Ticker")
+    if st.button("Add", key="add_watchlist_btn", use_container_width=True):
         if add_ticker and add_ticker.upper() not in watchlist:
             watchlist.append(add_ticker.upper())
             user_prefs["watchlist"] = watchlist
@@ -243,7 +241,7 @@ with st.sidebar:
 
     if watchlist:
         remove_selection = st.selectbox("Remove Ticker", ["-"] + watchlist, key="remove_watchlist")
-        if st.button("Remove", key="remove_watchlist_btn", type="secondary"):
+        if st.button("Remove", key="remove_watchlist_btn", type="secondary", use_container_width=True):
             if remove_selection != "-":
                 watchlist.remove(remove_selection)
                 user_prefs["watchlist"] = watchlist
