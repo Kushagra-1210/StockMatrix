@@ -130,10 +130,10 @@ css = '''
     }
 
     /* Specific style for the "Add" button using its key */
-    .stSidebar .stButton button[data-testid="stButton-Add"] {
+    .stSidebar .stButton button[data-testid="stButton-add_watchlist_btn"] {
          background: linear-gradient(90deg, var(--primary-accent-start), var(--primary-accent-end));
     }
-    .stSidebar .stButton button[data-testid="stButton-Add"]:hover {
+    .stSidebar .stButton button[data-testid="stButton-add_watchlist_btn"]:hover {
         box-shadow: 0 0 15px 0 var(--primary-accent-end);
     }
 
