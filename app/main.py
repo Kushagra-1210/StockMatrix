@@ -48,13 +48,18 @@ def save_user_prefs(prefs):
 
 user_prefs = load_user_prefs()
 
+# --- FONT & ICON INJECTION ---
+st.markdown("""
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Poppins:wght@900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+""", unsafe_allow_html=True)
+
+
 # --- PROFESSIONAL DASHBOARD CSS ---
 css = '''
 <style>
-    /* --- Font Imports --- */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Poppins:wght@900&display=swap');
-    @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
-
     /* --- CSS Variables for Theming --- */
     :root {
       --primary-background: #1A1B25;
@@ -146,33 +151,37 @@ css = '''
         font-weight: 700;
         text-align: center;
     }
-    .welcome-card p {
+    .welcome-card > div > p {
         color: var(--secondary-text);
         text-align: center;
     }
 
     /* --- Action Cards --- */
-    .action-card-container {
+    .action-card {
         padding: 1.5rem;
         background-color: rgba(255, 255, 255, 0.05);
         border-radius: 10px;
         text-align: center;
         transition: background-color 0.2s;
         border: 1px solid transparent;
-        cursor: pointer;
+        margin-bottom: 1rem;
     }
-    .action-card-container:hover {
+    .action-card:hover {
         background-color: rgba(255, 255, 255, 0.1);
         border-color: var(--border-color);
     }
-    .action-card-container .material-symbols-outlined {
+    .action-card .material-symbols-outlined {
         font-size: 3rem;
         color: var(--primary-accent-start);
     }
-    .action-card-container h3 {
+    .action-card h3 {
         font-weight: 700;
         font-size: 1.125rem;
         color: var(--primary-text);
+    }
+    .action-card p {
+        color: var(--secondary-text);
+        font-size: 0.9rem;
     }
 
     /* --- Chat Input --- */
@@ -246,41 +255,47 @@ with st.sidebar:
 # --- Main Content ---
 if st.session_state.chat_mode == "welcome":
     st.markdown('<div class="welcome-card">', unsafe_allow_html=True)
-    st.markdown("## Welcome Assistant")
+    st.markdown("<h2>Welcome Assistant</h2>", unsafe_allow_html=True)
     st.markdown("<p>What can I help you with today?</p>", unsafe_allow_html=True)
     
     st.empty() # Spacer
 
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.markdown('<div class="action-card-container">', unsafe_allow_html=True)
-        st.markdown('<span class="material-symbols-outlined">query_stats</span>', unsafe_allow_html=True)
-        st.markdown("<h3>Run Analysis</h3>", unsafe_allow_html=True)
-        st.markdown("<p>Perform a deep-dive analysis on a specific stock or market sector.</p>", unsafe_allow_html=True)
+        st.markdown("""
+        <div class="action-card">
+            <span class="material-symbols-outlined">query_stats</span>
+            <h3>Run Analysis</h3>
+            <p>Perform a deep-dive analysis on a specific stock or market sector.</p>
+        </div>
+        """, unsafe_allow_html=True)
         if st.button("Go to Analysis", key="welcome_analysis", use_container_width=True):
             st.session_state.chat_mode = "run_analysis"
             st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
 
     with col2:
-        st.markdown('<div class="action-card-container">', unsafe_allow_html=True)
-        st.markdown('<span class="material-symbols-outlined">receipt_long</span>', unsafe_allow_html=True)
-        st.markdown("<h3>Generate a Report</h3>", unsafe_allow_html=True)
-        st.markdown("<p>Create a comprehensive, shareable report based on your analysis.</p>", unsafe_allow_html=True)
+        st.markdown("""
+        <div class="action-card">
+            <span class="material-symbols-outlined">receipt_long</span>
+            <h3>Generate a Report</h3>
+            <p>Create a comprehensive, shareable report based on your analysis.</p>
+        </div>
+        """, unsafe_allow_html=True)
         if st.button("Go to Reports", key="welcome_report", use_container_width=True):
             st.session_state.chat_mode = "report"
             st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
 
     with col3:
-        st.markdown('<div class="action-card-container">', unsafe_allow_html=True)
-        st.markdown('<span class="material-symbols-outlined">lightbulb</span>', unsafe_allow_html=True)
-        st.markdown("<h3>Get Insights</h3>", unsafe_allow_html=True)
-        st.markdown("<p>Discover trends and anomalies using our AI-powered insights engine.</p>", unsafe_allow_html=True)
+        st.markdown("""
+        <div class="action-card">
+            <span class="material-symbols-outlined">lightbulb</span>
+            <h3>Get Insights</h3>
+            <p>Discover trends and anomalies using our AI-powered insights engine.</p>
+        </div>
+        """, unsafe_allow_html=True)
         if st.button("Go to Insights", key="welcome_insights", use_container_width=True):
             st.session_state.chat_mode = "screener" # Default insights view
             st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
 
     st.empty() # Spacer
     user_input = st.chat_input("Or, type a command...")
