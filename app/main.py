@@ -208,8 +208,10 @@ if "chat_mode" not in st.session_state:
 
 # --- Sidebar ---
 with st.sidebar:
-    st.markdown("## Watchlist")
+    st.markdown("<h2>Watchlist</h2>", unsafe_allow_html=True)
     watchlist = user_prefs.get("watchlist", [])
+    
+    # Display watchlist items as buttons
     for ticker in watchlist:
         company_name = TICKER_TO_NAME.get(ticker.upper(), "Unknown Company")
         label = f"{ticker} - {company_name}"
@@ -218,7 +220,8 @@ with st.sidebar:
             st.session_state["chat_mode"] = "run_analysis"
             st.rerun()
 
-    add_ticker = st.text_input("Add Ticker to Watchlist", "", key="add_watchlist")
+    st.markdown('<div style="margin-top: 1rem;"></div>', unsafe_allow_html=True)
+    add_ticker = st.text_input("Add Ticker to Watchlist", "", key="add_watchlist", placeholder="Add Ticker")
     if st.button("Add", key="add_watchlist_btn"):
         if add_ticker and add_ticker.upper() not in watchlist:
             watchlist.append(add_ticker.upper())
@@ -228,15 +231,17 @@ with st.sidebar:
             st.rerun()
 
     if watchlist:
-        remove_selection = st.selectbox("Remove from Watchlist", ["-"] + watchlist, key="remove_watchlist")
+        remove_selection = st.selectbox("Remove Ticker", ["-"] + watchlist, key="remove_watchlist")
         if st.button("Remove", key="remove_watchlist_btn", type="secondary"):
             if remove_selection != "-":
                 watchlist.remove(remove_selection)
                 user_prefs["watchlist"] = watchlist
                 save_user_prefs(user_prefs)
                 st.rerun()
+    
+    st.markdown('<hr style="margin: 2rem 0; border-color: var(--border-color);">', unsafe_allow_html=True)
 
-    st.markdown("## Navigation")
+    st.markdown("<h2>Navigation</h2>", unsafe_allow_html=True)
     if st.button("📈 Strategic Insights"):
         st.session_state.chat_mode = "strategic_insights"
         st.rerun()
@@ -247,9 +252,12 @@ with st.sidebar:
         st.session_state.chat_mode = "market_visualizer"
         st.rerun()
 
-    st.markdown("## Settings & Accessibility")
+    st.markdown('<hr style="margin: 2rem 0; border-color: var(--border-color);">', unsafe_allow_html=True)
+
+    st.markdown("<h2>Settings & Accessibility</h2>", unsafe_allow_html=True)
     if st.button("❓ Help / Quick Tour"):
-        st.info("Help content goes here.")
+        st.session_state.chat_mode = "onboarding"
+        st.rerun()
 
 
 # --- Main Content ---
