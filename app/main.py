@@ -23,8 +23,6 @@ from backend import (
     screener_engine,
     market_selector
 )
-# This is a placeholder for your NLP logic if you have one
-# from nlp.chat_router import handle_chat_command 
 
 # --- Persistent User Preferences ---
 PREFS_KEY = "stockmatrix_user_prefs"
@@ -48,6 +46,17 @@ def save_user_prefs(prefs):
 
 user_prefs = load_user_prefs()
 
+# --- Function to load external CSS ---
+def load_css(file_name):
+    try:
+        with open(file_name) as f:
+            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+    except FileNotFoundError:
+        st.error(f"CSS file not found: {file_name}. Please make sure 'app/style.css' exists.")
+
+# Apply the external CSS file
+load_css("app/style.css")
+
 # --- FONT & ICON INJECTION ---
 st.markdown("""
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -56,161 +65,6 @@ st.markdown("""
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
 """, unsafe_allow_html=True)
 
-
-# --- PROFESSIONAL DASHBOARD CSS ---
-css = '''
-<style>
-    /* --- CSS Variables for Theming --- */
-    :root {
-      --primary-background: #1A1B25;
-      --sidebar-background: #13141B;
-      --card-background: #24263D;
-      --primary-text: #EAEBFF;
-      --secondary-text: #9D9DBC;
-      --border-color: #333652;
-      --primary-accent-start: #5D5FEF;
-      --primary-accent-end: #7B61FF;
-      --destructive-start: #D32F2F;
-      --destructive-end: #E57372;
-    }
-
-    /* --- Base Body & App Styling --- */
-    body, .stApp {
-        background-color: var(--primary-background);
-        color: var(--primary-text);
-        font-family: 'Inter', sans-serif;
-    }
-    
-    /* --- Header/Title --- */
-    .stApp > header {
-        background-color: transparent;
-    }
-    h1 {
-        font-family: 'Poppins', sans-serif;
-        font-size: 2.5rem;
-        font-weight: 900;
-        letter-spacing: 2px;
-        text-align: center;
-        padding-top: 1rem;
-        padding-bottom: 1rem;
-    }
-
-    /* --- Sidebar Styling --- */
-    .stSidebar {
-        background-color: var(--sidebar-background);
-        border-right: 1px solid var(--border-color);
-    }
-    .stSidebar h2 {
-        color: var(--secondary-text);
-        text-transform: uppercase;
-        font-size: 0.9rem;
-        font-weight: 700;
-        padding-top: 1rem;
-    }
-    
-    /* Default state for all sidebar buttons */
-    .stSidebar .stButton button {
-        background-color: transparent;
-        color: var(--primary-text);
-        font-weight: 600;
-        text-align: left;
-        padding: 0.75rem;
-        border-radius: 8px;
-        transition: background-color 0.2s, transform 0.2s;
-        width: 100%;
-        border: none;
-    }
-    .stSidebar .stButton button:hover {
-        background-color: rgba(255, 255, 255, 0.05);
-        transform: translateX(2px);
-    }
-    .stSidebar .stButton button:focus {
-        outline: none;
-        box-shadow: none;
-    }
-
-    /* Specific style for the "Add" button using its key */
-    .stSidebar .stButton button[data-testid="stButton-add_watchlist_btn"] {
-         background: linear-gradient(90deg, var(--primary-accent-start), var(--primary-accent-end));
-    }
-    .stSidebar .stButton button[data-testid="stButton-add_watchlist_btn"]:hover {
-        box-shadow: 0 0 15px 0 var(--primary-accent-end);
-    }
-
-    /* Specific style for the "Remove" button */
-    .stSidebar .stButton:has(button[kind="secondary"]) button {
-        background: linear-gradient(90deg, var(--destructive-start), var(--destructive-end));
-    }
-
-    /* --- Main Content Area --- */
-    .main .block-container {
-        padding-top: 2rem;
-    }
-    
-    /* --- Welcome Assistant Card --- */
-    .welcome-card {
-        background-color: var(--card-background);
-        padding: 3rem;
-        border-radius: 12px;
-        border: 1px solid var(--border-color);
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-        max-width: 64rem;
-        margin: auto;
-    }
-    .welcome-card h2 {
-        font-size: 2rem;
-        font-weight: 700;
-        text-align: center;
-    }
-    .welcome-card > div > p {
-        color: var(--secondary-text);
-        text-align: center;
-    }
-
-    /* --- Action Cards --- */
-    .action-card {
-        padding: 1.5rem;
-        background-color: rgba(255, 255, 255, 0.05);
-        border-radius: 10px;
-        text-align: center;
-        transition: background-color 0.2s;
-        border: 1px solid transparent;
-        margin-bottom: 1rem;
-    }
-    .action-card:hover {
-        background-color: rgba(255, 255, 255, 0.1);
-        border-color: var(--border-color);
-    }
-    .action-card .material-symbols-outlined {
-        font-size: 3rem;
-        color: var(--primary-accent-start);
-    }
-    .action-card h3 {
-        font-weight: 700;
-        font-size: 1.125rem;
-        color: var(--primary-text);
-    }
-    .action-card p {
-        color: var(--secondary-text);
-        font-size: 0.9rem;
-    }
-
-    /* --- Chat Input --- */
-    .stChatInput {
-        background-color: var(--primary-background);
-    }
-    .stChatInput > div > input {
-        background-color: var(--primary-background);
-        border: 1px solid var(--border-color);
-        border-radius: 8px 0 0 8px;
-    }
-    .stChatInput button {
-        background: linear-gradient(90deg, var(--primary-accent-start), var(--primary-accent-end));
-        border-radius: 0 8px 8px 0;
-    }
-</style>
-'''
-st.markdown(css, unsafe_allow_html=True)
 st.title("StockMatrix")
 
 # --- Session State Initialization ---
@@ -222,7 +76,6 @@ with st.sidebar:
     st.markdown("<h2>Watchlist</h2>", unsafe_allow_html=True)
     watchlist = user_prefs.get("watchlist", [])
     
-    # Display watchlist items as buttons
     for ticker in watchlist:
         if st.button(ticker, key=f"watchlist_{ticker}", use_container_width=True):
             st.session_state["run_analysis_ticker"] = ticker
@@ -275,7 +128,7 @@ if st.session_state.chat_mode == "welcome":
     st.markdown("<h2>Welcome Assistant</h2>", unsafe_allow_html=True)
     st.markdown("<p>What can I help you with today?</p>", unsafe_allow_html=True)
     
-    st.empty() # Spacer
+    st.empty()
 
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -311,19 +164,17 @@ if st.session_state.chat_mode == "welcome":
         </div>
         """, unsafe_allow_html=True)
         if st.button("Go to Insights", key="welcome_insights", use_container_width=True):
-            st.session_state.chat_mode = "screener" # Default insights view
+            st.session_state.chat_mode = "screener"
             st.rerun()
 
-    st.empty() # Spacer
+    st.empty()
     user_input = st.chat_input("Or, type a command...")
     if user_input:
-        # Here you can re-integrate your handle_chat_command if needed
         st.info(f"Command received: {user_input}")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
 else:
-    # --- Main Content Rendering based on chat_mode ---
     from app.views.routing import get_view
     view_func = get_view(st.session_state.get("chat_mode"))
     view_func(st, user_prefs)
