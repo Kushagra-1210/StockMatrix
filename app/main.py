@@ -105,7 +105,10 @@ css = '''
         text-transform: uppercase;
         font-size: 0.9rem;
         font-weight: 700;
+        padding-top: 1rem;
     }
+    
+    /* Default state for all sidebar buttons */
     .stSidebar .stButton button {
         background-color: transparent;
         color: var(--primary-text);
@@ -115,18 +118,26 @@ css = '''
         border-radius: 8px;
         transition: background-color 0.2s, transform 0.2s;
         width: 100%;
+        border: none;
     }
     .stSidebar .stButton button:hover {
         background-color: rgba(255, 255, 255, 0.05);
         transform: translateX(2px);
     }
-    /* Special "Add" button in sidebar */
-    .stSidebar .stButton:has(button:not(:has(span))) button {
+    .stSidebar .stButton button:focus {
+        outline: none;
+        box-shadow: none;
+    }
+
+    /* Specific style for the "Add" button */
+    div[data-testid="stSidebarUserContent"] .stButton:nth-of-type(1) button {
          background: linear-gradient(90deg, var(--primary-accent-start), var(--primary-accent-end));
     }
-    .stSidebar .stButton button:not(:has(span)):hover {
+    div[data-testid="stSidebarUserContent"] .stButton:nth-of-type(1) button:hover {
         box-shadow: 0 0 15px 0 var(--primary-accent-end);
     }
+
+    /* Specific style for the "Remove" button */
     .stSidebar .stButton:has(button[kind="secondary"]) button {
         background: linear-gradient(90deg, var(--destructive-start), var(--destructive-end));
     }
