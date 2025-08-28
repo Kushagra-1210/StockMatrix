@@ -1,0 +1,106 @@
+/* --- CSS Variables for Run Analysis View --- */
+:root {
+    --bg-primary: #141221;
+    --bg-secondary: #1F1B32;
+    --bg-tertiary: #2B2546;
+    --border-primary: #3D3663;
+    --text-primary: #FFFFFF;
+    --text-secondary: #9D95C6;
+    --accent-positive: #0BDA6C;
+    --accent-negative: #FF4D4D;
+    --accent-neutral: #FFC107; /* Added for neutral verdicts */
+}
+
+/* --- Main Layout & Headers --- */
+.run-analysis-container h2 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    letter-spacing: -0.05em;
+    color: var(--text-primary);
+}
+.run-analysis-container .stMarkdown p {
+    color: var(--text-secondary);
+}
+
+/* --- Custom Selectbox Styling --- */
+div[data-testid="stSelectbox"] > div {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+}
+div[data-testid="stSelectbox"] div[data-baseweb="select"] {
+    background-color: transparent;
+    border: none;
+}
+div[data-testid="stSelectbox"] .st-eb { /* Targets the selectbox label */
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* --- Chart Container Styling --- */
+.chart-container {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+}
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+.chart-header h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.price-display {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+.price-display .current-price {
+    font-size: 2.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+.price-display .price-change-positive {
+    color: var(--accent-positive);
+    font-weight: 500;
+}
+.price-display .price-change-negative {
+    color: var(--accent-negative);
+    font-weight: 500;
+}
+
+/* --- Analysis Results Expander Styling --- */
+div[data-testid="stExpander"] {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 0.75rem;
+    transition: all 0.3s ease-in-out;
+}
+div[data-testid="stExpander"]:hover {
+    border-color: var(--primary-accent-end);
+}
+div[data-testid="stExpander"] summary {
+    padding: 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+}
+div[data-testid="stExpander"] summary p {
+    color: var(--text-primary) !important;
+}
+.expander-subheader {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+.expander-subheader .positive { color: var(--accent-positive); }
+.expander-subheader .negative { color: var(--accent-negative); }
+.expander-subheader .neutral { color: var(--accent-neutral); }
+
+.expander-content {
+    padding: 1rem;
+    border-top: 1px solid var(--border-primary);
+}
