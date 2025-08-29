@@ -114,6 +114,8 @@ def show_run_analysis(st, user_prefs):
             score = data.get('ta_score', 0)
             verdict = data.get('verdict', 'N/A')
             verdict_class = "positive" if score >= 65 else "neutral" if score >= 45 else "negative"
+            notes = data.get('notes', [])
+            note_text = notes[0] if notes else "No notes available."
             st.markdown(f"""
             <details class="group">
                 <summary>
@@ -121,7 +123,7 @@ def show_run_analysis(st, user_prefs):
                     <p class="expander-subheader">Score: <span class="{verdict_class}">{score}/100</span> - Verdict: <span class="{verdict_class}">{verdict}</span></p>
                 </summary>
                 <div class="expander-content">
-                    <p><strong>Notes:</strong> {data.get('notes', ['No notes available.'])[0]}</p>
+                    <p><strong>Notes:</strong> {note_text}</p>
                 </div>
             </details>
             """, unsafe_allow_html=True)
@@ -131,6 +133,8 @@ def show_run_analysis(st, user_prefs):
             score = data.get('Fundamental Score', 0)
             verdict = data.get('Verdict', 'N/A')
             verdict_class = "positive" if score >= 65 else "neutral" if score >= 45 else "negative"
+            notes = data.get('Notes', [])
+            note_text = notes[0] if notes else "No notes available."
             st.markdown(f"""
             <details class="group">
                 <summary>
@@ -138,7 +142,7 @@ def show_run_analysis(st, user_prefs):
                     <p class="expander-subheader">Score: <span class="{verdict_class}">{score:.2f}/100</span> - Verdict: <span class="{verdict_class}">{verdict}</span></p>
                 </summary>
                 <div class="expander-content">
-                    <p><strong>Notes:</strong> {data.get('Notes', ['No notes available.'])[0]}</p>
+                    <p><strong>Notes:</strong> {note_text}</p>
                 </div>
             </details>
             """, unsafe_allow_html=True)
@@ -148,6 +152,8 @@ def show_run_analysis(st, user_prefs):
             score = data.get('score', 0) * 10
             verdict = data.get('verdict', 'N/A')
             verdict_class = "positive" if score >= 65 else "neutral" if score >= 45 else "negative"
+            notes = data.get('management_notes', [])
+            note_text = notes[0] if notes else "No notes available."
             st.markdown(f"""
             <details class="group">
                 <summary>
@@ -155,7 +161,7 @@ def show_run_analysis(st, user_prefs):
                     <p class="expander-subheader">Score: <span class="{verdict_class}">{score:.2f}/100</span> - Verdict: <span class="{verdict_class}">{verdict}</span></p>
                 </summary>
                 <div class="expander-content">
-                    <p><strong>Notes:</strong> {data.get('management_notes', ['No notes available.'])[0]}</p>
+                    <p><strong>Notes:</strong> {note_text}</p>
                 </div>
             </details>
             """, unsafe_allow_html=True)
@@ -178,3 +184,4 @@ def show_run_analysis(st, user_prefs):
             """, unsafe_allow_html=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
+
