@@ -1,106 +1,195 @@
-/* --- CSS Variables for Run Analysis View --- */
-:root {
-    --bg-primary: #141221;
-    --bg-secondary: #1F1B32;
-    --bg-tertiary: #2B2546;
-    --border-primary: #3D3663;
-    --text-primary: #FFFFFF;
-    --text-secondary: #9D95C6;
-    --accent-positive: #0BDA6C;
-    --accent-negative: #FF4D4D;
-    --accent-neutral: #FFC107; /* Added for neutral verdicts */
+/* --- Base Container for Run Analysis Page --- */
+.run-analysis-container {
+    padding: 1rem;
 }
 
-/* --- Main Layout & Headers --- */
-.run-analysis-container h2 {
-    font-size: 2.5rem;
+h2 {
+    font-size: 2.25rem; /* 36px */
     font-weight: 700;
-    letter-spacing: -0.05em;
-    color: var(--text-primary);
-}
-.run-analysis-container .stMarkdown p {
-    color: var(--text-secondary);
+    color: #FFFFFF;
+    margin-bottom: 0.5rem;
 }
 
-/* --- Custom Selectbox Styling --- */
+.page-subtitle {
+    font-size: 1rem; /* 16px */
+    color: #9D95C6;
+    margin-bottom: 2rem;
+}
+
+/* --- Controls Styling (Select Boxes) --- */
+/* Streamlit's default selectbox is hard to override completely, but we can style the container */
 div[data-testid="stSelectbox"] > div {
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-primary);
-    border-radius: 0.5rem;
-    padding: 0.5rem 0.75rem;
+    background-color: #2B2546;
+    border: 1px solid #3D3663;
+    border-radius: 8px;
+    color: #FFFFFF;
 }
-div[data-testid="stSelectbox"] div[data-baseweb="select"] {
-    background-color: transparent;
-    border: none;
+
+/* --- Customize Scoring Expander --- */
+div[data-testid="stExpander"] {
+    background-color: #1F1B32;
+    border: 1px solid #3D3663;
+    border-radius: 12px;
+    margin-bottom: 1rem;
 }
-div[data-testid="stSelectbox"] .st-eb { /* Targets the selectbox label */
-    color: var(--text-secondary);
-    font-weight: 500;
+div[data-testid="stExpander"] summary {
+    font-weight: 600;
 }
+
 
 /* --- Chart Container Styling --- */
 .chart-container {
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-primary);
-    border-radius: 0.75rem;
+    background-color: #1F1B32;
+    border: 1px solid #3D3663;
+    border-radius: 12px;
     padding: 1.5rem;
+    margin-top: 1rem;
 }
+
 .chart-header {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
+    margin-bottom: 0.5rem;
 }
+
 .chart-header h3 {
     font-size: 1.125rem;
     font-weight: 600;
-    color: var(--text-primary);
+    color: #FFFFFF;
 }
-.price-display {
-    display: flex;
-    align-items: baseline;
-    gap: 0.5rem;
-}
+
 .price-display .current-price {
     font-size: 2.25rem;
     font-weight: 700;
-    color: var(--text-primary);
-}
-.price-display .price-change-positive {
-    color: var(--accent-positive);
-    font-weight: 500;
-}
-.price-display .price-change-negative {
-    color: var(--accent-negative);
-    font-weight: 500;
+    color: #FFFFFF;
+    margin-right: 0.5rem;
 }
 
-/* --- Analysis Results Expander Styling --- */
-div[data-testid="stExpander"] {
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-primary);
-    border-radius: 0.75rem;
-    transition: all 0.3s ease-in-out;
-}
-div[data-testid="stExpander"]:hover {
-    border-color: var(--primary-accent-end);
-}
-div[data-testid="stExpander"] summary {
-    padding: 1rem;
+.price-display .price-change-positive {
     font-size: 1rem;
     font-weight: 600;
+    color: #0BDA6C; /* Green for positive change */
 }
-div[data-testid="stExpander"] summary p {
-    color: var(--text-primary) !important;
+
+.price-display .price-change-negative {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #FF4D4D; /* Red for negative change */
 }
+
+.chart-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 320px;
+    background-color: rgba(43, 37, 70, 0.5);
+    border-radius: 8px;
+    color: #9D95C6;
+}
+
+/* --- Analysis Results Column --- */
+h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: #FFFFFF;
+}
+
+/* --- Final Score Container --- */
+.final-score-container {
+    background-color: #2B2546;
+    border: 1px solid #3D3663;
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.final-score-container h4 {
+    color: #9D95C6;
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.final-score-container .final-score {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.final-score-container .final-verdict {
+    font-size: 1.125rem;
+}
+
+.final-score.positive, .final-verdict .positive { color: #0BDA6C; }
+.final-score.negative, .final-verdict .negative { color: #FF4D4D; }
+.final-score.neutral, .final-verdict .neutral { color: #FACC15; } /* Yellow for neutral */
+
+
+/* --- Analysis Cards (using details/summary) --- */
+details.group {
+    background-color: #1F1B32;
+    border: 1px solid #3D3663;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    transition: all 0.2s ease-in-out;
+}
+
+details.group:hover {
+    border-color: #7B61FF;
+}
+
+details.group[open] {
+    border-color: #7B61FF;
+}
+
+details.group summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    cursor: pointer;
+    list-style: none; /* Remove default marker */
+}
+details.group summary::-webkit-details-marker {
+    display: none; /* Hide arrow on Chrome/Safari */
+}
+
+details.group summary h4 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #FFFFFF;
+}
+
 .expander-subheader {
     font-size: 0.875rem;
-    color: var(--text-secondary);
+    color: #9D95C6;
 }
-.expander-subheader .positive { color: var(--accent-positive); }
-.expander-subheader .negative { color: var(--accent-negative); }
-.expander-subheader .neutral { color: var(--accent-neutral); }
+
+.expander-subheader .positive { color: #0BDA6C; font-weight: 600; }
+.expander-subheader .negative { color: #FF4D4D; font-weight: 600; }
+.expander-subheader .neutral { color: #FACC15; font-weight: 600; }
+
 
 .expander-content {
-    padding: 1rem;
-    border-top: 1px solid var(--border-primary);
+    border-top: 1px solid #3D3663;
+    padding: 1.5rem;
 }
+
+/* Breakdown List Styling */
+.breakdown-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem 1rem;
+}
+.breakdown-list dt {
+    color: #9D95C6;
+    font-size: 0.875rem;
+}
+.breakdown-list dd {
+    color: #FFFFFF;
+    font-weight: 600;
+    text-align: right;
+}
+
