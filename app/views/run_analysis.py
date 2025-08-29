@@ -24,7 +24,7 @@ def show_run_analysis(st, user_prefs):
     st.markdown('<div class="run-analysis-container">', unsafe_allow_html=True)
     
     st.markdown("<h2>Run Analysis</h2>", unsafe_allow_html=True)
-    st.markdown("<p>Select your parameters to begin the analysis.</p>", unsafe_allow_html=True)
+    st.markdown("<p class='page-subtitle'>Select your parameters to begin the analysis.</p>", unsafe_allow_html=True)
 
     # --- Main Layout ---
     main_cols = st.columns([2, 1], gap="large")
@@ -40,7 +40,11 @@ def show_run_analysis(st, user_prefs):
             )
         tickers = get_top_50_tickers(exchange)
         with control_cols[1]:
-            selected_ticker = st.selectbox("Stock", tickers, key="run_analysis_ticker")
+            if tickers:
+                selected_ticker = st.selectbox("Stock", tickers, key="run_analysis_ticker")
+            else:
+                st.warning(f"No tickers found for the selected exchange ({exchange}).")
+                selected_ticker = None
         with control_cols[2]:
             industry = st.selectbox(
                 "Industry",
@@ -48,30 +52,46 @@ def show_run_analysis(st, user_prefs):
                 key="run_analysis_industry"
             )
 
+        # --- Re-integrated Customizer ---
+        with st.expander("🎛️ Customize Scoring Model"):
+            if 'user_weights' not in st.session_state:
+                st.session_state.user_weights = {"fa": 35, "ta": 35, "sentiment": 20, "news": 10}
+            
+            weights = st.session_state.user_weights
+            weights["fa"] = st.slider("Fundamental Analysis (%)", 0, 100, weights["fa"])
+            weights["ta"] = st.slider("Technical Analysis (%)", 0, 100, weights["ta"])
+            weights["sentiment"] = st.slider("Strategic Perception (%)", 0, 100, weights["sentiment"])
+            weights["news"] = st.slider("News & Risk Safety (%)", 0, 100, weights["news"])
+            
+            total_weight = sum(weights.values())
+            if total_weight != 100:
+                st.error(f"Weights must add up to 100%. Current total: {total_weight}%")
+
         # --- Chart Section ---
         st.markdown('<div class="chart-container">', unsafe_allow_html=True)
         
         info = {}
         history_df = pd.DataFrame()
-        try:
-            ticker_data = get_ticker_data(selected_ticker)
-            info = ticker_data.get("info", {})
-            history = ticker_data.get("history", {})
-            if history:
-                history_df = pd.DataFrame(history)
-                history_df['Date'] = pd.to_datetime(history_df['Date'])
-                history_df.set_index('Date', inplace=True)
-        except Exception as e:
-            st.error(f"Could not load data for {selected_ticker}: {e}")
+        if selected_ticker:
+            try:
+                ticker_data = get_ticker_data(selected_ticker)
+                info = ticker_data.get("info", {})
+                history = ticker_data.get("history", {})
+                if history:
+                    history_df = pd.DataFrame(history)
+                    history_df['Date'] = pd.to_datetime(history_df['Date'])
+                    history_df.set_index('Date', inplace=True)
+            except Exception as e:
+                st.error(f"Could not load data for {selected_ticker}: {e}")
 
         price = info.get('currentPrice', 0)
         prev_close = info.get('previousClose', 1)
-        change_pct = ((price - prev_close) / prev_close) * 100 if prev_close else 0
+        change_pct = ((price - prev_close) / prev_close) * 100 if prev_close and prev_close > 0 else 0
         change_class = "positive" if change_pct >= 0 else "negative"
         
         st.markdown(f"""
         <div class="chart-header">
-            <h3>Stock Price Chart ({selected_ticker})</h3>
+            <h3>Stock Price Chart ({selected_ticker or 'N/A'})</h3>
             <div class="price-display">
                 <span class="current-price">${price:,.2f}</span>
                 <span class="price-change-{change_class}">{change_pct:+.2f}%</span>
@@ -93,7 +113,7 @@ def show_run_analysis(st, user_prefs):
             )
             st.plotly_chart(fig, use_container_width=True)
         else:
-            st.info("Price chart data not available.")
+            st.markdown('<div class="chart-placeholder"><p>Price chart will be displayed here.</p></div>', unsafe_allow_html=True)
 
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -101,21 +121,67 @@ def show_run_analysis(st, user_prefs):
     with main_cols[1]: # Right column for analysis results
         st.markdown("<h3>Analysis Results</h3>", unsafe_allow_html=True)
         
-        if st.button("Run Full Analysis", use_container_width=True):
+        is_disabled = (total_weight != 100) or (selected_ticker is None)
+
+        if st.button("Run Full Analysis", use_container_width=True, disabled=is_disabled):
             with st.spinner(f"Running analysis for {selected_ticker}..."):
                 st.session_state.technicals = ta_mod.analyze_technical_indicators(selected_ticker, industry=industry)
                 st.session_state.fundamentals = fa_mod.analyze_fundamentals(selected_ticker)
                 st.session_state.perception = sentiment_mod.analyze_perception(selected_ticker)
                 st.session_state.risk = news_mod.fetch_news_risk(selected_ticker)
 
-        # --- Display Results ---
+                tech = st.session_state.technicals
+                fund = st.session_state.fundamentals
+                perc = st.session_state.perception
+                risk = st.session_state.risk
+
+                if not any(d.get("error") for d in [tech, fund, perc, risk]):
+                    weights = st.session_state.user_weights
+                    fa_score = fund.get("Fundamental Score", 0)
+                    ta_score = tech.get("ta_score", 0)
+                    perception_score = perc.get("score", 0) * 10 
+                    safety_score = 100 - risk.get("risk_score", 50)
+
+                    final_score = (
+                        (weights['fa'] / 100) * fa_score +
+                        (weights['ta'] / 100) * ta_score +
+                        (weights['sentiment'] / 100) * perception_score +
+                        (weights['news'] / 100) * safety_score
+                    )
+                    st.session_state.final_score = final_score
+                else:
+                    st.session_state.final_score = None
+
+
+        if 'final_score' in st.session_state and st.session_state.final_score is not None:
+             final_score = st.session_state.final_score
+             verdict_class = "positive" if final_score >= 65 else "neutral" if final_score >= 45 else "negative"
+             if final_score >= 80: verdict = "Strong Buy"
+             elif final_score >= 65: verdict = "Buy"
+             elif final_score >= 45: verdict = "Hold"
+             else: verdict = "Sell"
+
+             st.markdown(f"""
+             <div class="final-score-container">
+                <h4>Final Weighted Score</h4>
+                <p class="final-score {verdict_class}">{final_score:.2f} / 100</p>
+                <p class="final-verdict">Verdict: <span class="{verdict_class}">{verdict}</span></p>
+             </div>
+             """, unsafe_allow_html=True)
+
+        def render_breakdown(breakdown_dict):
+            html = "<dl class='breakdown-list'>"
+            for key, value in breakdown_dict.items():
+                html += f"<dt>{key}</dt><dd>{value}</dd>"
+            html += "</dl>"
+            return html
+
         if 'technicals' in st.session_state and st.session_state.technicals:
             data = st.session_state.technicals
             score = data.get('ta_score', 0)
             verdict = data.get('verdict', 'N/A')
             verdict_class = "positive" if score >= 65 else "neutral" if score >= 45 else "negative"
-            notes = data.get('notes', [])
-            note_text = notes[0] if notes else "No notes available."
+            breakdown_html = render_breakdown(data.get('indicators', {}))
             st.markdown(f"""
             <details class="group">
                 <summary>
@@ -123,7 +189,7 @@ def show_run_analysis(st, user_prefs):
                     <p class="expander-subheader">Score: <span class="{verdict_class}">{score}/100</span> - Verdict: <span class="{verdict_class}">{verdict}</span></p>
                 </summary>
                 <div class="expander-content">
-                    <p><strong>Notes:</strong> {note_text}</p>
+                    {breakdown_html}
                 </div>
             </details>
             """, unsafe_allow_html=True)
@@ -133,8 +199,7 @@ def show_run_analysis(st, user_prefs):
             score = data.get('Fundamental Score', 0)
             verdict = data.get('Verdict', 'N/A')
             verdict_class = "positive" if score >= 65 else "neutral" if score >= 45 else "negative"
-            notes = data.get('Notes', [])
-            note_text = notes[0] if notes else "No notes available."
+            breakdown_html = render_breakdown(data.get('Breakdown', {}))
             st.markdown(f"""
             <details class="group">
                 <summary>
@@ -142,7 +207,7 @@ def show_run_analysis(st, user_prefs):
                     <p class="expander-subheader">Score: <span class="{verdict_class}">{score:.2f}/100</span> - Verdict: <span class="{verdict_class}">{verdict}</span></p>
                 </summary>
                 <div class="expander-content">
-                    <p><strong>Notes:</strong> {note_text}</p>
+                     {breakdown_html}
                 </div>
             </details>
             """, unsafe_allow_html=True)
@@ -152,8 +217,8 @@ def show_run_analysis(st, user_prefs):
             score = data.get('score', 0) * 10
             verdict = data.get('verdict', 'N/A')
             verdict_class = "positive" if score >= 65 else "neutral" if score >= 45 else "negative"
-            notes = data.get('management_notes', [])
-            note_text = notes[0] if notes else "No notes available."
+            mgmt_notes = data.get('management_notes', [])
+            note_text = " ".join(mgmt_notes) if mgmt_notes else "No specific notes generated."
             st.markdown(f"""
             <details class="group">
                 <summary>
@@ -168,14 +233,14 @@ def show_run_analysis(st, user_prefs):
             
         if 'risk' in st.session_state and st.session_state.risk:
             data = st.session_state.risk
-            score = 100 - data.get('risk_score', 50) # Inverted score for display
+            safety_score = 100 - data.get('risk_score', 50)
             verdict = data.get('verdict', 'N/A')
-            verdict_class = "positive" if score >= 60 else "neutral" if score >= 40 else "negative"
+            verdict_class = "positive" if safety_score >= 60 else "neutral" if safety_score >= 40 else "negative"
             st.markdown(f"""
             <details class="group">
                 <summary>
                     <h4>Risk Analysis</h4>
-                    <p class="expander-subheader">Safety Score: <span class="{verdict_class}">{score:.2f}/100</span> - Verdict: <span class="{verdict_class}">{verdict}</span></p>
+                    <p class="expander-subheader">Safety Score: <span class="{verdict_class}">{safety_score:.2f}/100</span> - Verdict: <span class="{verdict_class}">{verdict}</span></p>
                 </summary>
                 <div class="expander-content">
                     <p><strong>Headlines:</strong> {len(data.get('headlines', []))} risk headlines considered.</p>
