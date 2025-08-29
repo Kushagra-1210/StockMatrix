@@ -170,6 +170,8 @@ def show_run_analysis(st, user_prefs):
              """, unsafe_allow_html=True)
 
         def render_breakdown(breakdown_dict):
+            if not isinstance(breakdown_dict, dict):
+                return "<p>No breakdown data available.</p>"
             html = "<dl class='breakdown-list'>"
             for key, value in breakdown_dict.items():
                 html += f"<dt>{key}</dt><dd>{value}</dd>"
