@@ -104,30 +104,86 @@ def get_altman_z_score(fs, bs, info, fmp_data):
         if 'Financial' in sector or 'Real Estate' in sector:
             return {"error": "Altman Z-Score not applicable to financial/real estate firms."}
 
-        ta = _safe_get(bs, ['Total Assets']) or _safe_fmp_get(fmp_data, 'balance_sheet', 'totalAssets', 0)
+
+        # Try to get each field, and track if FMP fallback was used
+        ta = _safe_get(bs, ['Total Assets'])
+        ta_fmp = False
+        if pd.isna(ta):
+            ta = _safe_fmp_get(fmp_data, 'balance_sheet', 'totalAssets', 0)
+            ta_fmp = True
+
         wc = _safe_get(bs, ['Working Capital'])
+        wc_fmp = False
         if pd.isna(wc):
-            current_assets = _safe_get(bs, ['Current Assets']) or _safe_fmp_get(fmp_data, 'balance_sheet', 'totalCurrentAssets', 0)
-            current_liabilities = _safe_get(bs, ['Current Liabilities']) or _safe_fmp_get(fmp_data, 'balance_sheet', 'totalCurrentLiabilities', 0)
+            current_assets = _safe_get(bs, ['Current Assets'])
+            ca_fmp = False
+            if pd.isna(current_assets):
+                current_assets = _safe_fmp_get(fmp_data, 'balance_sheet', 'totalCurrentAssets', 0)
+                ca_fmp = True
+            current_liabilities = _safe_get(bs, ['Current Liabilities'])
+            cl_fmp = False
+            if pd.isna(current_liabilities):
+                current_liabilities = _safe_fmp_get(fmp_data, 'balance_sheet', 'totalCurrentLiabilities', 0)
+                cl_fmp = True
             wc = current_assets - current_liabilities
-            
-        re = _safe_get(bs, ['Retained Earnings']) or _safe_fmp_get(fmp_data, 'balance_sheet', 'retainedEarnings', 0)
+            wc_fmp = ca_fmp or cl_fmp
+
+        re = _safe_get(bs, ['Retained Earnings'])
+        re_fmp = False
+        if pd.isna(re):
+            re = _safe_fmp_get(fmp_data, 'balance_sheet', 'retainedEarnings', 0)
+            re_fmp = True
+
         ebit = _safe_get(fs, ['EBIT', 'Operating Income'])
+        ebit_fmp = False
         if pd.isna(ebit):
             ni = _safe_get(fs, ['Net Income'])
             interest = _safe_get(fs, ['Interest Expense'], 0)
             taxes = _safe_get(fs, ['Tax Provision'], 0)
-            ebit = ni + interest + taxes if all(pd.notna([ni, interest, taxes])) else _safe_fmp_get(fmp_data, 'income_statement', 'operatingIncome', 0)
-            
-        mve = info.get('marketCap') or _safe_fmp_get(fmp_data, 'company_profile', 'mktCap', 0)
-        tl = _safe_get(bs, ['Total Liab', 'Total Liabilities']) or _safe_fmp_get(fmp_data, 'balance_sheet', 'totalLiabilities', 0)
-        sales = _safe_get(fs, ['Total Revenue', 'Revenue']) or _safe_fmp_get(fmp_data, 'income_statement', 'revenue', 0)
+            if all(pd.notna([ni, interest, taxes])):
+                ebit = ni + interest + taxes
+            else:
+                ebit = _safe_fmp_get(fmp_data, 'income_statement', 'operatingIncome', 0)
+                ebit_fmp = True
 
-        if any(v is None or pd.isna(v) for v in [wc, ta, re, ebit, mve, tl, sales]):
-            return {"error": "Missing non-calculable data for Z-Score."}
+        mve = info.get('marketCap')
+        mve_fmp = False
+        if mve is None or pd.isna(mve):
+            mve = _safe_fmp_get(fmp_data, 'company_profile', 'mktCap', 0)
+            mve_fmp = True
+
+        tl = _safe_get(bs, ['Total Liab', 'Total Liabilities'])
+        tl_fmp = False
+        if pd.isna(tl):
+            tl = _safe_fmp_get(fmp_data, 'balance_sheet', 'totalLiabilities', 0)
+            tl_fmp = True
+
+        sales = _safe_get(fs, ['Total Revenue', 'Revenue'])
+        sales_fmp = False
+        if pd.isna(sales):
+            sales = _safe_fmp_get(fmp_data, 'income_statement', 'revenue', 0)
+            sales_fmp = True
+
+        # Check for missing fields
+        fields = {
+            'Working Capital': wc,
+            'Total Assets': ta,
+            'Retained Earnings': re,
+            'EBIT': ebit,
+            'Market Value of Equity': mve,
+            'Total Liabilities': tl,
+            'Sales': sales
+        }
+        missing = [k for k, v in fields.items() if v is None or pd.isna(v)]
+        fmp_used = [k for k, used in zip(fields.keys(), [wc_fmp, ta_fmp, re_fmp, ebit_fmp, mve_fmp, tl_fmp, sales_fmp]) if used]
+        if missing:
+            msg = f"Missing non-calculable data for Z-Score. Missing fields: {', '.join(missing)}. "
+            if fmp_used:
+                msg += f"FMP fallback used for: {', '.join(fmp_used)}. "
+            return {"error": msg.strip()}
         if ta == 0 or tl == 0:
             return {"error": "Total Assets or Liabilities are zero, cannot calculate Z-Score."}
-        
+
         A = wc / ta
         B = re / ta
         C = ebit / ta
