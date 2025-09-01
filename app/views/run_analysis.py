@@ -16,8 +16,20 @@ def load_view_css(file_name):
     except FileNotFoundError:
         st.error(f"CSS file not found: {file_name}")
 
+def render_breakdown(breakdown_dict):
+    """Helper function to render a dictionary of metrics into a 2-column HTML list."""
+    if not isinstance(breakdown_dict, dict):
+        return "<p>No detailed breakdown available.</p>"
+    html = "<dl class='breakdown-list'>"
+    for key, value in breakdown_dict.items():
+        # Sanitize and format keys
+        display_key = str(key).replace('_', ' ').title()
+        html += f"<dt>{display_key}</dt><dd>{value}</dd>"
+    html += "</dl>"
+    return html
+
 def show_run_analysis(st, user_prefs):
-    """Renders the 'Run Analysis' page with a professional card-based UI."""
+    """Renders the 'Run Analysis' page with interactive cards."""
     load_view_css("app/views/css/run_analysis.css")
 
     st.markdown("<h2>Run Analysis</h2>", unsafe_allow_html=True)
@@ -56,7 +68,7 @@ def show_run_analysis(st, user_prefs):
 
     price = info.get('currentPrice', 0)
     prev_close = info.get('previousClose', 1)
-    change_pct = ((price - prev_close) / prev_close) * 100 if prev_close > 0 else 0
+    change_pct = ((price - prev_close) / prev_close) * 100 if prev_close and prev_close > 0 else 0
     change_class = "positive" if change_pct >= 0 else "negative"
 
     st.markdown(f"""
@@ -85,7 +97,7 @@ def show_run_analysis(st, user_prefs):
             st.session_state.technicals = ta_mod.analyze_technical_indicators(selected_ticker, industry=industry)
             st.session_state.fundamentals = fa_mod.analyze_fundamentals(selected_ticker)
             st.session_state.perception = sentiment_mod.analyze_perception(selected_ticker)
-            st.session_state.risk = news_mod.fetch_news_risk(selected_ticker)
+            st.session_state.risk = news_risk_analyzer.fetch_news_risk(selected_ticker)
 
             tech = st.session_state.technicals
             fund = st.session_state.fundamentals
@@ -130,12 +142,20 @@ def show_run_analysis(st, user_prefs):
                 score = tech.get('ta_score', 0)
                 verdict = tech.get('verdict', 'N/A')
                 v_class = "positive" if score >= 65 else "neutral" if score >= 45 else "negative"
+                notes = tech.get('notes', [])
+                note_text = notes[0] if notes else "No specific notes generated."
                 st.markdown(f"""
-                <div class="analysis-card">
-                    <h5>Technical Analysis</h5>
-                    <span class="score {v_class}">Score: {score}/100</span>
-                    <span class="verdict">Verdict: {verdict}</span>
-                </div>
+                <details class="analysis-card-details">
+                    <summary>
+                        <h5>Technical Analysis</h5>
+                        <span class="score {v_class}">Score: {score}/100</span>
+                        <span class="verdict">Verdict: {verdict}</span>
+                    </summary>
+                    <div class="card-content">
+                        {render_breakdown(tech.get('indicators', {}))}
+                        <p><strong>Notes:</strong> {note_text}</p>
+                    </div>
+                </details>
                 """, unsafe_allow_html=True)
 
             fund = st.session_state.get('fundamentals', {})
@@ -145,12 +165,20 @@ def show_run_analysis(st, user_prefs):
                 score = fund.get('Fundamental Score', 0)
                 verdict = fund.get('Verdict', 'N/A')
                 v_class = "positive" if score >= 65 else "neutral" if score >= 45 else "negative"
+                notes = fund.get('Notes', [])
+                note_text = notes[0] if notes else "No specific notes generated."
                 st.markdown(f"""
-                <div class="analysis-card">
-                    <h5>Fundamental Analysis</h5>
-                    <span class="score {v_class}">Score: {score:.2f}/100</span>
-                    <span class="verdict">Verdict: {verdict}</span>
-                </div>
+                <details class="analysis-card-details">
+                    <summary>
+                        <h5>Fundamental Analysis</h5>
+                        <span class="score {v_class}">Score: {score:.2f}/100</span>
+                        <span class="verdict">Verdict: {verdict}</span>
+                    </summary>
+                     <div class="card-content">
+                        {render_breakdown(fund.get('Breakdown', {}))}
+                        <p><strong>Notes:</strong> {note_text}</p>
+                    </div>
+                </details>
                 """, unsafe_allow_html=True)
 
         with grid[1]:
@@ -161,12 +189,20 @@ def show_run_analysis(st, user_prefs):
                 score = perc.get('score', 0) * 10
                 verdict = perc.get('verdict', 'N/A')
                 v_class = "positive" if score >= 65 else "neutral" if score >= 45 else "negative"
+                notes = perc.get('management_notes', [])
+                note_text = notes[0] if notes else "No specific notes generated."
                 st.markdown(f"""
-                <div class="analysis-card">
-                    <h5>Perception Analysis</h5>
-                    <span class="score {v_class}">Score: {score:.2f}/100</span>
-                    <span class="verdict">Verdict: {verdict.split(':')[0]}</span>
-                </div>
+                <details class="analysis-card-details">
+                    <summary>
+                        <h5>Perception Analysis</h5>
+                        <span class="score {v_class}">Score: {score:.2f}/100</span>
+                        <span class="verdict">Verdict: {verdict.split(':')[0]}</span>
+                    </summary>
+                    <div class="card-content">
+                        {render_breakdown(perc)}
+                        <p><strong>Notes:</strong> {note_text}</p>
+                    </div>
+                </details>
                 """, unsafe_allow_html=True)
 
             risk = st.session_state.get('risk', {})
@@ -176,11 +212,18 @@ def show_run_analysis(st, user_prefs):
                 score = 100 - risk.get('risk_score', 50)
                 verdict = risk.get('verdict', 'N/A')
                 v_class = "positive" if score >= 60 else "neutral" if score >= 40 else "negative"
+                note = risk.get('note', "No specific notes generated.")
+                headlines = risk.get('headlines', [])
                 st.markdown(f"""
-                <div class="analysis-card">
-                    <h5>Risk Analysis (Safety Score)</h5>
-                    <span class="score {v_class}">Score: {score:.2f}/100</span>
-                    <span class="verdict">Verdict: {verdict.split(':')[0]}</span>
-                </div>
+                <details class="analysis-card-details">
+                    <summary>
+                        <h5>Risk Analysis (Safety Score)</h5>
+                        <span class="score {v_class}">Score: {score:.2f}/100</span>
+                        <span class="verdict">Verdict: {verdict.split(':')[0]}</span>
+                    </summary>
+                    <div class="card-content">
+                        <p><strong>Notes:</strong> {note}</p>
+                    </div>
+                </details>
                 """, unsafe_allow_html=True)
 

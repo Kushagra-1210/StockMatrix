@@ -101,39 +101,93 @@ div[data-testid="stExpander"] summary {
 .final-score-card .final-score { font-size: 2.5rem; font-weight: 700; margin-bottom: 0.5rem; }
 .final-score-card .final-verdict { font-size: 1.125rem; }
 
-/* Individual Analysis Card Styles */
-.analysis-card {
+/* --- Interactive Analysis Card Styles --- */
+.analysis-card-details {
     background-color: #1F1B32;
     border: 1px solid #3D3663;
     border-radius: 12px;
-    padding: 1.5rem;
     margin-bottom: 1rem;
     transition: all 0.2s ease-in-out;
 }
-.analysis-card:hover {
+
+.analysis-card-details[open] {
     border-color: #7B61FF;
 }
 
-.analysis-card h5 {
+.analysis-card-details summary {
+    padding: 1.5rem;
+    cursor: pointer;
+    outline: none;
+    display: block;
+}
+
+/* Hides the default dropdown arrow */
+.analysis-card-details summary::-webkit-details-marker {
+  display: none;
+}
+.analysis-card-details summary::marker {
+  display: none;
+}
+
+
+.analysis-card-details h5 {
     font-size: 1.125rem;
     font-weight: 600;
     color: #FFFFFF;
-    margin-bottom: 0.75rem; /* Increased margin for spacing */
+    margin-bottom: 0.75rem;
 }
-.analysis-card .score {
-    font-size: 1.5rem; /* Adjusted size */
+.analysis-card-details .score {
+    font-size: 1.5rem;
     font-weight: 700;
-    display: block; /* Make it a block element to force a new line */
-    margin-bottom: 0.5rem; /* Spacing between score and verdict */
+    display: block;
+    margin-bottom: 0.5rem;
 }
-.analysis-card .verdict {
-    font-size: 1rem; /* Adjusted size */
-    color: #EAEBFF; /* Brighter color for verdict */
-    display: block; /* Make it a block element to force a new line */
+.analysis-card-details .verdict {
+    font-size: 1rem;
+    color: #EAEBFF;
+    display: block;
 }
+
+/* Content inside the expanded card */
+.card-content {
+    padding: 0 1.5rem 1.5rem 1.5rem;
+    border-top: 1px solid #3D3663;
+}
+
+.card-content p {
+    margin-top: 1rem;
+    color: #9D95C6;
+}
+.card-content strong {
+    color: #EAEBFF;
+}
+
+/* Breakdown list (for metrics) */
+.breakdown-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem 1.5rem;
+    margin-top: 1rem;
+}
+.breakdown-list dt {
+    color: #9D95C6;
+    font-weight: 500;
+}
+.breakdown-list dd {
+    text-align: right;
+    font-weight: 600;
+    color: #FFFFFF;
+}
+
 
 /* Color classes for scores and verdicts */
 .positive { color: #0BDA6C !important; }
 .negative { color: #FF4D4D !important; }
 .neutral { color: #FACC15 !important; }
+
+.section-divider {
+    border: none;
+    border-top: 1px solid #3D3663;
+    margin: 2rem 0;
+}
 
