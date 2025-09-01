@@ -189,8 +189,19 @@ def show_run_analysis(st, user_prefs):
                 score = perc.get('score', 0) * 10
                 verdict = perc.get('verdict', 'N/A')
                 v_class = "positive" if score >= 65 else "neutral" if score >= 45 else "negative"
-                notes = perc.get('management_notes', [])
-                note_text = notes[0] if notes else "No specific notes generated."
+                # Extract breakdown
+                breakdown = {
+                    "Strategic Perception Score": perc.get("strategic_perception_score", perc.get("Strategic Perception Score", "N/A")),
+                    "Market Sentiment Score": perc.get("market_sentiment_score", perc.get("Market Sentiment Score", "N/A")),
+                    "Management Quality Score": perc.get("management_quality_score", perc.get("Management Quality Score", "N/A")),
+                }
+                # Format headlines and notes as bullet lists
+                headlines = perc.get('sample_headlines', []) or perc.get('Sample Headlines', [])
+                headlines_html = "<ul>" + "".join(f"<li>{h}</li>" for h in headlines) + "</ul>" if headlines else "No headlines available."
+                mgmt_notes = perc.get('management_notes', [])
+                mgmt_notes_html = "<ul>" + "".join(f"<li>{n}</li>" for n in mgmt_notes) + "</ul>" if mgmt_notes else "No management notes."
+                note_text = perc.get('Notes', [])
+                note_html = "<br>".join(note_text) if note_text else "No specific notes generated."
                 st.markdown(f"""
                 <details class="analysis-card-details">
                     <summary>
@@ -199,8 +210,14 @@ def show_run_analysis(st, user_prefs):
                         <span class="verdict">Verdict: {verdict.split(':')[0]}</span>
                     </summary>
                     <div class="card-content">
-                        {render_breakdown(perc)}
-                        <p><strong>Notes:</strong> {note_text}</p>
+                        <dl class='breakdown-list'>
+                            <dt>Strategic Perception Score</dt><dd>{breakdown['Strategic Perception Score']}</dd>
+                            <dt>Market Sentiment Score</dt><dd>{breakdown['Market Sentiment Score']}</dd>
+                            <dt>Management Quality Score</dt><dd>{breakdown['Management Quality Score']}</dd>
+                        </dl>
+                        <p><strong>Sample Headlines:</strong> {headlines_html}</p>
+                        <p><strong>Management Notes:</strong> {mgmt_notes_html}</p>
+                        <p><strong>Notes:</strong> {note_html}</p>
                     </div>
                 </details>
                 """, unsafe_allow_html=True)
