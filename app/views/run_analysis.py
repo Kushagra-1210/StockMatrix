@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from backend.market_selector import get_top_50_tickers
 from backend.data_fetcher import get_ticker_data
-from backend import technical_analysis as ta_mod
+from backend import news_risk_analyzer, technical_analysis as ta_mod
 from backend import fundamental_analysis as fa_mod
 from backend import sentiment_analysis as sentiment_mod
 from backend import news_risk_analyzer as news_mod
