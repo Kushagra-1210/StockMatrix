@@ -17,7 +17,6 @@ h2 {
 }
 
 /* --- Controls Styling (Select Boxes) --- */
-/* Streamlit's default selectbox is hard to override completely, but we can style the container */
 div[data-testid="stSelectbox"] > div {
     background-color: #2B2546;
     border: 1px solid #3D3663;
@@ -69,13 +68,13 @@ div[data-testid="stExpander"] summary {
 .price-display .price-change-positive {
     font-size: 1rem;
     font-weight: 600;
-    color: #0BDA6C; /* Green for positive change */
+    color: #0BDA6C;
 }
 
 .price-display .price-change-negative {
     font-size: 1rem;
     font-weight: 600;
-    color: #FF4D4D; /* Red for negative change */
+    color: #FF4D4D;
 }
 
 .chart-placeholder {
@@ -88,16 +87,9 @@ div[data-testid="stExpander"] summary {
     color: #9D95C6;
 }
 
-/* --- Analysis Results Column --- */
-h3 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
-    color: #FFFFFF;
-}
+/* --- Analysis Results Section --- */
 
-/* --- Final Score Container --- */
-.final-score-container {
+.final-score-card {
     background-color: #2B2546;
     border: 1px solid #3D3663;
     border-radius: 12px;
@@ -105,91 +97,43 @@ h3 {
     text-align: center;
     margin-bottom: 1.5rem;
 }
+.final-score-card h4 { color: #9D95C6; font-size: 1rem; margin-bottom: 0.5rem; }
+.final-score-card .final-score { font-size: 2.5rem; font-weight: 700; margin-bottom: 0.5rem; }
+.final-score-card .final-verdict { font-size: 1.125rem; }
 
-.final-score-container h4 {
-    color: #9D95C6;
-    font-size: 1rem;
-    margin-bottom: 0.5rem;
-}
-
-.final-score-container .final-score {
-    font-size: 2.5rem;
-    font-weight: 700;
-    margin-bottom: 0.5rem;
-}
-
-.final-score-container .final-verdict {
-    font-size: 1.125rem;
-}
-
-.final-score.positive, .final-verdict .positive { color: #0BDA6C; }
-.final-score.negative, .final-verdict .negative { color: #FF4D4D; }
-.final-score.neutral, .final-verdict .neutral { color: #FACC15; } /* Yellow for neutral */
-
-
-/* --- Analysis Cards (using details/summary) --- */
-details.group {
+/* Individual Analysis Card Styles */
+.analysis-card {
     background-color: #1F1B32;
     border: 1px solid #3D3663;
     border-radius: 12px;
+    padding: 1.5rem;
     margin-bottom: 1rem;
     transition: all 0.2s ease-in-out;
 }
-
-details.group:hover {
+.analysis-card:hover {
     border-color: #7B61FF;
 }
 
-details.group[open] {
-    border-color: #7B61FF;
-}
-
-details.group summary {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 1.5rem;
-    cursor: pointer;
-    list-style: none; /* Remove default marker */
-}
-details.group summary::-webkit-details-marker {
-    display: none; /* Hide arrow on Chrome/Safari */
-}
-
-details.group summary h4 {
+.analysis-card h5 {
     font-size: 1.125rem;
     font-weight: 600;
     color: #FFFFFF;
+    margin-bottom: 0.75rem; /* Increased margin for spacing */
+}
+.analysis-card .score {
+    font-size: 1.5rem; /* Adjusted size */
+    font-weight: 700;
+    display: block; /* Make it a block element to force a new line */
+    margin-bottom: 0.5rem; /* Spacing between score and verdict */
+}
+.analysis-card .verdict {
+    font-size: 1rem; /* Adjusted size */
+    color: #EAEBFF; /* Brighter color for verdict */
+    display: block; /* Make it a block element to force a new line */
 }
 
-.expander-subheader {
-    font-size: 0.875rem;
-    color: #9D95C6;
-}
-
-.expander-subheader .positive { color: #0BDA6C; font-weight: 600; }
-.expander-subheader .negative { color: #FF4D4D; font-weight: 600; }
-.expander-subheader .neutral { color: #FACC15; font-weight: 600; }
-
-
-.expander-content {
-    border-top: 1px solid #3D3663;
-    padding: 1.5rem;
-}
-
-/* Breakdown List Styling */
-.breakdown-list {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.5rem 1rem;
-}
-.breakdown-list dt {
-    color: #9D95C6;
-    font-size: 0.875rem;
-}
-.breakdown-list dd {
-    color: #FFFFFF;
-    font-weight: 600;
-    text-align: right;
-}
+/* Color classes for scores and verdicts */
+.positive { color: #0BDA6C !important; }
+.negative { color: #FF4D4D !important; }
+.neutral { color: #FACC15 !important; }
 
