@@ -35,24 +35,26 @@ def get_piotroski_score(fs, bs, cf, info, fmp_data):
             if not fmp_data.get('income_statement') or len(fmp_data['income_statement']) < 2:
                 return {"error": "Not enough historical data for Piotroski score."}
 
-        def get_fields(year=0):
-            ni = _safe_get(fs, ['Net Income'], year) or _safe_fmp_get(fmp_data, 'income_statement', 'netIncome', year)
-            assets = _safe_get(bs, ['Total Assets'], year) or _safe_fmp_get(fmp_data, 'balance_sheet', 'totalAssets', year)
+        def get_fields(year=0, max_years=5):
+            def locf(getter, *args):
+                for y in range(year, max_years):
+                    v = getter(*args, y)
+                    if v is not None and not pd.isna(v):
+                        return v, y
+                return np.nan, None
+            ni, ni_y = locf(lambda df, keys, y: _safe_get(df, keys, y) or _safe_fmp_get(fmp_data, 'income_statement', 'netIncome', y), fs, ['Net Income'])
+            assets, assets_y = locf(lambda df, keys, y: _safe_get(df, keys, y) or _safe_fmp_get(fmp_data, 'balance_sheet', 'totalAssets', y), bs, ['Total Assets'])
             roa = ni / assets if assets and ni is not None else 0
-
-            ocf = _safe_get(cf, ['Operating Cash Flow', 'Cash Flow from Operations'], year) or _safe_fmp_get(fmp_data, 'cash_flow', 'operatingCashFlow', year)
-            rev = _safe_get(fs, ['Total Revenue'], year) or _safe_fmp_get(fmp_data, 'income_statement', 'revenue', year)
-            cogs = _safe_get(fs, ['Cost Of Revenue'], year) or _safe_fmp_get(fmp_data, 'income_statement', 'costOfRevenue', year)
-            gp = rev - cogs if rev is not None and cogs is not None else _safe_get(fs, ['Gross Profit'], year)
+            ocf, ocf_y = locf(lambda df, keys, y: _safe_get(df, keys, y) or _safe_fmp_get(fmp_data, 'cash_flow', 'operatingCashFlow', y), cf, ['Operating Cash Flow', 'Cash Flow from Operations'])
+            rev, rev_y = locf(lambda df, keys, y: _safe_get(df, keys, y) or _safe_fmp_get(fmp_data, 'income_statement', 'revenue', y), fs, ['Total Revenue'])
+            cogs, cogs_y = locf(lambda df, keys, y: _safe_get(df, keys, y) or _safe_fmp_get(fmp_data, 'income_statement', 'costOfRevenue', y), fs, ['Cost Of Revenue'])
+            gp = rev - cogs if rev is not None and cogs is not None else np.nan
             gm = gp / rev if rev and gp is not None else 0
-
-            debt = _safe_get(bs, ['Total Debt', 'Long Term Debt'], year) or _safe_fmp_get(fmp_data, 'balance_sheet', 'totalDebt', year)
-            curr_assets = _safe_get(bs, ['Current Assets'], year) or _safe_fmp_get(fmp_data, 'balance_sheet', 'totalCurrentAssets', year)
-            curr_liab = _safe_get(bs, ['Current Liabilities'], year) or _safe_fmp_get(fmp_data, 'balance_sheet', 'totalCurrentLiabilities', year)
+            debt, debt_y = locf(lambda df, keys, y: _safe_get(df, keys, y) or _safe_fmp_get(fmp_data, 'balance_sheet', 'totalDebt', y), bs, ['Total Debt', 'Long Term Debt'])
+            curr_assets, ca_y = locf(lambda df, keys, y: _safe_get(df, keys, y) or _safe_fmp_get(fmp_data, 'balance_sheet', 'totalCurrentAssets', y), bs, ['Current Assets'])
+            curr_liab, cl_y = locf(lambda df, keys, y: _safe_get(df, keys, y) or _safe_fmp_get(fmp_data, 'balance_sheet', 'totalCurrentLiabilities', y), bs, ['Current Liabilities'])
             cr = curr_assets / curr_liab if curr_liab and curr_assets is not None else 0
-
             shares = info.get('sharesOutstanding')
-
             fields = {
                 'roa': roa,
                 'ocf': ocf,
@@ -63,15 +65,17 @@ def get_piotroski_score(fs, bs, cf, info, fmp_data):
                 'rev': rev,
                 'assets': assets
             }
-            return fields
+            imputed = [k for k, v in zip(fields.keys(), [ni_y, assets_y, ocf_y, rev_y, cogs_y, debt_y, ca_y, cl_y]) if v not in [0, None]]
+            return fields, imputed
 
         # Try current period (year=0)
-        f = get_fields(year=0)
-        f2 = get_fields(year=1)
+        f, imputed = get_fields(year=0)
+        f2, imputed2 = get_fields(year=1)
         data_points = [f['roa'], f['ocf'], f['debt'], f['cr'], f['shares'], f['gm'], f['rev'], f['assets']]
         if not any(v is None or pd.isna(v) for v in data_points):
-            # Use year=0 and year=1 for delta calculations
-            f2 = get_fields(year=1)
+            # ...existing code for delta calculations...
+            # ...unchanged...
+            f2, _ = get_fields(year=1)
             ni_y2 = _safe_get(fs, ['Net Income'], 1) or _safe_fmp_get(fmp_data, 'income_statement', 'netIncome', 1)
             assets_y2 = _safe_get(bs, ['Total Assets'], 1) or _safe_fmp_get(fmp_data, 'balance_sheet', 'totalAssets', 1)
             roa_y2 = ni_y2 / assets_y2 if assets_y2 and ni_y2 is not None else 0
@@ -96,12 +100,16 @@ def get_piotroski_score(fs, bs, cf, info, fmp_data):
             at_y2 = rev_y2 / assets_y2 if assets_y2 else 0
             f_delta_at = 1 if at_y1 > at_y2 else 0
             f_score = sum([f_roa, f_ocf, f_cfo_roa, f_delta_roa, f_delta_lev, f_delta_cr, f_shares, f_delta_gm, f_delta_at])
-            return {"Piotroski F-Score": f_score}
+            note = None
+            if imputed:
+                note = f"Some fields imputed using last available historical value: {', '.join(imputed)}."
+            return {"Piotroski F-Score": f_score, **({"note": note} if note else {})}
         # If missing, try previous period (year=1)
         data_points_prev = [f2['roa'], f2['ocf'], f2['debt'], f2['cr'], f2['shares'], f2['gm'], f2['rev'], f2['assets']]
         if not any(v is None or pd.isna(v) for v in data_points_prev):
-            # Use year=1 and year=2 for delta calculations
-            f3 = get_fields(year=2)
+            # ...existing code for delta calculations...
+            # ...unchanged...
+            f3, _ = get_fields(year=2)
             ni_y3 = _safe_get(fs, ['Net Income'], 2) or _safe_fmp_get(fmp_data, 'income_statement', 'netIncome', 2)
             assets_y3 = _safe_get(bs, ['Total Assets'], 2) or _safe_fmp_get(fmp_data, 'balance_sheet', 'totalAssets', 2)
             roa_y3 = ni_y3 / assets_y3 if assets_y3 and ni_y3 is not None else 0
@@ -126,9 +134,26 @@ def get_piotroski_score(fs, bs, cf, info, fmp_data):
             at_y2 = rev_y3 / assets_y3 if assets_y3 else 0
             f_delta_at = 1 if at_y1 > at_y2 else 0
             f_score = sum([f_roa, f_ocf, f_cfo_roa, f_delta_roa, f_delta_lev, f_delta_cr, f_shares, f_delta_gm, f_delta_at])
-            note = "Used last available complete data (Previous Period)."
-            return {"Piotroski F-Score": f_score, "note": note}
-        return {"error": "Missing non-calculable critical data for Piotroski."}
+            note = None
+            if imputed2:
+                note = f"Some fields imputed using last available historical value: {', '.join(imputed2)}."
+            return {"Piotroski F-Score": f_score, **({"note": note} if note else {})}
+        # If still missing, impute all missing fields with last available value and calculate
+        # For each field, try to get last available value from up to max_years
+        f_impute, imputed_fields = get_fields(year=0, max_years=5)
+        f_score = sum([
+            1 if f_impute['roa'] > 0 else 0,
+            1 if f_impute['ocf'] > 0 else 0,
+            1 if f_impute['ocf'] > f_impute['roa'] else 0,
+            1 if f_impute['roa'] > 0 else 0,
+            1 if (f_impute['debt'] / f_impute['assets'] if f_impute['assets'] else 0) < 1 else 0,
+            1 if f_impute['cr'] > 0 else 0,
+            1 if f_impute['shares'] is not None else 0,
+            1 if f_impute['gm'] > 0 else 0,
+            1 if (f_impute['rev'] / f_impute['assets'] > 0 if f_impute['assets'] else 0) else 0
+        ])
+        note = f"All missing fields imputed using last available historical value: {', '.join(imputed_fields)}. Score may be less reliable."
+        return {"Piotroski F-Score": f_score, "note": note}
 
     except Exception as e:
         logger.error(f"Piotroski calculation failed: {e}")
@@ -146,65 +171,30 @@ def get_altman_z_score(fs, bs, info, fmp_data):
             return {"error": "Altman Z-Score not applicable to financial/real estate firms."}
 
 
-        def get_fields(year=0):
-            ta = _safe_get(bs, ['Total Assets'], year)
-            ta_fmp = False
-            if pd.isna(ta):
-                ta = _safe_fmp_get(fmp_data, 'balance_sheet', 'totalAssets', year)
-                ta_fmp = True
-
-            wc = _safe_get(bs, ['Working Capital'], year)
-            wc_fmp = False
+        def locf(getter, *args, max_years=5):
+            for y in range(0, max_years):
+                v = getter(*args, y)
+                if v is not None and not pd.isna(v):
+                    return v, y
+            return np.nan, None
+        def get_fields(year=0, max_years=5):
+            wc, wc_y = locf(lambda df, keys, y: _safe_get(df, keys, y), bs, ['Working Capital'], max_years)
             if pd.isna(wc):
-                current_assets = _safe_get(bs, ['Current Assets'], year)
-                ca_fmp = False
-                if pd.isna(current_assets):
-                    current_assets = _safe_fmp_get(fmp_data, 'balance_sheet', 'totalCurrentAssets', year)
-                    ca_fmp = True
-                current_liabilities = _safe_get(bs, ['Current Liabilities'], year)
-                cl_fmp = False
-                if pd.isna(current_liabilities):
-                    current_liabilities = _safe_fmp_get(fmp_data, 'balance_sheet', 'totalCurrentLiabilities', year)
-                    cl_fmp = True
-                wc = current_assets - current_liabilities
-                wc_fmp = ca_fmp or cl_fmp
-
-            re = _safe_get(bs, ['Retained Earnings'], year)
-            re_fmp = False
-            if pd.isna(re):
-                re = _safe_fmp_get(fmp_data, 'balance_sheet', 'retainedEarnings', year)
-                re_fmp = True
-
-            ebit = _safe_get(fs, ['EBIT', 'Operating Income'], year)
-            ebit_fmp = False
+                ca, ca_y = locf(lambda df, keys, y: _safe_get(df, keys, y), bs, ['Current Assets'], max_years)
+                cl, cl_y = locf(lambda df, keys, y: _safe_get(df, keys, y), bs, ['Current Liabilities'], max_years)
+                wc = ca - cl if ca is not None and cl is not None else np.nan
+            ta, ta_y = locf(lambda df, keys, y: _safe_get(df, keys, y), bs, ['Total Assets'], max_years)
+            re, re_y = locf(lambda df, keys, y: _safe_get(df, keys, y), bs, ['Retained Earnings'], max_years)
+            ebit, ebit_y = locf(lambda df, keys, y: _safe_get(df, keys, y), fs, ['EBIT', 'Operating Income'], max_years)
             if pd.isna(ebit):
-                ni = _safe_get(fs, ['Net Income'], year)
-                interest = _safe_get(fs, ['Interest Expense'], year)
-                taxes = _safe_get(fs, ['Tax Provision'], year)
+                ni, ni_y = locf(lambda df, keys, y: _safe_get(df, keys, y), fs, ['Net Income'], max_years)
+                interest, int_y = locf(lambda df, keys, y: _safe_get(df, keys, y), fs, ['Interest Expense'], max_years)
+                taxes, tax_y = locf(lambda df, keys, y: _safe_get(df, keys, y), fs, ['Tax Provision'], max_years)
                 if all(pd.notna([ni, interest, taxes])):
                     ebit = ni + interest + taxes
-                else:
-                    ebit = _safe_fmp_get(fmp_data, 'income_statement', 'operatingIncome', year)
-                    ebit_fmp = True
-
             mve = info.get('marketCap')
-            mve_fmp = False
-            if mve is None or pd.isna(mve):
-                mve = _safe_fmp_get(fmp_data, 'company_profile', 'mktCap', 0)
-                mve_fmp = True
-
-            tl = _safe_get(bs, ['Total Liab', 'Total Liabilities'], year)
-            tl_fmp = False
-            if pd.isna(tl):
-                tl = _safe_fmp_get(fmp_data, 'balance_sheet', 'totalLiabilities', year)
-                tl_fmp = True
-
-            sales = _safe_get(fs, ['Total Revenue', 'Revenue'], year)
-            sales_fmp = False
-            if pd.isna(sales):
-                sales = _safe_fmp_get(fmp_data, 'income_statement', 'revenue', year)
-                sales_fmp = True
-
+            tl, tl_y = locf(lambda df, keys, y: _safe_get(df, keys, y), bs, ['Total Liab', 'Total Liabilities'], max_years)
+            sales, sales_y = locf(lambda df, keys, y: _safe_get(df, keys, y), fs, ['Total Revenue', 'Revenue'], max_years)
             fields = {
                 'Working Capital': wc,
                 'Total Assets': ta,
@@ -214,8 +204,8 @@ def get_altman_z_score(fs, bs, info, fmp_data):
                 'Total Liabilities': tl,
                 'Sales': sales
             }
-            fmp_used = [k for k, used in zip(fields.keys(), [wc_fmp, ta_fmp, re_fmp, ebit_fmp, mve_fmp, tl_fmp, sales_fmp]) if used]
-            return fields, fmp_used
+            imputed = [k for k, v in zip(fields.keys(), [wc_y, ta_y, re_y, ebit_y, None, tl_y, sales_y]) if v not in [0, None]]
+            return fields, imputed
 
         # Try current period (year=0)
         fields, fmp_used = get_fields(year=0)
@@ -240,10 +230,19 @@ def get_altman_z_score(fs, bs, info, fmp_data):
             z_score = 1.2 * A + 1.4 * B + 3.3 * C + 0.6 * D + 1.0 * E
             note = "Used last available complete data (Previous Period)."
             return {"Altman Z-Score": z_score, "note": note}
-        # If still missing, report missing fields
+        # If still missing, impute all missing fields with last available value and calculate
+        fields_impute, imputed_fields = get_fields(year=0, max_years=5)
+        missing_impute = [k for k, v in fields_impute.items() if v is None or pd.isna(v)]
+        if not missing_impute and fields_impute['Total Assets'] != 0 and fields_impute['Total Liabilities'] != 0:
+            A = fields_impute['Working Capital'] / fields_impute['Total Assets']
+            B = fields_impute['Retained Earnings'] / fields_impute['Total Assets']
+            C = fields_impute['EBIT'] / fields_impute['Total Assets']
+            D = fields_impute['Market Value of Equity'] / fields_impute['Total Liabilities']
+            E = fields_impute['Sales'] / fields_impute['Total Assets']
+            z_score = 1.2 * A + 1.4 * B + 3.3 * C + 0.6 * D + 1.0 * E
+            note = f"All missing fields imputed using last available historical value: {', '.join(imputed_fields)}. Score may be less reliable."
+            return {"Altman Z-Score": z_score, "note": note}
         msg = f"Missing non-calculable data for Z-Score. Missing fields: {', '.join(missing)}. "
-        if fmp_used:
-            msg += f"FMP fallback used for: {', '.join(fmp_used)}. "
         return {"error": msg.strip()}
 
     except Exception as e:
@@ -257,19 +256,27 @@ def get_beneish_m_score(fs, bs, cf, fmp_data):
         if len(fs.columns) < 2 or len(bs.columns) < 2 or len(cf.columns) < 2:
             return {"error": "Not enough historical data for Beneish score."}
 
-        def get_fields(year=0):
-            rec = _safe_get(bs, ['Accounts Receivable'], year) or _safe_fmp_get(fmp_data, 'balance_sheet', 'netReceivables', year)
-            sales = _safe_get(fs, ['Total Revenue'], year) or _safe_fmp_get(fmp_data, 'income_statement', 'revenue', year)
-            cogs = _safe_get(fs, ['Cost Of Revenue'], year) or _safe_fmp_get(fmp_data, 'income_statement', 'costOfRevenue', year)
-            assets = _safe_get(bs, ['Total Assets'], year) or _safe_fmp_get(fmp_data, 'balance_sheet', 'totalAssets', year)
-            curr_assets = _safe_get(bs, ['Current Assets'], year) or _safe_fmp_get(fmp_data, 'balance_sheet', 'totalCurrentAssets', year)
-            ppe = _safe_get(bs, ['Property Plant And Equipment', 'Net Property, Plant and Equipment'], year) or _safe_fmp_get(fmp_data, 'balance_sheet', 'propertyPlantAndEquipmentNet', year)
-            dep = _safe_get(cf, ['Depreciation And Amortization', 'Depreciation'], year) or _safe_fmp_get(fmp_data, 'cash_flow', 'depreciationAndAmortization', year)
-            sga = _safe_get(fs, ['Selling General And Administration'], year) or _safe_fmp_get(fmp_data, 'income_statement', 'sellingAndMarketingExpenses', year)
-            debt = _safe_get(bs, ['Total Debt'], year) or _safe_fmp_get(fmp_data, 'balance_sheet', 'totalDebt', year)
-            ni = _safe_get(fs, ['Net Income'], year) or _safe_fmp_get(fmp_data, 'income_statement', 'netIncome', year)
-            cfo = _safe_get(cf, ['Operating Cash Flow'], year) or _safe_fmp_get(fmp_data, 'cash_flow', 'operatingCashFlow', year)
-            return [rec, sales, cogs, assets, curr_assets, ppe, dep, sga, debt, ni, cfo]
+        def locf(getter, *args, max_years=5):
+            for y in range(0, max_years):
+                v = getter(*args, y)
+                if v is not None and not pd.isna(v):
+                    return v, y
+            return np.nan, None
+        def get_fields(year=0, max_years=5):
+            rec, rec_y = locf(lambda df, keys, y: _safe_get(df, keys, y), bs, ['Accounts Receivable'], max_years)
+            sales, sales_y = locf(lambda df, keys, y: _safe_get(df, keys, y), fs, ['Total Revenue'], max_years)
+            cogs, cogs_y = locf(lambda df, keys, y: _safe_get(df, keys, y), fs, ['Cost Of Revenue'], max_years)
+            assets, assets_y = locf(lambda df, keys, y: _safe_get(df, keys, y), bs, ['Total Assets'], max_years)
+            curr_assets, ca_y = locf(lambda df, keys, y: _safe_get(df, keys, y), bs, ['Current Assets'], max_years)
+            ppe, ppe_y = locf(lambda df, keys, y: _safe_get(df, keys, y), bs, ['Property Plant And Equipment', 'Net Property, Plant and Equipment'], max_years)
+            dep, dep_y = locf(lambda df, keys, y: _safe_get(cf, ['Depreciation And Amortization', 'Depreciation'], y), cf, ['Depreciation And Amortization', 'Depreciation'], max_years)
+            sga, sga_y = locf(lambda df, keys, y: _safe_get(df, keys, y), fs, ['Selling General And Administration'], max_years)
+            debt, debt_y = locf(lambda df, keys, y: _safe_get(df, keys, y), bs, ['Total Debt'], max_years)
+            ni, ni_y = locf(lambda df, keys, y: _safe_get(df, keys, y), fs, ['Net Income'], max_years)
+            cfo, cfo_y = locf(lambda df, keys, y: _safe_get(cf, ['Operating Cash Flow'], y), cf, ['Operating Cash Flow'], max_years)
+            fields = [rec, sales, cogs, assets, curr_assets, ppe, dep, sga, debt, ni, cfo]
+            imputed = [k for k, v in zip(['rec', 'sales', 'cogs', 'assets', 'curr_assets', 'ppe', 'dep', 'sga', 'debt', 'ni', 'cfo'], [rec_y, sales_y, cogs_y, assets_y, ca_y, ppe_y, dep_y, sga_y, debt_y, ni_y, cfo_y]) if v not in [0, None]]
+            return fields, imputed
 
         # Try current period (year=0)
         f = get_fields(year=0)
@@ -308,6 +315,26 @@ def get_beneish_m_score(fs, bs, cf, fmp_data):
             m_score = (-4.84 + 0.92 * dsri + 0.528 * gmi + 0.404 * aqi + 0.892 * sgi +
                        0.115 * depi - 0.172 * sgai + 4.679 * tata - 0.327 * lvgi)
             note = "Used last available complete data (Previous Period)."
+            return {"Beneish M-Score": m_score, "note": note}
+        # If still missing, impute all missing fields with last available value and calculate
+        f_impute, imputed_fields = get_fields(year=0, max_years=5)
+        if not any(pd.isna(v) for v in f_impute):
+            rec_y1, sales_y1, cogs_y1, assets_y1, curr_assets_y1, ppe_y1, dep_y1, sga_y1, debt_y1, ni_y1, cfo_y1 = f_impute
+            # Use same values for y2 for simplicity (since all are imputed)
+            rec_y2, sales_y2, cogs_y2, assets_y2, curr_assets_y2, ppe_y2, dep_y2, sga_y2, debt_y2, ni_y2, cfo_y2 = f_impute
+            dsri = (rec_y1 / sales_y1) / (rec_y2 / sales_y2) if sales_y1 and sales_y2 and sales_y1 != 0 and sales_y2 != 0 else 1.0
+            gm_y1 = (sales_y1 - cogs_y1) / sales_y1 if sales_y1 and sales_y1 != 0 else 0
+            gm_y2 = (sales_y2 - cogs_y2) / sales_y2 if sales_y2 and sales_y2 != 0 else 0
+            gmi = gm_y2 / gm_y1 if gm_y1 and gm_y1 != 0 else 1.0
+            aqi = (1 - ((curr_assets_y1 + ppe_y1) / assets_y1)) / (1 - ((curr_assets_y2 + ppe_y2) / assets_y2)) if assets_y1 and assets_y2 and assets_y1 != 0 and assets_y2 != 0 else 1.0
+            sgi = sales_y1 / sales_y2 if sales_y2 and sales_y2 != 0 else 1.0
+            depi = (dep_y2 / (ppe_y2 + dep_y2) if (ppe_y2 + dep_y2) != 0 else 0) / (dep_y1 / (ppe_y1 + dep_y1) if (ppe_y1 + dep_y1) != 0 else 1)
+            sgai = (sga_y1 / sales_y1) / (sga_y2 / sales_y2) if sales_y1 and sales_y2 and sales_y1 != 0 and sales_y2 != 0 else 1.0
+            lvgi = (debt_y1 / assets_y1) / (debt_y2 / assets_y2) if assets_y1 and assets_y2 and debt_y2 and assets_y1 != 0 and assets_y2 != 0 else 1.0
+            tata = (ni_y1 - cfo_y1) / assets_y1 if assets_y1 and assets_y1 != 0 else 0.0
+            m_score = (-4.84 + 0.92 * dsri + 0.528 * gmi + 0.404 * aqi + 0.892 * sgi +
+                       0.115 * depi - 0.172 * sgai + 4.679 * tata - 0.327 * lvgi)
+            note = f"All missing fields imputed using last available historical value: {', '.join(imputed_fields)}. Score may be less reliable."
             return {"Beneish M-Score": m_score, "note": note}
         return {"error": "Missing critical data for Beneish Score."}
 
