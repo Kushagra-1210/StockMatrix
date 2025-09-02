@@ -171,30 +171,37 @@ def get_altman_z_score(fs, bs, info, fmp_data):
             return {"error": "Altman Z-Score not applicable to financial/real estate firms."}
 
 
-        def locf(getter, df, keys, max_years=5):
+        def locf_with_fmp(df, keys, fmp_type, fmp_key, max_years=5):
             for y in range(0, max_years):
-                v = getter(df, keys, y)
+                v = _safe_get(df, keys, y)
                 if v is not None and not pd.isna(v):
-                    return v, y
-            return np.nan, None
+                    return v, f"year_{y}", v
+                v_fmp = _safe_fmp_get(fmp_data, fmp_type, fmp_key, y)
+                if v_fmp is not None and not pd.isna(v_fmp):
+                    return v_fmp, f"fmp_{y}", v_fmp
+            return np.nan, None, np.nan
         def get_fields(year=0, max_years=5):
-            wc, wc_y = locf(_safe_get, bs, ['Working Capital'], max_years)
+            wc, wc_src, wc_val = locf_with_fmp(bs, ['Working Capital'], 'balance_sheet', 'workingCapital', max_years)
             if pd.isna(wc):
-                ca, ca_y = locf(_safe_get, bs, ['Current Assets'], max_years)
-                cl, cl_y = locf(_safe_get, bs, ['Current Liabilities'], max_years)
+                ca, ca_src, ca_val = locf_with_fmp(bs, ['Current Assets'], 'balance_sheet', 'totalCurrentAssets', max_years)
+                cl, cl_src, cl_val = locf_with_fmp(bs, ['Current Liabilities'], 'balance_sheet', 'totalCurrentLiabilities', max_years)
                 wc = ca - cl if ca is not None and cl is not None else np.nan
-            ta, ta_y = locf(_safe_get, bs, ['Total Assets'], max_years)
-            re, re_y = locf(_safe_get, bs, ['Retained Earnings'], max_years)
-            ebit, ebit_y = locf(_safe_get, fs, ['EBIT', 'Operating Income'], max_years)
+                wc_src = f"{ca_src} - {cl_src}" if ca_src and cl_src else None
+                wc_val = f"{ca_val} - {cl_val}" if ca_val and cl_val else np.nan
+            ta, ta_src, ta_val = locf_with_fmp(bs, ['Total Assets'], 'balance_sheet', 'totalAssets', max_years)
+            re, re_src, re_val = locf_with_fmp(bs, ['Retained Earnings'], 'balance_sheet', 'retainedEarnings', max_years)
+            ebit, ebit_src, ebit_val = locf_with_fmp(fs, ['EBIT', 'Operating Income'], 'income_statement', 'operatingIncome', max_years)
             if pd.isna(ebit):
-                ni, ni_y = locf(_safe_get, fs, ['Net Income'], max_years)
-                interest, int_y = locf(_safe_get, fs, ['Interest Expense'], max_years)
-                taxes, tax_y = locf(_safe_get, fs, ['Tax Provision'], max_years)
+                ni, ni_src, ni_val = locf_with_fmp(fs, ['Net Income'], 'income_statement', 'netIncome', max_years)
+                interest, int_src, int_val = locf_with_fmp(fs, ['Interest Expense'], 'income_statement', 'interestExpense', max_years)
+                taxes, tax_src, tax_val = locf_with_fmp(fs, ['Tax Provision'], 'income_statement', 'incomeTaxExpense', max_years)
                 if all(pd.notna([ni, interest, taxes])):
                     ebit = ni + interest + taxes
+                    ebit_src = f"{ni_src}+{int_src}+{tax_src}"
+                    ebit_val = f"{ni_val}+{int_val}+{tax_val}"
             mve = info.get('marketCap')
-            tl, tl_y = locf(_safe_get, bs, ['Total Liab', 'Total Liabilities'], max_years)
-            sales, sales_y = locf(_safe_get, fs, ['Total Revenue', 'Revenue'], max_years)
+            tl, tl_src, tl_val = locf_with_fmp(bs, ['Total Liab', 'Total Liabilities'], 'balance_sheet', 'totalLiabilities', max_years)
+            sales, sales_src, sales_val = locf_with_fmp(fs, ['Total Revenue', 'Revenue'], 'income_statement', 'revenue', max_years)
             fields = {
                 'Working Capital': wc,
                 'Total Assets': ta,
@@ -204,8 +211,26 @@ def get_altman_z_score(fs, bs, info, fmp_data):
                 'Total Liabilities': tl,
                 'Sales': sales
             }
-            imputed = [k for k, v in zip(fields.keys(), [wc_y, ta_y, re_y, ebit_y, None, tl_y, sales_y]) if v not in [0, None]]
-            return fields, imputed
+            sources = {
+                'Working Capital': wc_src,
+                'Total Assets': ta_src,
+                'Retained Earnings': re_src,
+                'EBIT': ebit_src,
+                'Market Value of Equity': 'info',
+                'Total Liabilities': tl_src,
+                'Sales': sales_src
+            }
+            values = {
+                'Working Capital': wc_val,
+                'Total Assets': ta_val,
+                'Retained Earnings': re_val,
+                'EBIT': ebit_val,
+                'Market Value of Equity': mve,
+                'Total Liabilities': tl_val,
+                'Sales': sales_val
+            }
+            imputed = [k for k, v in sources.items() if v and (v.startswith('fmp') or 'year_' in v)]
+            return fields, imputed, sources, values
 
         # Try current period (year=0)
         fields, fmp_used = get_fields(year=0)
@@ -231,7 +256,7 @@ def get_altman_z_score(fs, bs, info, fmp_data):
             note = "Used last available complete data (Previous Period)."
             return {"Altman Z-Score": z_score, "note": note}
         # If still missing, impute all missing fields with last available value and calculate
-        fields_impute, imputed_fields = get_fields(year=0, max_years=5)
+        fields_impute, imputed_fields, sources, values = get_fields(year=0, max_years=5)
         missing_impute = [k for k, v in fields_impute.items() if v is None or pd.isna(v)]
         if not missing_impute and fields_impute['Total Assets'] != 0 and fields_impute['Total Liabilities'] != 0:
             A = fields_impute['Working Capital'] / fields_impute['Total Assets']
@@ -239,9 +264,8 @@ def get_altman_z_score(fs, bs, info, fmp_data):
             C = fields_impute['EBIT'] / fields_impute['Total Assets']
             D = fields_impute['Market Value of Equity'] / fields_impute['Total Liabilities']
             E = fields_impute['Sales'] / fields_impute['Total Assets']
-            z_score = 1.2 * A + 1.4 * B + 3.3 * C + 0.6 * D + 1.0 * E
-            value_details = ', '.join([f"{k}: {fields_impute[k]}" for k in fields_impute])
-            note = f"All missing fields imputed using last available historical value: {', '.join(imputed_fields)}. Values used: {value_details}. Score may be less reliable."
+            value_details = ', '.join([f"{k}: {values[k]} (source: {sources[k]})" for k in fields_impute])
+            note = f"All missing fields imputed using last available value or FMP: {', '.join(imputed_fields)}. Values used: {value_details}. Score may be less reliable."
             return {"Altman Z-Score": z_score, "note": note}
         msg = f"Missing non-calculable data for Z-Score. Missing fields: {', '.join(missing)}. "
         return {"error": msg.strip()}
@@ -257,27 +281,33 @@ def get_beneish_m_score(fs, bs, cf, fmp_data):
         if len(fs.columns) < 2 or len(bs.columns) < 2 or len(cf.columns) < 2:
             return {"error": "Not enough historical data for Beneish score."}
 
-        def locf(getter, df, keys, max_years=5):
+        def locf_with_fmp(df, keys, fmp_type, fmp_key, max_years=5):
             for y in range(0, max_years):
-                v = getter(df, keys, y)
+                v = _safe_get(df, keys, y)
                 if v is not None and not pd.isna(v):
-                    return v, y
-            return np.nan, None
+                    return v, f"year_{y}", v
+                v_fmp = _safe_fmp_get(fmp_data, fmp_type, fmp_key, y)
+                if v_fmp is not None and not pd.isna(v_fmp):
+                    return v_fmp, f"fmp_{y}", v_fmp
+            return np.nan, None, np.nan
         def get_fields(year=0, max_years=5):
-            rec, rec_y = locf(_safe_get, bs, ['Accounts Receivable'], max_years)
-            sales, sales_y = locf(_safe_get, fs, ['Total Revenue'], max_years)
-            cogs, cogs_y = locf(_safe_get, fs, ['Cost Of Revenue'], max_years)
-            assets, assets_y = locf(_safe_get, bs, ['Total Assets'], max_years)
-            curr_assets, ca_y = locf(_safe_get, bs, ['Current Assets'], max_years)
-            ppe, ppe_y = locf(_safe_get, bs, ['Property Plant And Equipment', 'Net Property, Plant and Equipment'], max_years)
-            dep, dep_y = locf(_safe_get, cf, ['Depreciation And Amortization', 'Depreciation'], max_years)
-            sga, sga_y = locf(_safe_get, fs, ['Selling General And Administration'], max_years)
-            debt, debt_y = locf(_safe_get, bs, ['Total Debt'], max_years)
-            ni, ni_y = locf(_safe_get, fs, ['Net Income'], max_years)
-            cfo, cfo_y = locf(_safe_get, cf, ['Operating Cash Flow'], max_years)
+            rec, rec_src, rec_val = locf_with_fmp(bs, ['Accounts Receivable'], 'balance_sheet', 'netReceivables', max_years)
+            sales, sales_src, sales_val = locf_with_fmp(fs, ['Total Revenue'], 'income_statement', 'revenue', max_years)
+            cogs, cogs_src, cogs_val = locf_with_fmp(fs, ['Cost Of Revenue'], 'income_statement', 'costOfRevenue', max_years)
+            assets, assets_src, assets_val = locf_with_fmp(bs, ['Total Assets'], 'balance_sheet', 'totalAssets', max_years)
+            curr_assets, ca_src, ca_val = locf_with_fmp(bs, ['Current Assets'], 'balance_sheet', 'totalCurrentAssets', max_years)
+            ppe, ppe_src, ppe_val = locf_with_fmp(bs, ['Property Plant And Equipment', 'Net Property, Plant and Equipment'], 'balance_sheet', 'propertyPlantAndEquipmentNet', max_years)
+            dep, dep_src, dep_val = locf_with_fmp(cf, ['Depreciation And Amortization', 'Depreciation'], 'cash_flow', 'depreciationAndAmortization', max_years)
+            sga, sga_src, sga_val = locf_with_fmp(fs, ['Selling General And Administration'], 'income_statement', 'sellingAndMarketingExpenses', max_years)
+            debt, debt_src, debt_val = locf_with_fmp(bs, ['Total Debt'], 'balance_sheet', 'totalDebt', max_years)
+            ni, ni_src, ni_val = locf_with_fmp(fs, ['Net Income'], 'income_statement', 'netIncome', max_years)
+            cfo, cfo_src, cfo_val = locf_with_fmp(cf, ['Operating Cash Flow'], 'cash_flow', 'operatingCashFlow', max_years)
             fields = [rec, sales, cogs, assets, curr_assets, ppe, dep, sga, debt, ni, cfo]
-            imputed = [k for k, v in zip(['rec', 'sales', 'cogs', 'assets', 'curr_assets', 'ppe', 'dep', 'sga', 'debt', 'ni', 'cfo'], [rec_y, sales_y, cogs_y, assets_y, ca_y, ppe_y, dep_y, sga_y, debt_y, ni_y, cfo_y]) if v not in [0, None]]
-            return fields, imputed
+            sources = [rec_src, sales_src, cogs_src, assets_src, ca_src, ppe_src, dep_src, sga_src, debt_src, ni_src, cfo_src]
+            values = [rec_val, sales_val, cogs_val, assets_val, ca_val, ppe_val, dep_val, sga_val, debt_val, ni_val, cfo_val]
+            names = ['Accounts Receivable', 'Total Revenue', 'Cost Of Revenue', 'Total Assets', 'Current Assets', 'Property Plant And Equipment', 'Depreciation', 'Selling General And Administration', 'Total Debt', 'Net Income', 'Operating Cash Flow']
+            imputed = [name for name, src in zip(names, sources) if src and (src.startswith('fmp') or 'year_' in src)]
+            return fields, imputed, sources, values, names
 
         # Try current period (year=0)
         f = get_fields(year=0)
@@ -318,26 +348,25 @@ def get_beneish_m_score(fs, bs, cf, fmp_data):
             note = "Used last available complete data (Previous Period)."
             return {"Beneish M-Score": m_score, "note": note}
         # If still missing, impute all missing fields with last available value and calculate
-        f_impute, imputed_fields = get_fields(year=0, max_years=5)
+        f_impute, imputed_fields, sources, values, names = get_fields(year=0, max_years=5)
         if not any(pd.isna(v) for v in f_impute):
-            rec_y1, sales_y1, cogs_y1, assets_y1, curr_assets_y1, ppe_y1, dep_y1, sga_y1, debt_y1, ni_y1, cfo_y1 = f_impute
+            rec_y1, sales_y1, cogs_y1, assets_y1, curr_assets_y1, ppe_y1, dep_y1, sga_y1, debt_y1, ni_y1, cfo_y1 = [float(v) if hasattr(v, '__len__') and not isinstance(v, str) and np.size(v) == 1 else v for v in f_impute]
             # Use same values for y2 for simplicity (since all are imputed)
-            rec_y2, sales_y2, cogs_y2, assets_y2, curr_assets_y2, ppe_y2, dep_y2, sga_y2, debt_y2, ni_y2, cfo_y2 = f_impute
-            dsri = (rec_y1 / sales_y1) / (rec_y2 / sales_y2) if sales_y1 and sales_y2 and sales_y1 != 0 and sales_y2 != 0 else 1.0
-            gm_y1 = (sales_y1 - cogs_y1) / sales_y1 if sales_y1 and sales_y1 != 0 else 0
-            gm_y2 = (sales_y2 - cogs_y2) / sales_y2 if sales_y2 and sales_y2 != 0 else 0
-            gmi = gm_y2 / gm_y1 if gm_y1 and gm_y1 != 0 else 1.0
-            aqi = (1 - ((curr_assets_y1 + ppe_y1) / assets_y1)) / (1 - ((curr_assets_y2 + ppe_y2) / assets_y2)) if assets_y1 and assets_y2 and assets_y1 != 0 and assets_y2 != 0 else 1.0
-            sgi = sales_y1 / sales_y2 if sales_y2 and sales_y2 != 0 else 1.0
+            rec_y2, sales_y2, cogs_y2, assets_y2, curr_assets_y2, ppe_y2, dep_y2, sga_y2, debt_y2, ni_y2, cfo_y2 = rec_y1, sales_y1, cogs_y1, assets_y1, curr_assets_y1, ppe_y1, dep_y1, sga_y1, debt_y1, ni_y1, cfo_y1
+            dsri = (rec_y1 / sales_y1) / (rec_y2 / sales_y2) if all([sales_y1 != 0, sales_y2 != 0]) else 1.0
+            gm_y1 = (sales_y1 - cogs_y1) / sales_y1 if sales_y1 != 0 else 0
+            gm_y2 = (sales_y2 - cogs_y2) / sales_y2 if sales_y2 != 0 else 0
+            gmi = gm_y2 / gm_y1 if gm_y1 != 0 else 1.0
+            aqi = (1 - ((curr_assets_y1 + ppe_y1) / assets_y1)) / (1 - ((curr_assets_y2 + ppe_y2) / assets_y2)) if all([assets_y1 != 0, assets_y2 != 0]) else 1.0
+            sgi = sales_y1 / sales_y2 if sales_y2 != 0 else 1.0
             depi = (dep_y2 / (ppe_y2 + dep_y2) if (ppe_y2 + dep_y2) != 0 else 0) / (dep_y1 / (ppe_y1 + dep_y1) if (ppe_y1 + dep_y1) != 0 else 1)
-            sgai = (sga_y1 / sales_y1) / (sga_y2 / sales_y2) if sales_y1 and sales_y2 and sales_y1 != 0 and sales_y2 != 0 else 1.0
-            lvgi = (debt_y1 / assets_y1) / (debt_y2 / assets_y2) if assets_y1 and assets_y2 and debt_y2 and assets_y1 != 0 and assets_y2 != 0 else 1.0
-            tata = (ni_y1 - cfo_y1) / assets_y1 if assets_y1 and assets_y1 != 0 else 0.0
+            sgai = (sga_y1 / sales_y1) / (sga_y2 / sales_y2) if all([sales_y1 != 0, sales_y2 != 0]) else 1.0
+            lvgi = (debt_y1 / assets_y1) / (debt_y2 / assets_y2) if all([assets_y1 != 0, assets_y2 != 0, debt_y2 != 0]) else 1.0
+            tata = (ni_y1 - cfo_y1) / assets_y1 if assets_y1 != 0 else 0.0
             m_score = (-4.84 + 0.92 * dsri + 0.528 * gmi + 0.404 * aqi + 0.892 * sgi +
                        0.115 * depi - 0.172 * sgai + 4.679 * tata - 0.327 * lvgi)
-            value_names = ['Accounts Receivable', 'Total Revenue', 'Cost Of Revenue', 'Total Assets', 'Current Assets', 'Property Plant And Equipment', 'Depreciation', 'Selling General And Administration', 'Total Debt', 'Net Income', 'Operating Cash Flow']
-            value_details = ', '.join([f"{name}: {val}" for name, val in zip(value_names, f_impute)])
-            note = f"All missing fields imputed using last available historical value: {', '.join(imputed_fields)}. Values used: {value_details}. Score may be less reliable."
+            value_details = ', '.join([f"{name}: {val} (source: {src})" for name, val, src in zip(names, values, sources)])
+            note = f"All missing fields imputed using last available value or FMP: {', '.join(imputed_fields)}. Values used: {value_details}. Score may be less reliable."
             return {"Beneish M-Score": m_score, "note": note}
         return {"error": "Missing critical data for Beneish Score."}
 
