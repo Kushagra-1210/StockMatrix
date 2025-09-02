@@ -171,30 +171,30 @@ def get_altman_z_score(fs, bs, info, fmp_data):
             return {"error": "Altman Z-Score not applicable to financial/real estate firms."}
 
 
-        def locf(getter, *args, max_years=5):
+        def locf(getter, df, keys, max_years=5):
             for y in range(0, max_years):
-                v = getter(*args, y)
+                v = getter(df, keys, y)
                 if v is not None and not pd.isna(v):
                     return v, y
             return np.nan, None
         def get_fields(year=0, max_years=5):
-            wc, wc_y = locf(lambda df, keys, y: _safe_get(df, keys, y), bs, ['Working Capital'], max_years)
+            wc, wc_y = locf(_safe_get, bs, ['Working Capital'], max_years)
             if pd.isna(wc):
-                ca, ca_y = locf(lambda df, keys, y: _safe_get(df, keys, y), bs, ['Current Assets'], max_years)
-                cl, cl_y = locf(lambda df, keys, y: _safe_get(df, keys, y), bs, ['Current Liabilities'], max_years)
+                ca, ca_y = locf(_safe_get, bs, ['Current Assets'], max_years)
+                cl, cl_y = locf(_safe_get, bs, ['Current Liabilities'], max_years)
                 wc = ca - cl if ca is not None and cl is not None else np.nan
-            ta, ta_y = locf(lambda df, keys, y: _safe_get(df, keys, y), bs, ['Total Assets'], max_years)
-            re, re_y = locf(lambda df, keys, y: _safe_get(df, keys, y), bs, ['Retained Earnings'], max_years)
-            ebit, ebit_y = locf(lambda df, keys, y: _safe_get(df, keys, y), fs, ['EBIT', 'Operating Income'], max_years)
+            ta, ta_y = locf(_safe_get, bs, ['Total Assets'], max_years)
+            re, re_y = locf(_safe_get, bs, ['Retained Earnings'], max_years)
+            ebit, ebit_y = locf(_safe_get, fs, ['EBIT', 'Operating Income'], max_years)
             if pd.isna(ebit):
-                ni, ni_y = locf(lambda df, keys, y: _safe_get(df, keys, y), fs, ['Net Income'], max_years)
-                interest, int_y = locf(lambda df, keys, y: _safe_get(df, keys, y), fs, ['Interest Expense'], max_years)
-                taxes, tax_y = locf(lambda df, keys, y: _safe_get(df, keys, y), fs, ['Tax Provision'], max_years)
+                ni, ni_y = locf(_safe_get, fs, ['Net Income'], max_years)
+                interest, int_y = locf(_safe_get, fs, ['Interest Expense'], max_years)
+                taxes, tax_y = locf(_safe_get, fs, ['Tax Provision'], max_years)
                 if all(pd.notna([ni, interest, taxes])):
                     ebit = ni + interest + taxes
             mve = info.get('marketCap')
-            tl, tl_y = locf(lambda df, keys, y: _safe_get(df, keys, y), bs, ['Total Liab', 'Total Liabilities'], max_years)
-            sales, sales_y = locf(lambda df, keys, y: _safe_get(df, keys, y), fs, ['Total Revenue', 'Revenue'], max_years)
+            tl, tl_y = locf(_safe_get, bs, ['Total Liab', 'Total Liabilities'], max_years)
+            sales, sales_y = locf(_safe_get, fs, ['Total Revenue', 'Revenue'], max_years)
             fields = {
                 'Working Capital': wc,
                 'Total Assets': ta,
@@ -240,7 +240,8 @@ def get_altman_z_score(fs, bs, info, fmp_data):
             D = fields_impute['Market Value of Equity'] / fields_impute['Total Liabilities']
             E = fields_impute['Sales'] / fields_impute['Total Assets']
             z_score = 1.2 * A + 1.4 * B + 3.3 * C + 0.6 * D + 1.0 * E
-            note = f"All missing fields imputed using last available historical value: {', '.join(imputed_fields)}. Score may be less reliable."
+            value_details = ', '.join([f"{k}: {fields_impute[k]}" for k in fields_impute])
+            note = f"All missing fields imputed using last available historical value: {', '.join(imputed_fields)}. Values used: {value_details}. Score may be less reliable."
             return {"Altman Z-Score": z_score, "note": note}
         msg = f"Missing non-calculable data for Z-Score. Missing fields: {', '.join(missing)}. "
         return {"error": msg.strip()}
@@ -256,24 +257,24 @@ def get_beneish_m_score(fs, bs, cf, fmp_data):
         if len(fs.columns) < 2 or len(bs.columns) < 2 or len(cf.columns) < 2:
             return {"error": "Not enough historical data for Beneish score."}
 
-        def locf(getter, *args, max_years=5):
+        def locf(getter, df, keys, max_years=5):
             for y in range(0, max_years):
-                v = getter(*args, y)
+                v = getter(df, keys, y)
                 if v is not None and not pd.isna(v):
                     return v, y
             return np.nan, None
         def get_fields(year=0, max_years=5):
-            rec, rec_y = locf(lambda df, keys, y: _safe_get(df, keys, y), bs, ['Accounts Receivable'], max_years)
-            sales, sales_y = locf(lambda df, keys, y: _safe_get(df, keys, y), fs, ['Total Revenue'], max_years)
-            cogs, cogs_y = locf(lambda df, keys, y: _safe_get(df, keys, y), fs, ['Cost Of Revenue'], max_years)
-            assets, assets_y = locf(lambda df, keys, y: _safe_get(df, keys, y), bs, ['Total Assets'], max_years)
-            curr_assets, ca_y = locf(lambda df, keys, y: _safe_get(df, keys, y), bs, ['Current Assets'], max_years)
-            ppe, ppe_y = locf(lambda df, keys, y: _safe_get(df, keys, y), bs, ['Property Plant And Equipment', 'Net Property, Plant and Equipment'], max_years)
-            dep, dep_y = locf(lambda df, keys, y: _safe_get(cf, ['Depreciation And Amortization', 'Depreciation'], y), cf, ['Depreciation And Amortization', 'Depreciation'], max_years)
-            sga, sga_y = locf(lambda df, keys, y: _safe_get(df, keys, y), fs, ['Selling General And Administration'], max_years)
-            debt, debt_y = locf(lambda df, keys, y: _safe_get(df, keys, y), bs, ['Total Debt'], max_years)
-            ni, ni_y = locf(lambda df, keys, y: _safe_get(df, keys, y), fs, ['Net Income'], max_years)
-            cfo, cfo_y = locf(lambda df, keys, y: _safe_get(cf, ['Operating Cash Flow'], y), cf, ['Operating Cash Flow'], max_years)
+            rec, rec_y = locf(_safe_get, bs, ['Accounts Receivable'], max_years)
+            sales, sales_y = locf(_safe_get, fs, ['Total Revenue'], max_years)
+            cogs, cogs_y = locf(_safe_get, fs, ['Cost Of Revenue'], max_years)
+            assets, assets_y = locf(_safe_get, bs, ['Total Assets'], max_years)
+            curr_assets, ca_y = locf(_safe_get, bs, ['Current Assets'], max_years)
+            ppe, ppe_y = locf(_safe_get, bs, ['Property Plant And Equipment', 'Net Property, Plant and Equipment'], max_years)
+            dep, dep_y = locf(_safe_get, cf, ['Depreciation And Amortization', 'Depreciation'], max_years)
+            sga, sga_y = locf(_safe_get, fs, ['Selling General And Administration'], max_years)
+            debt, debt_y = locf(_safe_get, bs, ['Total Debt'], max_years)
+            ni, ni_y = locf(_safe_get, fs, ['Net Income'], max_years)
+            cfo, cfo_y = locf(_safe_get, cf, ['Operating Cash Flow'], max_years)
             fields = [rec, sales, cogs, assets, curr_assets, ppe, dep, sga, debt, ni, cfo]
             imputed = [k for k, v in zip(['rec', 'sales', 'cogs', 'assets', 'curr_assets', 'ppe', 'dep', 'sga', 'debt', 'ni', 'cfo'], [rec_y, sales_y, cogs_y, assets_y, ca_y, ppe_y, dep_y, sga_y, debt_y, ni_y, cfo_y]) if v not in [0, None]]
             return fields, imputed
@@ -334,7 +335,9 @@ def get_beneish_m_score(fs, bs, cf, fmp_data):
             tata = (ni_y1 - cfo_y1) / assets_y1 if assets_y1 and assets_y1 != 0 else 0.0
             m_score = (-4.84 + 0.92 * dsri + 0.528 * gmi + 0.404 * aqi + 0.892 * sgi +
                        0.115 * depi - 0.172 * sgai + 4.679 * tata - 0.327 * lvgi)
-            note = f"All missing fields imputed using last available historical value: {', '.join(imputed_fields)}. Score may be less reliable."
+            value_names = ['Accounts Receivable', 'Total Revenue', 'Cost Of Revenue', 'Total Assets', 'Current Assets', 'Property Plant And Equipment', 'Depreciation', 'Selling General And Administration', 'Total Debt', 'Net Income', 'Operating Cash Flow']
+            value_details = ', '.join([f"{name}: {val}" for name, val in zip(value_names, f_impute)])
+            note = f"All missing fields imputed using last available historical value: {', '.join(imputed_fields)}. Values used: {value_details}. Score may be less reliable."
             return {"Beneish M-Score": m_score, "note": note}
         return {"error": "Missing critical data for Beneish Score."}
 
