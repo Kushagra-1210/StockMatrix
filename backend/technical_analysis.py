@@ -79,11 +79,10 @@ def analyze_technical_indicators(ticker: str, industry: str = 'default', basis: 
         # --- Store RAW VALUES for UI Display ---
         raw_values = {
             'RSI': safe_latest_value(hist, 'RSI_14'),
-            # --- THIS IS THE FIX ---
-            'Stoch': safe_latest_value(hist, 'STOCHd_14_3_3'), # Using the smoother %D line
+            'Stoch': safe_latest_value(hist, 'STOCHd_14_3_3'),
             'MACD': safe_latest_value(hist, 'MACDh_12_26_9'),
             'ADX': safe_latest_value(hist, 'ADX_14'),
-            'ATR': safe_latest_value(hist, 'ATR_14'),
+            'ATR': safe_latest_value(hist, 'ATRr_14'),
             'OBV': safe_latest_value(hist, 'OBV'),
             'SMA_50': safe_latest_value(hist, 'SMA_50'),
             'SMA_200': safe_latest_value(hist, 'SMA_200'),
@@ -115,7 +114,7 @@ def analyze_technical_indicators(ticker: str, industry: str = 'default', basis: 
         scores['ATR_Vol'] = normalize_volatility(atr_percent, thresholds['ATR'][0], thresholds['ATR'][1])
         # Debug ATR calculation if missing
         if pd.isna(raw_values['ATR']):
-            notes.append(f"ATR (14) is missing. hist columns: {list(hist.columns)}. Row count: {len(hist)}. Sample ATR values: {hist['ATR_14'].dropna().tail(5).to_list() if 'ATR_14' in hist.columns else 'ATR_14 not in columns'}.")
+            notes.append(f"ATR (14) is missing. hist columns: {list(hist.columns)}. Row count: {len(hist)}. Sample ATR values: {hist['ATRr_14'].dropna().tail(5).to_list() if 'ATRr_14' in hist.columns else 'ATRr_14 not in columns'}.")
         
         obv_series = hist['OBV'].dropna().tail(10)
         if len(obv_series) > 1 and obv_series.iloc[-1] != obv_series.iloc[0]:
