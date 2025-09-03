@@ -267,7 +267,13 @@ def get_altman_z_score(fs, bs, info, fmp_data):
             value_details = ', '.join([f"{k}: {values[k]} (source: {sources[k]})" for k in fields_impute])
             note = f"All missing fields imputed using last available value or FMP: {', '.join(imputed_fields)}. Values used: {value_details}. Score may be less reliable."
             return {"Altman Z-Score": z_score, "note": note}
-        msg = f"Missing non-calculable data for Z-Score. Missing fields: {', '.join(missing)}. "
+        # Diagnostic: show which years and sources were checked for Total Liabilities
+        checked_years = []
+        for y in range(0, 5):
+            val_yahoo = _safe_get(bs, ['Total Liab', 'Total Liabilities'], y)
+            val_fmp = _safe_fmp_get(fmp_data, 'balance_sheet', 'totalLiabilities', y)
+            checked_years.append(f"Year {y}: Yahoo={val_yahoo}, FMP={val_fmp}")
+        msg = f"Missing non-calculable data for Z-Score. Missing fields: {', '.join(missing)}. Checked years for Total Liabilities: {checked_years}. "
         return {"error": msg.strip()}
 
     except Exception as e:
