@@ -233,7 +233,7 @@ def get_altman_z_score(fs, bs, info, fmp_data):
             return fields, imputed, sources, values
 
         # Try current period (year=0)
-        fields, fmp_used = get_fields(year=0)
+        fields, _, _, _ = get_fields(year=0)
         missing = [k for k, v in fields.items() if v is None or pd.isna(v)]
         if not missing and fields['Total Assets'] != 0 and fields['Total Liabilities'] != 0:
             A = fields['Working Capital'] / fields['Total Assets']
@@ -244,7 +244,7 @@ def get_altman_z_score(fs, bs, info, fmp_data):
             z_score = 1.2 * A + 1.4 * B + 3.3 * C + 0.6 * D + 1.0 * E
             return {"Altman Z-Score": z_score}
         # If missing, try previous period (year=1)
-        fields_prev, fmp_used_prev = get_fields(year=1)
+        fields_prev, _, _, _ = get_fields(year=1)
         missing_prev = [k for k, v in fields_prev.items() if v is None or pd.isna(v)]
         if not missing_prev and fields_prev['Total Assets'] != 0 and fields_prev['Total Liabilities'] != 0:
             A = fields_prev['Working Capital'] / fields_prev['Total Assets']
@@ -312,19 +312,19 @@ def get_beneish_m_score(fs, bs, cf, fmp_data):
         # Try current period (year=0)
         f = get_fields(year=0)
         f2 = get_fields(year=1)
-        if not any(pd.isna(v) for v in f):
-            rec_y1, sales_y1, cogs_y1, assets_y1, curr_assets_y1, ppe_y1, dep_y1, sga_y1, debt_y1, ni_y1, cfo_y1 = f
-            rec_y2, sales_y2, cogs_y2, assets_y2, curr_assets_y2, ppe_y2, dep_y2, sga_y2, debt_y2, ni_y2, cfo_y2 = f2
-            dsri = (rec_y1 / sales_y1) / (rec_y2 / sales_y2) if sales_y1 and sales_y2 and sales_y1 != 0 and sales_y2 != 0 else 1.0
-            gm_y1 = (sales_y1 - cogs_y1) / sales_y1 if sales_y1 and sales_y1 != 0 else 0
-            gm_y2 = (sales_y2 - cogs_y2) / sales_y2 if sales_y2 and sales_y2 != 0 else 0
-            gmi = gm_y2 / gm_y1 if gm_y1 and gm_y1 != 0 else 1.0
-            aqi = (1 - ((curr_assets_y1 + ppe_y1) / assets_y1)) / (1 - ((curr_assets_y2 + ppe_y2) / assets_y2)) if assets_y1 and assets_y2 and assets_y1 != 0 and assets_y2 != 0 else 1.0
-            sgi = sales_y1 / sales_y2 if sales_y2 and sales_y2 != 0 else 1.0
+        if not any([pd.isna(v) or (hasattr(v, "__len__") and not isinstance(v, str) and np.size(v) != 1 and np.any(pd.isna(v))) for v in f]):
+            rec_y1, sales_y1, cogs_y1, assets_y1, curr_assets_y1, ppe_y1, dep_y1, sga_y1, debt_y1, ni_y1, cfo_y1 = [float(v) if hasattr(v, '__len__') and not isinstance(v, str) and np.size(v) == 1 else v for v in f]
+            rec_y2, sales_y2, cogs_y2, assets_y2, curr_assets_y2, ppe_y2, dep_y2, sga_y2, debt_y2, ni_y2, cfo_y2 = [float(v) if hasattr(v, '__len__') and not isinstance(v, str) and np.size(v) == 1 else v for v in f2]
+            dsri = (rec_y1 / sales_y1) / (rec_y2 / sales_y2) if all([sales_y1 != 0, sales_y2 != 0]) else 1.0
+            gm_y1 = (sales_y1 - cogs_y1) / sales_y1 if sales_y1 != 0 else 0
+            gm_y2 = (sales_y2 - cogs_y2) / sales_y2 if sales_y2 != 0 else 0
+            gmi = gm_y2 / gm_y1 if gm_y1 != 0 else 1.0
+            aqi = (1 - ((curr_assets_y1 + ppe_y1) / assets_y1)) / (1 - ((curr_assets_y2 + ppe_y2) / assets_y2)) if all([assets_y1 != 0, assets_y2 != 0]) else 1.0
+            sgi = sales_y1 / sales_y2 if sales_y2 != 0 else 1.0
             depi = (dep_y2 / (ppe_y2 + dep_y2) if (ppe_y2 + dep_y2) != 0 else 0) / (dep_y1 / (ppe_y1 + dep_y1) if (ppe_y1 + dep_y1) != 0 else 1)
-            sgai = (sga_y1 / sales_y1) / (sga_y2 / sales_y2) if sales_y1 and sales_y2 and sales_y1 != 0 and sales_y2 != 0 else 1.0
-            lvgi = (debt_y1 / assets_y1) / (debt_y2 / assets_y2) if assets_y1 and assets_y2 and debt_y2 and assets_y1 != 0 and assets_y2 != 0 else 1.0
-            tata = (ni_y1 - cfo_y1) / assets_y1 if assets_y1 and assets_y1 != 0 else 0.0
+            sgai = (sga_y1 / sales_y1) / (sga_y2 / sales_y2) if all([sales_y1 != 0, sales_y2 != 0]) else 1.0
+            lvgi = (debt_y1 / assets_y1) / (debt_y2 / assets_y2) if all([assets_y1 != 0, assets_y2 != 0, debt_y2 != 0]) else 1.0
+            tata = (ni_y1 - cfo_y1) / assets_y1 if assets_y1 != 0 else 0.0
             m_score = (-4.84 + 0.92 * dsri + 0.528 * gmi + 0.404 * aqi + 0.892 * sgi +
                        0.115 * depi - 0.172 * sgai + 4.679 * tata - 0.327 * lvgi)
             return {"Beneish M-Score": m_score}
