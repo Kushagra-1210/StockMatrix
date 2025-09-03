@@ -113,6 +113,9 @@ def analyze_technical_indicators(ticker: str, industry: str = 'default', basis: 
         
         atr_percent = (raw_values['ATR'] / raw_values['Price']) * 100 if pd.notna(raw_values['ATR']) and pd.notna(raw_values['Price']) and raw_values['Price'] != 0 else np.nan
         scores['ATR_Vol'] = normalize_volatility(atr_percent, thresholds['ATR'][0], thresholds['ATR'][1])
+        # Debug ATR calculation if missing
+        if pd.isna(raw_values['ATR']):
+            notes.append(f"ATR (14) is missing. hist columns: {list(hist.columns)}. Row count: {len(hist)}. Sample ATR values: {hist['ATR_14'].dropna().tail(5).to_list() if 'ATR_14' in hist.columns else 'ATR_14 not in columns'}.")
         
         obv_series = hist['OBV'].dropna().tail(10)
         if len(obv_series) > 1 and obv_series.iloc[-1] != obv_series.iloc[0]:
