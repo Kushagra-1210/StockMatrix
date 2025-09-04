@@ -1,28 +1,3 @@
-def get_screener_field(ticker, field_name):
-    # Only use for Indian stocks (NSE tickers, not Apple, etc.)
-    if not ticker or not ticker.isalpha() or len(ticker) > 10:
-        return None
-    url = f"https://www.screener.in/company/{ticker}/consolidated/"
-    headers = {"User-Agent": "Mozilla/5.0"}
-    try:
-        response = requests.get(url, headers=headers, timeout=10)
-        if not response.ok:
-            return None
-        soup = BeautifulSoup(response.text, "html.parser")
-        table = soup.find("section", {"id": "balance-sheet"})
-        if not table:
-            return None
-        for row in table.find_all("tr"):
-            cells = row.find_all("td")
-            if cells and field_name in cells[0].text:
-                value = cells[-1].text.replace(",", "").strip()
-                try:
-                    return float(value)
-                except ValueError:
-                    return value
-    except Exception:
-        return None
-    return None
 import requests
 from bs4 import BeautifulSoup
 # backend/fundamental_analysis.py
@@ -191,6 +166,28 @@ def get_piotroski_score(fs, bs, cf, info, fmp_data):
 # ... change the function signature and use the passed-in data.
 
 def get_altman_z_score(fs, bs, info, fmp_data):
+    def get_total_liabilities_screener(ticker):
+        url = f"https://www.screener.in/company/{ticker}/consolidated/"
+        headers = {"User-Agent": "Mozilla/5.0"}
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            if not response.ok:
+                return None
+            soup = BeautifulSoup(response.text, "html.parser")
+            table = soup.find("section", {"id": "balance-sheet"})
+            if not table:
+                return None
+            for row in table.find_all("tr"):
+                cells = row.find_all("td")
+                if cells and "Total Liabilities" in cells[0].text:
+                    value = cells[-1].text.replace(",", "").strip()
+                    try:
+                        return float(value)
+                    except ValueError:
+                        return value
+        except Exception:
+            return None
+        return None
     """Calculates the Altman Z-Score with intelligent data fallbacks."""
     try:
         sector = info.get('sector', '')
@@ -230,7 +227,7 @@ def get_altman_z_score(fs, bs, info, fmp_data):
             tl, tl_src, tl_val = locf_with_fmp(bs, ['Total Liab', 'Total Liabilities'], 'balance_sheet', 'totalLiabilities', max_years)
             # If still missing, try Screener.in
             if (tl is None or pd.isna(tl)) and info.get('symbol'):
-                screener_liab = get_screener_field(info['symbol'], 'Total Liabilities')
+                screener_liab = get_total_liabilities_screener(info['symbol'])
                 if screener_liab is not None:
                     tl = screener_liab
                     tl_src = 'screener.in'
@@ -278,6 +275,37 @@ def get_altman_z_score(fs, bs, info, fmp_data):
             z_score = 1.2 * A + 1.4 * B + 3.3 * C + 0.6 * D + 1.0 * E
             return {"Altman Z-Score": z_score}
         # If missing, try previous period (year=1)
+        fields_prev, _, _, _ = get_fields(year=1)
+        missing_prev = [k for k, v in fields_prev.items() if v is None or pd.isna(v)]
+        if not missing_prev and fields_prev['Total Assets'] != 0 and fields_prev['Total Liabilities'] != 0:
+            A = fields_prev['Working Capital'] / fields_prev['Total Assets']
+            B = fields_prev['Retained Earnings'] / fields_prev['Total Assets']
+            C = fields_prev['EBIT'] / fields_prev['Total Assets']
+            D = fields_prev['Market Value of Equity'] / fields_prev['Total Liabilities']
+            E = fields_prev['Sales'] / fields_prev['Total Assets']
+            z_score = 1.2 * A + 1.4 * B + 3.3 * C + 0.6 * D + 1.0 * E
+            note = "Used last available complete data (Previous Period)."
+            return {"Altman Z-Score": z_score, "note": note}
+        # If still missing, impute all missing fields with last available value and calculate
+        fields_impute, imputed_fields, sources, values = get_fields(year=0, max_years=5)
+        missing_impute = [k for k, v in fields_impute.items() if v is None or pd.isna(v)]
+        if not missing_impute and fields_impute['Total Assets'] != 0 and fields_impute['Total Liabilities'] != 0:
+            A = fields_impute['Working Capital'] / fields_impute['Total Assets']
+            B = fields_impute['Retained Earnings'] / fields_impute['Total Assets']
+            C = fields_impute['EBIT'] / fields_impute['Total Assets']
+            D = fields_impute['Market Value of Equity'] / fields_impute['Total Liabilities']
+            E = fields_impute['Sales'] / fields_impute['Total Assets']
+            value_details = ', '.join([f"{k}: {values[k]} (source: {sources[k]})" for k in fields_impute])
+            note = f"All missing fields imputed using last available value or FMP: {', '.join(imputed_fields)}. Values used: {value_details}. Score may be less reliable."
+            return {"Altman Z-Score": z_score, "note": note}
+        # Diagnostic: show which years and sources were checked for Total Liabilities
+        checked_years = []
+        for y in range(0, 5):
+            val_yahoo = _safe_get(bs, ['Total Liab', 'Total Liabilities'], y)
+            val_fmp = _safe_fmp_get(fmp_data, 'balance_sheet', 'totalLiabilities', y)
+            checked_years.append(f"Year {y}: Yahoo={val_yahoo}, FMP={val_fmp}")
+        msg = f"Missing non-calculable data for Z-Score. Missing fields: {', '.join(missing)}. Checked years for Total Liabilities: {checked_years}. "
+        return {"error": msg.strip()}
 
     except Exception as e:
         logger.error(f"Altman Z-Score calculation failed: {e}")
