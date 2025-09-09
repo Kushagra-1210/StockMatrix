@@ -46,7 +46,7 @@ def show_backtesting(st, user_prefs):
 
         tickers = get_top_50_tickers(exchange)
         
-        with st.spinner(f"Running 2-year backtest for {exchange}... This may take several minutes."):
+        with st.spinner(f"Running backtest for {exchange}... This may take several minutes."):
             try:
                 engine = BacktestingEngine(
                     tickers=tickers,
@@ -61,28 +61,25 @@ def show_backtesting(st, user_prefs):
             except Exception as e:
                 st.error(f"An error occurred during the backtest: {e}")
                 logger.error("Backtest failed", exc_info=True)
-                return # This is now correctly indented
-
+                return
 
     # --- Display Results ---
-    if "backtest_results" in st.session_state:
+    if "backtest_results" in st.session_state and st.session_state.backtest_results:
         results = st.session_state.backtest_results
-        performance_df = results["performance_df"]
+        performance_df = results.get("performance_df")
+        metrics = results.get("metrics", {})
+
+        if performance_df is None or performance_df.empty or not metrics:
+            st.warning("Backtest ran but did not produce valid results. Please check the logs.")
+            return
 
         st.markdown("### Performance Comparison")
 
         # --- Key Metrics ---
-        m_col1, m_col2 = st.columns(2)
-        with m_col1:
-            st.metric(
-                "StockMatrix Strategy Return",
-                f"{results['total_return_strategy_pct']:.2f}%"
-            )
-        with m_col2:
-            st.metric(
-                f"{benchmark} Benchmark Return",
-                f"{results['total_return_benchmark_pct']:.2f}%"
-            )
+        m_col1, m_col2, m_col3 = st.columns(3)
+        m_col1.metric("Strategy Total Return", f"{metrics.get('total_return_strategy_pct', 0):.2f}%")
+        m_col2.metric("Benchmark Total Return", f"{metrics.get('total_return_benchmark_pct', 0):.2f}%")
+        m_col3.metric("Alpha", f"{metrics.get('alpha_pct', 0):.2f}%")
         
         # --- Performance Chart ---
         fig = go.Figure()
@@ -95,7 +92,7 @@ def show_backtesting(st, user_prefs):
         fig.add_trace(go.Scatter(
             x=performance_df.index,
             y=performance_df['Benchmark'],
-            name='Benchmark',
+            name=f"{metrics.get('benchmark_ticker', 'Benchmark')}",
             line=dict(color='grey', width=2, dash='dash')
         ))
         fig.update_layout(
@@ -105,3 +102,15 @@ def show_backtesting(st, user_prefs):
             legend_title="Portfolio"
         )
         st.plotly_chart(fig, use_container_width=True)
+
+        # --- Detailed Metrics Table ---
+        st.markdown("### Key Performance Indicators")
+        
+        data = {
+            'Metric': ['CAGR', 'Sharpe Ratio'],
+            'Strategy': [f"{metrics.get('cagr_strategy_pct', 0):.2f}%", f"{metrics.get('sharpe_strategy', 0):.2f}"],
+            'Benchmark': [f"{metrics.get('cagr_benchmark_pct', 0):.2f}%", f"{metrics.get('sharpe_benchmark', 0):.2f}"]
+        }
+        metrics_df = pd.DataFrame(data).set_index('Metric')
+        st.table(metrics_df)
+
