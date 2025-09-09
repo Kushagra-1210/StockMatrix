@@ -107,9 +107,11 @@ class BacktestingEngine:
                 try:
                     start_price = price_data.asof(date)
                     end_price = price_data.asof(period_end_date)
-                    period_return += (end_price / start_price) - 1
-                except (KeyError, IndexError):
-                    continue # Skip if data is missing for this period
+                    # Ensure start_price is not zero to avoid division by zero error
+                    if start_price > 0:
+                        period_return += (end_price / start_price) - 1
+                except (KeyError, IndexError, TypeError):
+                    continue # Skip if data is missing for this period or invalid
             
             # Equal-weighted portfolio return
             if current_portfolio:
@@ -120,9 +122,11 @@ class BacktestingEngine:
             try:
                 benchmark_start = benchmark_prices.asof(date)
                 benchmark_end = benchmark_prices.asof(period_end_date)
-                benchmark_return = (benchmark_end / benchmark_start) - 1
-                benchmark_value *= (1 + benchmark_return)
-            except (KeyError, IndexError):
+                # Ensure benchmark_start is not zero
+                if benchmark_start > 0:
+                    benchmark_return = (benchmark_end / benchmark_start) - 1
+                    benchmark_value *= (1 + benchmark_return)
+            except (KeyError, IndexError, TypeError):
                 # If benchmark data is missing, hold value
                 pass
 
@@ -135,8 +139,14 @@ class BacktestingEngine:
 
     def get_results(self):
         """
-        Returns the results of the backtest.
+        Calculates and returns the final results and performance metrics of the backtest.
         """
+        if not self.dates or len(self.dates) < 2:
+            return {
+                "performance_df": pd.DataFrame(),
+                "metrics": {}
+            }
+            
         results_df = pd.DataFrame({
             'Date': self.dates,
             'Strategy': self.portfolio_history,
@@ -144,11 +154,49 @@ class BacktestingEngine:
         }).set_index('Date')
 
         # --- Performance Metrics ---
+        total_days = (results_df.index[-1] - results_df.index[0]).days
+        years = max(total_days / 365.25, 1/365.25) # Avoid division by zero for short periods
+
+        # Total Return
         total_return_strategy = (results_df['Strategy'].iloc[-1] / results_df['Strategy'].iloc[0]) - 1
         total_return_benchmark = (results_df['Benchmark'].iloc[-1] / results_df['Benchmark'].iloc[0]) - 1
+        
+        # CAGR
+        cagr_strategy = ((results_df['Strategy'].iloc[-1] / results_df['Strategy'].iloc[0]) ** (1/years)) - 1
+        cagr_benchmark = ((results_df['Benchmark'].iloc[-1] / results_df['Benchmark'].iloc[0]) ** (1/years)) - 1
+
+        # Alpha (Strategy Total Return - Benchmark Total Return)
+        alpha = total_return_strategy - total_return_benchmark
+
+        # Sharpe Ratio (assuming monthly rebalancing and 2% annual risk-free rate)
+        strategy_returns = results_df['Strategy'].pct_change().dropna()
+        benchmark_returns = results_df['Benchmark'].pct_change().dropna()
+        risk_free_rate_annual = 0.02
+        
+        # Assuming 12 rebalancing periods per year
+        periods_per_year = 12 
+        
+        excess_returns_strategy = strategy_returns - (risk_free_rate_annual / periods_per_year)
+        sharpe_strategy = (excess_returns_strategy.mean() / excess_returns_strategy.std()) * np.sqrt(periods_per_year) if excess_returns_strategy.std() != 0 else 0
+        
+        excess_returns_benchmark = benchmark_returns - (risk_free_rate_annual / periods_per_year)
+        sharpe_benchmark = (excess_returns_benchmark.mean() / excess_returns_benchmark.std()) * np.sqrt(periods_per_year) if excess_returns_benchmark.std() != 0 else 0
+
+        metrics = {
+            "total_return_strategy_pct": total_return_strategy * 100,
+            "total_return_benchmark_pct": total_return_benchmark * 100,
+            "cagr_strategy_pct": cagr_strategy * 100,
+            "cagr_benchmark_pct": cagr_benchmark * 100,
+            "alpha_pct": alpha * 100,
+            "sharpe_strategy": sharpe_strategy if pd.notna(sharpe_strategy) else 0,
+            "sharpe_benchmark": sharpe_benchmark if pd.notna(sharpe_benchmark) else 0,
+            "start_date": self.start_date.strftime('%Y-%m-%d'),
+            "end_date": self.end_date.strftime('%Y-%m-%d'),
+            "benchmark_ticker": self.benchmark_ticker
+        }
 
         return {
             "performance_df": results_df,
-            "total_return_strategy_pct": total_return_strategy * 100,
-            "total_return_benchmark_pct": total_return_benchmark * 100,
+            "metrics": metrics
         }
+
