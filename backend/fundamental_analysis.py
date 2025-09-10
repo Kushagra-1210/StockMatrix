@@ -176,10 +176,6 @@ def get_piotroski_score(fs, bs, cf, info, fmp_data):
         logger.error(f"Piotroski calculation failed: {e}")
         return {"error": "An unexpected error occurred during Piotroski calculation."}
 
-# ... (The get_altman_z_score and get_beneish_m_score functions would be refactored similarly)
-# ... I will omit them here for brevity but the principle is the same:
-# ... change the function signature and use the passed-in data.
-
 def get_altman_z_score(fs, bs, info, fmp_data):
     def get_total_liabilities_screener(ticker):
         url = f"https://www.screener.in/company/{ticker}/consolidated/"
@@ -310,6 +306,7 @@ def get_altman_z_score(fs, bs, info, fmp_data):
             C = fields_impute['EBIT'] / fields_impute['Total Assets']
             D = fields_impute['Market Value of Equity'] / fields_impute['Total Liabilities']
             E = fields_impute['Sales'] / fields_impute['Total Assets']
+            z_score = 1.2 * A + 1.4 * B + 3.3 * C + 0.6 * D + 1.0 * E
             value_details = ', '.join([f"{k}: {values[k]} (source: {sources[k]})" for k in fields_impute])
             note = f"All missing fields imputed using last available value or FMP: {', '.join(imputed_fields)}. Values used: {value_details}. Score may be less reliable."
             return {"Altman Z-Score": z_score, "note": note}
@@ -342,6 +339,7 @@ def get_beneish_m_score(fs, bs, cf, fmp_data):
                 if v_fmp is not None and not pd.isna(v_fmp):
                     return v_fmp, f"fmp_{y}", v_fmp
             return np.nan, None, np.nan
+
         def get_fields(year=0, max_years=5):
             rec, rec_src, rec_val = locf_with_fmp(bs, ['Accounts Receivable'], 'balance_sheet', 'netReceivables', max_years)
             sales, sales_src, sales_val = locf_with_fmp(fs, ['Total Revenue'], 'income_statement', 'revenue', max_years)
@@ -360,13 +358,24 @@ def get_beneish_m_score(fs, bs, cf, fmp_data):
             names = ['Accounts Receivable', 'Total Revenue', 'Cost Of Revenue', 'Total Assets', 'Current Assets', 'Property Plant And Equipment', 'Depreciation', 'Selling General And Administration', 'Total Debt', 'Net Income', 'Operating Cash Flow']
             imputed = [name for name, src in zip(names, sources) if src and (src.startswith('fmp') or 'year_' in src)]
             return fields, imputed, sources, values, names
+            
+        def has_unusable_data(data_list):
+            """Checks a list of values for NaNs, handling scalars and Series correctly."""
+            for v in data_list:
+                if pd.api.types.is_list_like(v) and not isinstance(v, str):
+                    if pd.isna(v).any():
+                        return True
+                elif pd.isna(v):
+                    return True
+            return False
 
-        # Try current period (year=0)
-        f = get_fields(year=0)
-        f2 = get_fields(year=1)
-        if not any([pd.isna(v) or (hasattr(v, "__len__") and not isinstance(v, str) and np.size(v) != 1 and np.any(pd.isna(v))) for v in f]):
-            rec_y1, sales_y1, cogs_y1, assets_y1, curr_assets_y1, ppe_y1, dep_y1, sga_y1, debt_y1, ni_y1, cfo_y1 = [float(v) if hasattr(v, '__len__') and not isinstance(v, str) and np.size(v) == 1 else v for v in f]
-            rec_y2, sales_y2, cogs_y2, assets_y2, curr_assets_y2, ppe_y2, dep_y2, sga_y2, debt_y2, ni_y2, cfo_y2 = [float(v) if hasattr(v, '__len__') and not isinstance(v, str) and np.size(v) == 1 else v for v in f2]
+        f, _, _, _, _ = get_fields(year=0)
+        f2, _, _, _, _ = get_fields(year=1)
+        
+        if not has_unusable_data(f) and not has_unusable_data(f2):
+            rec_y1, sales_y1, cogs_y1, assets_y1, curr_assets_y1, ppe_y1, dep_y1, sga_y1, debt_y1, ni_y1, cfo_y1 = [float(v) for v in f]
+            rec_y2, sales_y2, cogs_y2, assets_y2, curr_assets_y2, ppe_y2, dep_y2, sga_y2, debt_y2, ni_y2, cfo_y2 = [float(v) for v in f2]
+            
             dsri = (rec_y1 / sales_y1) / (rec_y2 / sales_y2) if all([sales_y1 != 0, sales_y2 != 0]) else 1.0
             gm_y1 = (sales_y1 - cogs_y1) / sales_y1 if sales_y1 != 0 else 0
             gm_y2 = (sales_y2 - cogs_y2) / sales_y2 if sales_y2 != 0 else 0
@@ -380,46 +389,7 @@ def get_beneish_m_score(fs, bs, cf, fmp_data):
             m_score = (-4.84 + 0.92 * dsri + 0.528 * gmi + 0.404 * aqi + 0.892 * sgi +
                        0.115 * depi - 0.172 * sgai + 4.679 * tata - 0.327 * lvgi)
             return {"Beneish M-Score": m_score}
-        # If missing, try previous period (year=1)
-        f3 = get_fields(year=2)
-        if not any(pd.isna(v) for v in f2):
-            rec_y1, sales_y1, cogs_y1, assets_y1, curr_assets_y1, ppe_y1, dep_y1, sga_y1, debt_y1, ni_y1, cfo_y1 = f2
-            rec_y2, sales_y2, cogs_y2, assets_y2, curr_assets_y2, ppe_y2, dep_y2, sga_y2, debt_y2, ni_y2, cfo_y2 = f3
-            dsri = (rec_y1 / sales_y1) / (rec_y2 / sales_y2) if sales_y1 and sales_y2 and sales_y1 != 0 and sales_y2 != 0 else 1.0
-            gm_y1 = (sales_y1 - cogs_y1) / sales_y1 if sales_y1 and sales_y1 != 0 else 0
-            gm_y2 = (sales_y2 - cogs_y2) / sales_y2 if sales_y2 and sales_y2 != 0 else 0
-            gmi = gm_y2 / gm_y1 if gm_y1 and gm_y1 != 0 else 1.0
-            aqi = (1 - ((curr_assets_y1 + ppe_y1) / assets_y1)) / (1 - ((curr_assets_y2 + ppe_y2) / assets_y2)) if assets_y1 and assets_y2 and assets_y1 != 0 and assets_y2 != 0 else 1.0
-            sgi = sales_y1 / sales_y2 if sales_y2 and sales_y2 != 0 else 1.0
-            depi = (dep_y2 / (ppe_y2 + dep_y2) if (ppe_y2 + dep_y2) != 0 else 0) / (dep_y1 / (ppe_y1 + dep_y1) if (ppe_y1 + dep_y1) != 0 else 1)
-            sgai = (sga_y1 / sales_y1) / (sga_y2 / sales_y2) if sales_y1 and sales_y2 and sales_y1 != 0 and sales_y2 != 0 else 1.0
-            lvgi = (debt_y1 / assets_y1) / (debt_y2 / assets_y2) if assets_y1 and assets_y2 and debt_y2 and assets_y1 != 0 and assets_y2 != 0 else 1.0
-            tata = (ni_y1 - cfo_y1) / assets_y1 if assets_y1 and assets_y1 != 0 else 0.0
-            m_score = (-4.84 + 0.92 * dsri + 0.528 * gmi + 0.404 * aqi + 0.892 * sgi +
-                       0.115 * depi - 0.172 * sgai + 4.679 * tata - 0.327 * lvgi)
-            note = "Used last available complete data (Previous Period)."
-            return {"Beneish M-Score": m_score, "note": note}
-        # If still missing, impute all missing fields with last available value and calculate
-        f_impute, imputed_fields, sources, values, names = get_fields(year=0, max_years=5)
-        if not any(pd.isna(v) for v in f_impute):
-            rec_y1, sales_y1, cogs_y1, assets_y1, curr_assets_y1, ppe_y1, dep_y1, sga_y1, debt_y1, ni_y1, cfo_y1 = [float(v) if hasattr(v, '__len__') and not isinstance(v, str) and np.size(v) == 1 else v for v in f_impute]
-            # Use same values for y2 for simplicity (since all are imputed)
-            rec_y2, sales_y2, cogs_y2, assets_y2, curr_assets_y2, ppe_y2, dep_y2, sga_y2, debt_y2, ni_y2, cfo_y2 = rec_y1, sales_y1, cogs_y1, assets_y1, curr_assets_y1, ppe_y1, dep_y1, sga_y1, debt_y1, ni_y1, cfo_y1
-            dsri = (rec_y1 / sales_y1) / (rec_y2 / sales_y2) if all([sales_y1 != 0, sales_y2 != 0]) else 1.0
-            gm_y1 = (sales_y1 - cogs_y1) / sales_y1 if sales_y1 != 0 else 0
-            gm_y2 = (sales_y2 - cogs_y2) / sales_y2 if sales_y2 != 0 else 0
-            gmi = gm_y2 / gm_y1 if gm_y1 != 0 else 1.0
-            aqi = (1 - ((curr_assets_y1 + ppe_y1) / assets_y1)) / (1 - ((curr_assets_y2 + ppe_y2) / assets_y2)) if all([assets_y1 != 0, assets_y2 != 0]) else 1.0
-            sgi = sales_y1 / sales_y2 if sales_y2 != 0 else 1.0
-            depi = (dep_y2 / (ppe_y2 + dep_y2) if (ppe_y2 + dep_y2) != 0 else 0) / (dep_y1 / (ppe_y1 + dep_y1) if (ppe_y1 + dep_y1) != 0 else 1)
-            sgai = (sga_y1 / sales_y1) / (sga_y2 / sales_y2) if all([sales_y1 != 0, sales_y2 != 0]) else 1.0
-            lvgi = (debt_y1 / assets_y1) / (debt_y2 / assets_y2) if all([assets_y1 != 0, assets_y2 != 0, debt_y2 != 0]) else 1.0
-            tata = (ni_y1 - cfo_y1) / assets_y1 if assets_y1 != 0 else 0.0
-            m_score = (-4.84 + 0.92 * dsri + 0.528 * gmi + 0.404 * aqi + 0.892 * sgi +
-                       0.115 * depi - 0.172 * sgai + 4.679 * tata - 0.327 * lvgi)
-            value_details = ', '.join([f"{name}: {val} (source: {src})" for name, val, src in zip(names, values, sources)])
-            note = f"All missing fields imputed using last available value or FMP: {', '.join(imputed_fields)}. Values used: {value_details}. Score may be less reliable."
-            return {"Beneish M-Score": m_score, "note": note}
+        
         return {"error": "Missing critical data for Beneish Score."}
 
     except Exception as e:
