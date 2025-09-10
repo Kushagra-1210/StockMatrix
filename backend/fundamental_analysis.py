@@ -9,16 +9,31 @@ from backend.data_provider import DataProvider # Import the new DataProvider
 logger = logging.getLogger(__name__)
 
 # --- Helper functions to safely access financial data ---
-# These helpers remain the same as they are still useful.
 def _safe_get(df, keys, year=0):
+    """
+    Safely retrieves a single scalar value from a financial statement DataFrame.
+    This version is hardened against duplicate index entries from the data source.
+    """
     if df is None or df.empty or year >= len(df.columns):
         return np.nan
     for key in keys:
         if key in df.index:
-            value = df.loc[key].iloc[year]
-            if pd.notna(value):
-                return value
+            # Retrieve the data for the given key.
+            value = df.loc[key]
+            
+            # FIX: If the data source returns duplicate rows for a key, .loc will
+            # return a DataFrame instead of a Series. We handle this by taking
+            # the first row of that DataFrame.
+            if isinstance(value, pd.DataFrame):
+                value = value.iloc[0]
+            
+            # Now that we are sure 'value' is a Series, we can safely get the scalar.
+            scalar_value = value.iloc[year]
+            
+            if pd.notna(scalar_value):
+                return scalar_value
     return np.nan
+
 
 def _safe_fmp_get(fmp_data_dict, statement_type, key, year=0):
     statement = fmp_data_dict.get(statement_type)
