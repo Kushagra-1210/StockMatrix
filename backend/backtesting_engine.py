@@ -60,12 +60,12 @@ class BacktestingEngine:
         df_sorted = df.sort_values("Final Score", ascending=False).reset_index(drop=True)
         return df_sorted.head(10)['Ticker'].tolist()
 
-    def run_simulation(self, rebalance_frequency='M'):
+    def run_simulation(self, rebalance_frequency='ME'): # Note: Changed 'M' to 'ME'
         """
         Executes the backtesting simulation.
 
         Args:
-            rebalance_frequency (str): Pandas offset string for rebalancing ('M' for month-end).
+            rebalance_frequency (str): Pandas offset string for rebalancing ('ME' for month-end).
         """
         logger.info("Starting backtest simulation...")
         self.data_cache.load_all_data()
@@ -107,13 +107,20 @@ class BacktestingEngine:
                 try:
                     start_price = price_data.asof(date)
                     end_price = price_data.asof(period_end_date)
-                    # Ensure start_price is not zero to avoid division by zero error
-                    if start_price > 0:
+                    
+                    # --- START OF FIX ---
+                    # Handle cases where asof() might return a Series due to duplicate indices
+                    if isinstance(start_price, pd.Series):
+                        start_price = start_price.iloc[0]
+                    if isinstance(end_price, pd.Series):
+                        end_price = end_price.iloc[0]
+                    # --- END OF FIX ---
+
+                    if start_price is not None and pd.notna(start_price) and start_price > 0:
                         period_return += (end_price / start_price) - 1
                 except (KeyError, IndexError, TypeError):
-                    continue # Skip if data is missing for this period or invalid
+                    continue 
             
-            # Equal-weighted portfolio return
             if current_portfolio:
                 avg_return = period_return / len(current_portfolio)
                 portfolio_value *= (1 + avg_return)
@@ -122,12 +129,18 @@ class BacktestingEngine:
             try:
                 benchmark_start = benchmark_prices.asof(date)
                 benchmark_end = benchmark_prices.asof(period_end_date)
-                # Ensure benchmark_start is not zero
-                if benchmark_start > 0:
+
+                # --- START OF FIX ---
+                if isinstance(benchmark_start, pd.Series):
+                    benchmark_start = benchmark_start.iloc[0]
+                if isinstance(benchmark_end, pd.Series):
+                    benchmark_end = benchmark_end.iloc[0]
+                # --- END OF FIX ---
+
+                if benchmark_start is not None and pd.notna(benchmark_start) and benchmark_start > 0:
                     benchmark_return = (benchmark_end / benchmark_start) - 1
                     benchmark_value *= (1 + benchmark_return)
             except (KeyError, IndexError, TypeError):
-                # If benchmark data is missing, hold value
                 pass
 
             self.dates.append(date)
