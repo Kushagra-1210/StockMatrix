@@ -68,11 +68,4 @@ StockMatrix is built with a **modular design** to ensure scalability and extensi
 
 ---
 
-## 🧪 Testing
-- Unit tests available in `/tests` using `pytest`.  
-- Tests mock API responses to validate functionality without relying on external services.  
-- Example: Fundamental analysis test for AAPL with FMP data.  
 
-Run tests locally:  
-```bash
-pytest -q
